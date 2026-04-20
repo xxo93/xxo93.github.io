@@ -1,19 +1,11 @@
-title: Tech Knowledge Hub
+title: xxo93 Tech Blog
 description: LeetCode / IT Learning / Debug Notes
 theme: minima
 
 markdown: kramdown
 highlighter: rouge
 
-collections:
-  leetcode:
-    output: true
-  it:
-    output: true
-  debug:
-    output: true
+permalink: /:categories/:title/
 
 plugins:
   - jekyll-feed
-
-permalink: /:categories/:title/
