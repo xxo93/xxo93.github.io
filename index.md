@@ -3,22 +3,37 @@ layout: home
 title: Home
 ---
 
-# 🚀 Welcome to My Tech Hub
+# 🚀 Welcome to My Tech Blog
 
-> LeetCode | IT Learning | Debug System
+> LeetCode · IT Learning · Debug System
 
 ---
 
 ## 🔥 热点推荐
 
-- [[LeetCode] 动态规划总结](pages/leetcode.md)
-- [[IT] Redis核心原理](pages/it.md)
-- [[Debug] Doris内存问题排查](pages/debug.md)
+- 🧠 [动态规划总结](/pages/leetcode)
+- 💻 [Redis核心原理](/pages/it)
+- 🐞 [Doris内存问题分析](/pages/debug)
 
 ---
 
-## 📌 分类入口
+## 📌 三大模块入口
 
-- 🧠 [LeetCode算法](pages/leetcode.md)
-- 💻 [IT学习](pages/it.md)
-- 🐞 问题定位(Debug)](pages/debug.md)
+### 🧠 LeetCode
+算法训练 / 面试刷题 / 题解总结
+
+👉 [进入](/pages/leetcode)
+
+---
+
+### 💻 IT学习
+数据库 / 后端 / 架构 / 中间件
+
+👉 [进入](/pages/it)
+
+---
+
+### 🐞 Debug定位
+线上问题 / 性能优化 / Bug复盘
+
+👉 [进入](/pages/debug)
