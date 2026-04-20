@@ -1,0 +1,19 @@
+title: Tech Knowledge Hub
+description: LeetCode / IT Learning / Debug Notes
+theme: minima
+
+markdown: kramdown
+highlighter: rouge
+
+collections:
+  leetcode:
+    output: true
+  it:
+    output: true
+  debug:
+    output: true
+
+plugins:
+  - jekyll-feed
+
+permalink: /:categories/:title/
