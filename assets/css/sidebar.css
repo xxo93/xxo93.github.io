@@ -1,0 +1,28 @@
+<div class="sidebar">
+
+  <h2>📚 Knowledge Hub</h2>
+
+  <a href="/">🏠 Home</a>
+
+  <div class="group">
+    <h3>🧠 LeetCode</h3>
+    <a href="/pages/leetcode">DP / BFS / Greedy</a>
+  </div>
+
+  <div class="group">
+    <h3>💻 IT Learning</h3>
+    <a href="/pages/it">Backend / DB / System</a>
+  </div>
+
+  <div class="group">
+    <h3>🐞 Debug</h3>
+    <a href="/pages/debug">Bug / Performance</a>
+  </div>
+
+  <div class="group">
+    <h3>🔍 Tools</h3>
+    <a href="/search">Search</a>
+    <a href="/tags">Tags</a>
+  </div>
+
+</div>
