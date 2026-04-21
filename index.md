@@ -11,7 +11,7 @@ title: Home
 
 ## 📌 Quick Access
 
-- 🧠 [LeetCode算法](pages/leetcode)
+- 🧠 [LeetCode算法](/pages/leetcode.md)
 - 💻 [IT学习体系](/pages/it)
 - 🐞 [Debug问题库](/pages/debug)
 - 🔍 [搜索](/search)
