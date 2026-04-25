@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1234. 替换子串得到平衡字符串 - 可视化</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0b0f1a;--card:#131a2b;--card2:#0f1525;--border:#1e2a40;--border2:#2a3a55;
+  --t1:#e2e8f4;--t2:#7b8ba8;--t3:#4a5670;
+  --cyan:#5ce0d8;--green:#4ade80;--red:#f87171;--orange:#fbbf24;--purple:#a78bfa;--pink:#f472b6;
+  --q:#f87171;--w:#60a5fa;--e:#fbbf24;--r:#a78bfa;
+}
+body{font-family:'Noto Sans SC','PingFang SC',sans-serif;background:var(--bg);color:var(--t1);min-height:100vh;overflow-x:hidden}
+.wrap{max-width:960px;margin:0 auto;padding:20px 14px 60px}
+
+/* === Header === */
+.hdr{text-align:center;padding:44px 20px 36px;background:linear-gradient(135deg,#0f1525 0%,#131a2b 40%,#1a1e35 100%);border-radius:18px;margin-bottom:24px;border:1px solid var(--border);position:relative;overflow:hidden}
+.hdr::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 25% 35%,rgba(92,224,216,.05),transparent 55%),radial-gradient(ellipse at 75% 65%,rgba(167,139,250,.04),transparent 50%);pointer-events:none}
+.hdr h1{font-size:28px;font-weight:900;margin-bottom:12px;position:relative}
+.hdr h1 .grad{background:linear-gradient(135deg,var(--cyan),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hdr .sub{font-size:14px;color:var(--t2);max-width:600px;margin:0 auto;line-height:1.9;position:relative}
+
+/* === Input Section === */
+.input-sec{background:var(--card);border-radius:14px;padding:24px;margin-bottom:20px;border:1px solid var(--border)}
+.sec-t{font-size:14px;font-weight:700;color:var(--cyan);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.sec-t .ico{font-size:18px}
+
+.input-row{display:flex;gap:10px;align-items:stretch;flex-wrap:wrap}
+.input-wrap{flex:1;min-width:200px;position:relative}
+.input-wrap input{width:100%;padding:12px 16px;background:var(--card2);border:1.5px solid var(--border);border-radius:10px;color:var(--t1);font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;letter-spacing:4px;text-transform:uppercase;outline:none;transition:border-color .2s}
+.input-wrap input:focus{border-color:var(--cyan)}
+.input-wrap input::placeholder{color:var(--t3);letter-spacing:1px;font-size:13px;font-weight:400;text-transform:none}
+.char-count{position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--t3);font-family:'JetBrains Mono',monospace;pointer-events:none}
+
+.quick-btns{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.qbtn{padding:8px 14px;border:1px solid var(--border);border-radius:8px;background:var(--card2);color:var(--t2);font-family:'JetBrains Mono',monospace;font-size:12px;cursor:pointer;transition:all .15s;white-space:nowrap}
+.qbtn:hover{border-color:var(--cyan);color:var(--cyan)}
+.qbtn:active{transform:scale(.96)}
+
+.run-btn{padding:10px 24px;border:none;border-radius:10px;background:linear-gradient(135deg,var(--cyan),#38bdf8);color:#0b0f1a;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;white-space:nowrap}
+.run-btn:hover{transform:translateY(-1px);box-shadow:0 4px 20px rgba(92,224,216,.25)}
+.run-btn:active{transform:scale(.97)}
+
+/* === Status Bar === */
+.status{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px}
+.stag{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:.3px}
+.stag.ok{background:rgba(74,222,128,.1);color:var(--green)}
+.stag.warn{background:rgba(251,191,36,.1);color:var(--orange)}
+.stag.info{background:rgba(92,224,216,.1);color:var(--cyan)}
+
+.pad-info{font-size:12px;color:var(--t2);margin-top:8px;line-height:1.7}
+.pad-info code{background:var(--card2);padding:1px 6px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--cyan)}
+
+/* === Info Cards === */
+.info-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:16px}
+.icard{background:var(--card2);border-radius:10px;padding:14px 16px;border:1px solid var(--border);display:flex;align-items:center;gap:12px}
+.icard-ico{font-size:20px;width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.icard-ico.c1{background:rgba(92,224,216,.1)}.icard-ico.c2{background:rgba(74,222,128,.1)}.icard-ico.c3{background:rgba(251,191,36,.1)}
+.icard-lbl{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px}
+.icard-val{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700}
+
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700}
+.chip.q{background:rgba(248,113,113,.12);color:var(--q)}
+.chip.w{background:rgba(96,165,250,.12);color:var(--w)}
+.chip.e{background:rgba(251,191,36,.12);color:var(--e)}
+.chip.r{background:rgba(167,139,250,.12);color:var(--r)}
+
+/* === Controls === */
+.ctrl{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:8px 16px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--t1);font-size:12px;font-family:inherit;cursor:pointer;transition:all .15s;user-select:none}
+.btn:hover{border-color:var(--cyan);color:var(--cyan)}
+.btn:disabled{opacity:.3;cursor:not-allowed;border-color:var(--border)!important;color:var(--t1)!important}
+.btn-go{background:rgba(92,224,216,.08);border-color:rgba(92,224,216,.25);color:var(--cyan)}
+.btn-go:hover{background:rgba(92,224,216,.15)}
+.step-lbl{margin-left:auto;font-size:12px;color:var(--t2);font-family:'JetBrains Mono',monospace}
+
+/* === Steps === */
+.steps{max-height:620px;overflow-y:auto;padding-right:4px}
+.steps::-webkit-scrollbar{width:4px}
+.steps::-webkit-scrollbar-track{background:transparent}
+.steps::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+.sc{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:6px;transition:all .3s}
+.sc.cur{border-color:var(--cyan);box-shadow:0 0 0 1px rgba(92,224,216,.12),0 2px 20px rgba(92,224,216,.06)}
+.sc.dim{opacity:.35}
+
+.sc-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.sc-num{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--t3);background:var(--card);padding:2px 8px;border-radius:5px;white-space:nowrap}
+.sc-act{font-size:12px;color:var(--t2);flex:1;min-width:100px}
+.sc-act b{color:var(--t1);font-weight:600}
+.badge{display:inline-flex;align-items:center;gap:3px;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.3px}
+.badge.v{background:rgba(74,222,128,.12);color:var(--green)}
+.badge.x{background:rgba(248,113,113,.1);color:var(--red)}
+
+/* === String Viz === */
+.sv{display:flex;align-items:center;justify-content:center;margin:8px 0;gap:2px}
+.bkt{font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:700;width:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.bkt.lb{color:var(--cyan)}.bkt.rb{color:var(--orange)}.bkt.hide{opacity:0}
+
+.cb{width:42px;height:48px;border-radius:7px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-weight:700;transition:all .3s;position:relative}
+.cb .ch{font-size:17px;line-height:1}
+.cb .ci{font-size:8px;margin-top:1px;opacity:.4}
+.cb.pad{opacity:.35;border-style:dashed}
+.cb.in{background:rgba(248,113,113,.08);border:1.5px solid rgba(248,113,113,.2);color:var(--t1)}
+.cb.out{background:var(--card);border:1.5px solid var(--border);color:var(--t2)}
+.cb.cq{color:var(--q)}.cb.cw{color:var(--w)}.cb.ce{color:var(--e)}.cb.cr{color:var(--r)}
+
+/* === Pointers === */
+.pr{display:flex;align-items:flex-start;justify-content:center;gap:2px;height:18px;margin-top:2px}
+.pm{width:42px;display:flex;align-items:flex-start;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700}
+.pm.lf{color:var(--cyan)}.pm.rt{color:var(--orange)}
+.pm .arr{animation:pt .8s ease-in-out infinite alternate}
+@keyframes pt{from{transform:translateY(0);opacity:1}to{transform:translateY(2px);opacity:.4}}
+.pm.sp{width:16px}
+
+/* === Stats === */
+.stats{display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap}
+.stats .lbl{font-size:10px;color:var(--t3);white-space:nowrap}
+.oc{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px}
+.oc.ok{background:rgba(74,222,128,.08);color:var(--green)}
+.oc.bad{background:rgba(248,113,113,.08);color:var(--red)}
+.wl{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--t2);margin-left:auto}
+.wl b{color:var(--orange)}
+
+/* === Result === */
+.res-sec{background:var(--card);border-radius:14px;padding:24px;margin-top:20px;border:1px solid var(--border)}
+.res-t{font-size:14px;font-weight:700;color:var(--green);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.res-box{background:var(--card2);border-radius:10px;padding:18px;border:1px solid var(--border)}
+.res-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.res-lbl{font-size:12px;color:var(--t3);width:56px;flex-shrink:0}
+.res-arr{color:var(--t3);font-size:13px}
+.rs{display:flex;gap:2px}
+.rc{width:34px;height:38px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700}
+.rc.rep{background:rgba(74,222,128,.12);border:1.5px solid rgba(74,222,128,.25);color:var(--green)}
+.rc.same{background:var(--card);border:1.5px solid var(--border);color:var(--t2)}
+.rc.pad{opacity:.35;border-style:dashed}
+.res-note{font-size:12px;color:var(--t2);margin-top:12px;line-height:1.9}
+.res-note code{background:var(--card);padding:1px 5px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--cyan)}
+
+/* === Explanation === */
+.exp-sec{background:var(--card);border-radius:14px;padding:24px;margin-top:20px;border:1px solid var(--border)}
+.exp-t{font-size:14px;font-weight:700;color:var(--purple);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.exp{font-size:13px;color:var(--t2);line-height:2}
+.exp b{color:var(--t1);font-weight:600}
+.exp code{font-family:'JetBrains Mono',monospace;background:var(--card2);padding:1px 5px;border-radius:3px;font-size:12px}
+
+/* === Hidden initially === */
+.hidden{display:none}
+
+@media(max-width:640px){
+  .cb{width:32px;height:40px}.cb .ch{font-size:14px}
+  .bkt{width:10px;font-size:18px}.pm{width:32px}.pm.sp{width:10px}
+  .hdr h1{font-size:22px}
+  .info-grid{grid-template-columns:1fr}
+  .input-row{flex-direction:column}
+  .quick-btns{flex-wrap:wrap}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Header -->
+  <div class="hdr">
+    <h1><span class="grad">1234. 替换子串得到平衡字符串</span></h1>
+    <div class="sub">
+      给定只含 <b style="color:var(--q)">Q</b> <b style="color:var(--w)">W</b> <b style="color:var(--e)">E</b> <b style="color:var(--r)">R</b> 的字符串，找出<b>最短子串</b>进行替换，使每个字符恰好出现 <b>n/4</b> 次。<br>核心思路：<b style="color:var(--cyan)">滑动窗口</b>
+    </div>
+  </div>
+
+  <!-- Input Section -->
+  <div class="input-sec">
+    <div class="sec-t"><span class="ico">✏️</span> 输入字符串</div>
+    <div class="input-row">
+      <div class="input-wrap">
+        <input type="text" id="inp" placeholder="输入 Q W E R 组成的字符串，如 WQWQRRER" value="WQWQRRER" spellcheck="false" autocomplete="off">
+        <span class="char-count" id="cc"></span>
+      </div>
+      <button class="run-btn" onclick="doRun()">🚀 运行</button>
+    </div>
+    <div class="quick-btns" style="margin-top:10px">
+      <span style="font-size:11px;color:var(--t3);margin-right:4px">示例：</span>
+      <button class="qbtn" onclick="setVal('WQWQRRER')">WQWQRRER</button>
+      <button class="qbtn" onclick="setVal('QQQQ')">QQQQ</button>
+      <button class="qbtn" onclick="setVal('WQQR')">WQQR</button>
+      <button class="qbtn" onclick="setVal('EEEE')">EEEE</button>
+      <button class="qbtn" onclick="setVal('QWERQWER')">QWERQWER</button>
+      <button class="qbtn" onclick="setVal('WWQQERRR')">WWQQERRR</button>
+      <button class="qbtn" onclick="setVal('QQQWEEERR')">QQQWEEERR</button>
+      <button class="qbtn" onclick="setVal('QWER')">QWER</button>
+      <button class="qbtn" onclick="setVal('QQQQWWWW')">QQQQWWWW</button>
+      <button class="qbtn" onclick="setVal('QQQWE')">QQQWE</button>
+      <button class="qbtn" onclick="setVal('QQQWERR')">QQQWERR</button>
+    </div>
+    <div class="status" id="statusBar"></div>
+    <div class="pad-info" id="padInfo"></div>
+  </div>
+
+  <!-- Info -->
+  <div class="input-sec hidden" id="infoSec">
+    <div class="sec-t"><span class="ico">📊</span> 题目参数</div>
+    <div class="info-grid">
+      <div class="icard"><div class="icard-ico c1">📝</div><div><div class="icard-lbl">最终字符串</div><div class="icard-val" id="dS"></div></div></div>
+      <div class="icard"><div class="icard-ico c2">🎯</div><div><div class="icard-lbl">每个字符目标数</div><div class="icard-val" id="dT"></div></div></div>
+      <div class="icard"><div class="icard-ico c3">📊</div><div><div class="icard-lbl">字符统计</div><div class="chips" id="dC"></div></div></div>
+    </div>
+    <div class="exp" id="dE"></div>
+  </div>
+
+  <!-- Steps -->
+  <div class="input-sec hidden" id="stepSec">
+    <div class="sec-t"><span class="ico">🔍</span> 滑动窗口过程</div>
+    <div class="ctrl">
+      <button class="btn" id="bP" onclick="play()">▶ 自动播放</button>
+      <button class="btn" id="bR" onclick="reset()">↺ 重置</button>
+      <button class="btn" id="b0" onclick="prev()">◀ 上一步</button>
+      <button class="btn btn-go" id="b1" onclick="next()">下一步 ▶</button>
+      <span class="step-lbl" id="sI"></span>
+    </div>
+    <div class="steps" id="steps"></div>
+  </div>
+
+  <!-- Result -->
+  <div class="res-sec hidden" id="resSec"></div>
+
+  <!-- Explanation -->
+  <div class="exp-sec">
+    <div class="exp-t"><span>💡</span> 核心思路</div>
+    <div class="exp">
+      <b>1.</b> 统计 <code>Q W E R</code> 各有多少个，目标是每个恰好 <code>n/4</code> 个。<br>
+      <b>2.</b> 多出来的字符必须出现在被替换的子串里（窗口内）。<br>
+      <b>3.</b> 用 <b>滑动窗口</b> 找最小窗口，使得窗口<b>之外</b>的每个字符都不超过 <code>n/4</code>。<br>
+      <b>4.</b> 扩张右指针 → 把字符"消化"进窗口（outside 减少）。<br>
+      <b>5.</b> 当 outside 全部 ≤ target 时 → 尝试收缩左指针，记录最小长度。<br>
+      <b>6.</b> 收缩时 outside 增加，一旦超标就停止收缩，继续扩张。<br><br>
+      <b style="color:var(--cyan)">关键直觉：</b>窗口 = 被替换的部分，窗口之外不能有字符超标。扩张让条件更容易满足，收缩让窗口更小。
+    </div>
+  </div>
+
+</div>
+
+<script>
+const CLS = {Q:'cq',W:'cw',E:'ce',R:'cr'};
+const VALID = new Set(['Q','W','E','R']);
+let origS = '', workS = '', padCount = 0, tot = {}, steps = [], ans = 0, cur = -1, timer = null;
+
+// === Input handling ===
+const inp = document.getElementById('inp');
+const cc = document.getElementById('cc');
+inp.addEventListener('input', () => {
+  inp.value = inp.value.toUpperCase().replace(/[^QWER]/g,'');
+  updateCC();
+});
+inp.addEventListener('keydown', e => { if(e.key==='Enter') doRun(); });
+updateCC();
+
+function updateCC() {
+  const v = inp.value;
+  const n = v.length;
+  const rem = n % 4;
+  cc.textContent = rem === 0 ? `${n} 字符 ✓` : `${n} → 需补${4-rem}个`;
+  cc.style.color = rem === 0 ? 'var(--green)' : 'var(--orange)';
+}
+
+function setVal(v) {
+  inp.value = v.toUpperCase();
+  updateCC();
+  doRun();
+}
+
+// === Padding logic ===
+function padString(s) {
+  const n = s.length;
+  if (n === 0) return { padded: 'QQQQ', padCount: 4 };
+  const rem = n % 4;
+  if (rem === 0) return { padded: s, padCount: 0 };
+  const need = 4 - rem;
+  // Find the char with minimum count (tie-break: Q > W > E > R priority)
+  const order = ['Q','W','E','R'];
+  const cnt = {Q:0,W:0,E:0,R:0};
+  for (const c of s) cnt[c]++;
+  // Sort by count ascending, then by priority
+  const sorted = [...order].sort((a,b) => cnt[a] - cnt[b] || order.indexOf(a) - order.indexOf(b));
+  let pad = '';
+  for (let i = 0; i < need; i++) pad += sorted[i % sorted.length];
+  return { padded: s + pad, padCount: need };
+}
+
+// === Run algorithm ===
+function runAlgorithm(s) {
+  const n = s.length;
+  const t = n / 4;
+  const total = {Q:0,W:0,E:0,R:0};
+  for (const c of s) total[c]++;
+  const out = {...total};
+  const st = [];
+  let l = 0, a = n;
+
+  st.push({right:-1,left:-1,action:'初始化 outside = 全部字符',out:{...out},valid:false,ans:null});
+
+  for (let r = 0; r < n; r++) {
+    out[s[r]]--;
+    let ok = out.Q<=t && out.W<=t && out.E<=t && out.R<=t;
+    st.push({right:r,left:l,action:`扩张 right→${r}，移除 <b>${s[r]}</b>`,out:{...out},valid:ok,ans:ok?r-l+1:null});
+
+    if (ok) {
+      while (l <= r) {
+        const len = r - l + 1;
+        if (len < a) a = len;
+        st.push({right:r,left:l,action:`✅ outside 合法，收缩 left→${l}，加入 <b>${s[l]}</b>`,out:{...out},valid:true,ans:len});
+        out[s[l]]++;
+        l++;
+        const nok = out.Q<=t && out.W<=t && out.E<=t && out.R<=t;
+        if (!nok) {
+          st.push({right:r,left:l,action:`❌ 收缩后 <b>${s[l-1]}</b> 超标，停止收缩`,out:{...out},valid:false,ans:null});
+          break;
+        }
+      }
+    }
+  }
+  return {steps: st, ans: a, total};
+}
+
+// === Main run ===
+function doRun() {
+  stopPlay();
+  origS = inp.value.toUpperCase().replace(/[^QWER]/g,'');
+  if (!origS) {
+    inp.value = ''; updateCC(); return;
+  }
+
+  const {padded, padCount: pc} = padString(origS);
+  workS = padded;
+  padCount = pc;
+
+  const res = runAlgorithm(workS);
+  steps = res.steps;
+  ans = res.ans;
+  tot = res.total;
+
+  // Show status
+  const sb = document.getElementById('statusBar');
+  const pi = document.getElementById('padInfo');
+  let tags = '';
+  if (padCount > 0) {
+    tags += `<span class="stag warn">⚠ 已补${padCount}个字符</span>`;
+    pi.innerHTML = `原串 <code>"${origS}"</code> 长度 <code>${origS.length}</code> 不是4的倍数，自动补 <code>${padCount}</code> 个最少的字符 → <code>"${workS}"</code>（长度 <code>${workS.length}</code>）`;
+  } else {
+    tags += `<span class="stag ok">✓ 长度已是4的倍数</span>`;
+    pi.innerHTML = '';
+  }
+  tags += `<span class="stag info">长度 ${workS.length}，目标 ${workS.length/4}/每个</span>`;
+  sb.innerHTML = tags;
+
+  // Show info
+  document.getElementById('infoSec').classList.remove('hidden');
+  document.getElementById('dS').textContent = `"${workS}"${padCount>0?' (补'+padCount+')':''}`;
+  document.getElementById('dT').textContent = `n/4 = ${workS.length/4}`;
+  document.getElementById('dC').innerHTML = ['Q','W','E','R'].map(c=>
+    `<span class="chip ${c.toLowerCase()}">${c}=${tot[c]}${tot[c]>workS.length/4?' ↑':''}</span>`
+  ).join('');
+
+  // Analysis
+  let analysis = '<b>分析：</b>';
+  const parts = [];
+  for (const c of ['Q','W','E','R']) {
+    if (tot[c] > workS.length/4) parts.push(`${c} 多 <code>${tot[c]-workS.length/4}</code>`);
+  }
+  if (parts.length === 0) {
+    analysis += '已经平衡，不需要替换！';
+  } else {
+    analysis += parts.join('，') + `。至少替换 <code>${parts.reduce((s,p)=>{const m=p.match(/<code>(\d+)<\/code>/);return s+(m?+m[1]:0)},0)}</code> 个字符。`;
+  }
+  document.getElementById('dE').innerHTML = analysis;
+
+  // Show steps
+  document.getElementById('stepSec').classList.remove('hidden');
+  const cont = document.getElementById('steps');
+  cont.innerHTML = '';
+  steps.forEach((st,i) => {
+    const d = document.createElement('div');
+    d.className = 'sc dim';
+    d.id = 's'+i;
+    d.innerHTML = buildCard(st,i);
+    cont.appendChild(d);
+  });
+
+  cur = -1;
+  updateUI();
+  document.getElementById('resSec').classList.add('hidden');
+}
+
+function buildCard(st, i) {
+  const s = workS, n = s.length;
+  // String with brackets
+  let sv = '<div class="sv">';
+  sv += `<span class="bkt ${st.right>=0?'lb':'hide'}">[</span>`;
+  for (let j = 0; j < n; j++) {
+    const inside = st.right >= 0 && j >= st.left && j <= st.right;
+    const isPad = j >= origS.length;
+    sv += `<div class="cb ${inside?'in':'out'} ${CLS[s[j]]} ${isPad?'pad':''}"><span class="ch">${s[j]}</span><span class="ci">${j}</span></div>`;
+  }
+  sv += `<span class="bkt ${st.right>=0?'rb':'hide'}">]</span>`;
+  sv += '</div>';
+
+  // Pointers
+  let pr = '<div class="pr">';
+  if (st.right >= 0) {
+    pr += '<div class="pm sp"></div>';
+    for (let j = 0; j < n; j++) {
+      let m = '';
+      if (j === st.left) m = '<span class="arr" style="color:var(--cyan)">↑L</span>';
+      else if (j === st.right) m = '<span class="arr" style="color:var(--orange)">↑R</span>';
+      pr += `<div class="pm">${m}</div>`;
+    }
+    pr += '<div class="pm sp"></div>';
+  }
+  pr += '</div>';
+
+  // Stats
+  const o = st.out;
+  const oc = ['Q','W','E','R'].map(c => {
+    const ok = o[c] <= workS.length/4;
+    return `<span class="oc ${ok?'ok':'bad'}">${c}=${o[c]}</span>`;
+  }).join('');
+
+  const badge = st.valid
+    ? '<span class="badge v">✓ VALID</span>'
+    : (st.right >= 0 ? '<span class="badge x">✗ INVALID</span>' : '');
+  const wl = st.ans !== null ? `<span class="wl">窗口: <b>${st.ans}</b></span>` : '';
+
+  return `<div class="sc-head"><span class="sc-num">#${i}</span><span class="sc-act">${st.action}</span>${badge}</div>${sv}${pr}<div class="stats"><span class="lbl">outside:</span><div class="chips">${oc}</div>${wl}</div>`;
+}
+
+function updateUI() {
+  steps.forEach((_,i) => {
+    const el = document.getElementById('s'+i);
+    if(el) el.className = 'sc' + (i===cur?' cur':i<cur?' dim':'');
+  });
+  document.getElementById('sI').textContent = cur < 0 ? '' : `步骤 ${cur+1} / ${steps.length}`;
+  document.getElementById('b0').disabled = cur <= 0;
+  document.getElementById('b1').disabled = cur >= steps.length - 1;
+  if (cur >= 0) {
+    const el = document.getElementById('s'+cur);
+    if(el) el.scrollIntoView({behavior:'smooth',block:'nearest'});
+  }
+  if (cur === steps.length - 1) showResult();
+}
+
+function next(){if(cur<steps.length-1){cur++;updateUI()}}
+function prev(){if(cur>0){cur--;updateUI()}}
+function reset(){cur=-1;stopPlay();updateUI();document.getElementById('resSec').classList.add('hidden')}
+
+function play(){
+  if(timer){stopPlay();return}
+  if(cur>=steps.length-1)cur=-1;
+  document.getElementById('bP').textContent='⏸ 暂停';
+  timer=setInterval(()=>{if(cur>=steps.length-1){stopPlay();return}cur++;updateUI()},800);
+}
+function stopPlay(){
+  if(timer){clearInterval(timer);timer=null}
+  document.getElementById('bP').textContent='▶ 自动播放';
+}
+
+function showResult(){
+  const sec=document.getElementById('resSec');
+  sec.classList.remove('hidden');
+  let minL=0,minR=0,minLen=workS.length;
+  steps.forEach(st=>{
+    if(st.valid&&st.ans!==null&&st.ans<minLen){minLen=st.ans;minL=st.left;minR=st.right}
+  });
+
+  const s=workS;
+  // Build replacement string (fill with chars that are under target)
+  const cnt={Q:0,W:0,E:0,R:0};
+  for(const c of s)cnt[c]++;
+  const target=workS.length/4;
+  let rep='';
+  const need=[];
+  for(const c of ['Q','W','E','R']){
+    const d=target-cnt[c];
+    for(let i=0;i<d;i++)need.push(c);
+  }
+  // Also add chars from the window to fill remaining
+  const windowChars=[];
+  for(let j=minL;j<=minR;j++)windowChars.push(s[j]);
+  // outside count after removing window
+  const outCnt={...cnt};
+  for(const c of windowChars)outCnt[c]--;
+  for(const c of ['Q','W','E','R']){
+    const d=target-outCnt[c];
+    for(let i=0;i<d;i++)rep+=c;
+  }
+
+  let html=`<div class="res-t"><span>🎉</span> 最短替换子串长度 = ${minLen}</div><div class="res-box">`;
+
+  // Original
+  html+='<div class="res-row"><span class="res-lbl">原串：</span><div class="rs">';
+  for(let j=0;j<s.length;j++){
+    const isPad=j>=origS.length;
+    html+=`<div class="rc same ${CLS[s[j]]} ${isPad?'pad':''}">${s[j]}</div>`;
+  }
+  html+='</div></div>';
+
+  // Arrow
+  html+=`<div class="res-row"><span class="res-lbl"></span><span class="res-arr">↓ 替换位置 [${minL}, ${minR}]，长度 ${minLen}</span></div>`;
+
+  // Result
+  html+='<div class="res-row"><span class="res-lbl">结果：</span><div class="rs">';
+  for(let j=0;j<s.length;j++){
+    const isPad=j>=origS.length;
+    if(j>=minL&&j<=minR){
+      const ch=rep[j-minL]||'?';
+      html+=`<div class="rc rep ${isPad?'pad':''}">${ch}</div>`;
+    }else{
+      html+=`<div class="rc same ${CLS[s[j]]} ${isPad?'pad':''}">${s[j]}</div>`;
+    }
+  }
+  html+='</div></div>';
+
+  // Verification
+  const afterCnt={...cnt};
+  for(let j=minL;j<=minR;j++)afterCnt[s[j]]--;
+  for(let j=0;j<rep.length;j++)afterCnt[rep[j]]++;
+
+  html+=`<div class="res-note">替换后统计：`;
+  html+=['Q','W','E','R'].map(c=>`<code>${c}=${afterCnt[c]}</code>`).join(' ');
+  html+=`，每个都等于 <b>${target}</b> ✅</div>`;
+
+  if(padCount>0){
+    html+=`<div class="res-note" style="color:var(--orange)">⚠ 注意：原串长度不是4的倍数，已自动补 ${padCount} 个字符。实际结果对原串同样有效（只需替换原串中的对应区间即可）。</div>`;
+  }
+
+  html+='</div>';
+  sec.innerHTML=html;
+}
+
+// Auto-run on load
+doRun();
+</script>
+</body>
+</html>
