@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MySQL 索引结构与查询原理演示</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#080810;--surface:#101020;--surface2:#181830;--border:#28284a;
+  --text:#e0e0f0;--muted:#6868a0;--blue:#00b4ff;--amber:#ffb847;
+  --green:#4ade80;--red:#ff6b6b;--purple:#a78bfa;
+}
+body{background:var(--bg);color:var(--text);font-family:'Noto Sans SC',sans-serif;line-height:1.7}
+.container{max-width:1080px;margin:0 auto;padding:36px 20px}
+header{text-align:center;margin-bottom:44px}
+header h1{font-size:1.9rem;font-weight:700;background:linear-gradient(135deg,var(--blue),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:6px}
+header p{color:var(--muted);font-size:.95rem}
+section{margin-bottom:36px}
+section h2{font-size:1.15rem;font-weight:600;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px}
+/* Table */
+.tbl{width:100%;border-collapse:collapse;font-family:'JetBrains Mono',monospace;font-size:.82rem}
+.tbl th{background:var(--surface2);padding:9px 14px;text-align:left;font-weight:600;color:var(--blue);border-bottom:2px solid var(--border)}
+.tbl td{padding:7px 14px;border-bottom:1px solid var(--border)}
+.tbl tr:hover td{background:rgba(0,180,255,.04)}
+.sql-hint{margin-top:14px;padding:12px 16px;background:var(--surface2);border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--muted);border-left:3px solid var(--purple);line-height:1.8}
+/* Buttons */
+.qbtns{display:flex;flex-direction:column;gap:10px}
+.qbtn{display:flex;align-items:center;gap:14px;padding:15px 18px;background:var(--surface);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:all .25s;text-align:left;color:var(--text);font-family:inherit;font-size:inherit}
+.qbtn:hover{border-color:var(--blue);background:var(--surface2);transform:translateX(3px)}
+.qbtn.active{border-color:var(--blue);box-shadow:0 0 18px rgba(0,180,255,.12)}
+.badge{flex-shrink:0;padding:3px 11px;border-radius:20px;font-size:.72rem;font-weight:600}
+.b-blue{background:rgba(0,180,255,.13);color:var(--blue)}
+.b-amber{background:rgba(255,184,71,.13);color:var(--amber)}
+.b-green{background:rgba(74,222,128,.13);color:var(--green)}
+.qsql{font-family:'JetBrains Mono',monospace;font-size:.83rem}
+.qdesc{font-size:.78rem;color:var(--muted);margin-top:3px}
+/* Canvas area */
+.tree-wrap{position:relative}
+.tabs{display:flex;gap:8px;margin-bottom:16px}
+.tab{padding:7px 18px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-family:inherit;font-size:.82rem;transition:all .25s}
+.tab.active{background:var(--blue);color:#000;border-color:var(--blue);font-weight:600}
+.tab:hover:not(.active){border-color:var(--muted);color:var(--text)}
+canvas{width:100%;border-radius:8px;display:block}
+/* Log */
+.log{min-height:120px}
+.log-empty{color:var(--muted);text-align:center;padding:36px 0;font-size:.9rem}
+.le{display:flex;align-items:flex-start;gap:12px;padding:11px 0;border-bottom:1px solid rgba(40,40,74,.5);opacity:0;transform:translateX(-16px);animation:slIn .35s ease forwards}
+@keyframes slIn{to{opacity:1;transform:translateX(0)}}
+.ln{flex-shrink:0;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;font-family:'JetBrains Mono',monospace}
+.ln-b{background:rgba(0,180,255,.18);color:var(--blue)}
+.ln-a{background:rgba(255,184,71,.18);color:var(--amber)}
+.ln-g{background:rgba(74,222,128,.18);color:var(--green)}
+.ln-r{background:rgba(255,107,107,.18);color:var(--red)}
+.lc h4{font-size:.88rem;font-weight:600;margin-bottom:3px}
+.lc p{font-size:.79rem;color:var(--muted);line-height:1.6}
+.lc code{background:var(--surface2);padding:1px 6px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:.76rem;color:var(--amber)}
+.rc{margin-top:14px;padding:14px 16px;background:rgba(74,222,128,.07);border:1px solid rgba(74,222,128,.25);border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:.82rem}
+.rc .rl{color:var(--green);font-weight:600;margin-bottom:6px}
+/* Concepts */
+.cgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.cc{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px}
+.cc h3{font-size:.95rem;font-weight:600;margin-bottom:7px;display:flex;align-items:center;gap:8px}
+.cc p{font-size:.82rem;color:var(--muted);line-height:1.65}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.d-b{background:var(--blue)}.d-a{background:var(--amber)}.d-g{background:var(--green)}
+@media(max-width:768px){.container{padding:18px 12px}header h1{font-size:1.35rem}}
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <h1>MySQL InnoDB 索引结构与查询原理</h1>
+  <p>通过可视化动画理解 B+ 树索引查找与回表过程</p>
+</header>
+
+<!-- 数据表 -->
+<section>
+  <h2>📊 示例数据表 users</h2>
+  <div class="card" style="overflow-x:auto">
+    <table class="tbl">
+      <thead><tr><th>id (主键)</th><th>name</th><th>age</th><th>email</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>张三</td><td>25</td><td>zhangsan@mail.com</td></tr>
+        <tr><td>2</td><td>李四</td><td>30</td><td>lisi@mail.com</td></tr>
+        <tr><td>3</td><td>王五</td><td>28</td><td>wangwu@mail.com</td></tr>
+        <tr><td>4</td><td>赵六</td><td>35</td><td>zhaoliu@mail.com</td></tr>
+        <tr><td>5</td><td>孙七</td><td>22</td><td>sunqi@mail.com</td></tr>
+        <tr><td>6</td><td>周八</td><td>32</td><td>zhouba@mail.com</td></tr>
+        <tr><td>7</td><td>吴九</td><td>27</td><td>wujiu@mail.com</td></tr>
+        <tr><td>8</td><td>郑十</td><td>29</td><td>zhengshi@mail.com</td></tr>
+      </tbody>
+    </table>
+    <div class="sql-hint">
+      CREATE TABLE users (<br>
+      &nbsp;&nbsp;id INT PRIMARY KEY,<br>
+      &nbsp;&nbsp;name VARCHAR(50),<br>
+      &nbsp;&nbsp;age INT,<br>
+      &nbsp;&nbsp;email VARCHAR(100),<br>
+      &nbsp;&nbsp;INDEX idx_age (age)<br>
+      );
+    </div>
+  </div>
+</section>
+
+<!-- 查询选择 -->
+<section>
+  <h2>🔍 选择查询场景（点击开始动画）</h2>
+  <div class="qbtns">
+    <button class="qbtn" onclick="run(1)">
+      <span class="badge b-blue">场景一</span>
+      <div><div class="qsql">SELECT * FROM users WHERE id = 5</div><div class="qdesc">主键查询 → 聚簇索引叶子节点直接包含完整数据，无需回表</div></div>
+    </button>
+    <button class="qbtn" onclick="run(2)">
+      <span class="badge b-amber">场景二</span>
+      <div><div class="qsql">SELECT * FROM users WHERE age = 28</div><div class="qdesc">二级索引查询 → 需要回表到聚簇索引获取完整数据</div></div>
+    </button>
+    <button class="qbtn" onclick="run(3)">
+      <span class="badge b-green">场景三</span>
+      <div><div class="qsql">SELECT id, age FROM users WHERE age = 28</div><div class="qdesc">覆盖索引 → 所有字段都在索引中，无需回表</div></div>
+    </button>
+  </div>
+</section>
+
+<!-- 树可视化 -->
+<section>
+  <h2>🌲 B+ 树索引结构</h2>
+  <div class="card tree-wrap">
+    <div class="tabs">
+      <button class="tab active" id="t1" onclick="switchTab('c')">聚簇索引（主键 id）</button>
+      <button class="tab" id="t2" onclick="switchTab('s')">二级索引（age）</button>
+    </div>
+    <canvas id="cv" width="1040" height="460"></canvas>
+  </div>
+</section>
+
+<!-- 执行过程 -->
+<section>
+  <h2>📝 执行过程</h2>
+  <div class="card log" id="log">
+    <div class="log-empty">↑ 点击上方查询按钮，查看索引查找和回表的完整过程</div>
+  </div>
+</section>
+
+<!-- 概念 -->
+<section>
+  <h2>💡 关键概念</h2>
+  <div class="cgrid">
+    <div class="cc">
+      <h3><span class="dot d-b"></span> 聚簇索引（Clustered Index）</h3>
+      <p>InnoDB 的主键索引是一棵 B+ 树，<strong>叶子节点存储完整的行数据</strong>。整张表的数据按主键顺序存储在叶子节点中，所以聚簇索引 = 数据本身。通过主键查询时，找到叶子节点就拿到了全部数据。</p>
+    </div>
+    <div class="cc">
+      <h3><span class="dot d-a"></span> 二级索引 &amp; 回表</h3>
+      <p>非主键索引（如 idx_age）的叶子节点只存<strong>索引列的值 + 主键值</strong>。当 SELECT 需要其他列时，必须用主键值再回聚簇索引查完整数据，这个过程叫<strong>回表</strong>，会产生额外的 IO 开销。</p>
+    </div>
+    <div class="cc">
+      <h3><span class="dot d-g"></span> 覆盖索引（Covering Index）</h3>
+      <p>如果查询所需的所有列都包含在索引中（索引列 + 主键），就<strong>不需要回表</strong>，直接从二级索引返回数据。这是重要的 SQL 优化手段，可以通过合理建立联合索引来实现。</p>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<script>
+// ===================== DATA =====================
+const U=[
+  {id:1,name:'张三',age:25,email:'zhangsan@mail'},
+  {id:2,name:'李四',age:30,email:'lisi@mail'},
+  {id:3,name:'王五',age:28,email:'wangwu@mail'},
+  {id:4,name:'赵六',age:35,email:'zhaoliu@mail'},
+  {id:5,name:'孙七',age:22,email:'sunqi@mail'},
+  {id:6,name:'周八',age:32,email:'zhouba@mail'},
+  {id:7,name:'吴九',age:27,email:'wujiu@mail'},
+  {id:8,name:'郑十',age:29,email:'zhengshi@mail'}
+];
+
+// ===================== CANVAS =====================
+const cv=document.getElementById('cv'),cx=cv.getContext('2d');
+const W=1040,H=460;
+const dpr=window.devicePixelRatio||1;
+cv.width=W*dpr;cv.height=H*dpr;cv.style.width=W+'px';cv.style.height=H+'px';
+cx.scale(dpr,dpr);
+
+const C={
+  bg:'#101020',node:'#181835',border:'#303060',text:'#e0e0f0',
+  muted:'#6868a0',blue:'#00b4ff',amber:'#ffb847',green:'#4ade80',
+  red:'#ff6b6b',purple:'#a78bfa',line:'#28284a'
+};
+
+function rr(x,y,w,h,r){
+  cx.beginPath();cx.moveTo(x+r,y);cx.lineTo(x+w-r,y);
+  cx.quadraticCurveTo(x+w,y,x+w,y+r);cx.lineTo(x+w,y+h-r);
+  cx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);cx.lineTo(x+r,y+h);
+  cx.quadraticCurveTo(x,y+h,x,y+h-r);cx.lineTo(x,y+r);
+  cx.quadraticCurveTo(x,y,x+r,y);cx.closePath();
+}
+
+function drawNode(x,y,w,h,opt={}){
+  const{fill=C.node,border=C.border,lw=2,glow}=opt;
+  cx.save();
+  if(glow){cx.shadowColor=glow;cx.shadowBlur=18}
+  rr(x,y,w,h,8);cx.fillStyle=fill;cx.fill();
+  cx.strokeStyle=border;cx.lineWidth=lw;cx.stroke();
+  cx.restore();
+}
+
+function txt(s,x,y,opt={}){
+  const{sz=14,fm='JetBrains Mono',color=C.text,align='center',base='middle',bold=false}=opt;
+  cx.save();
+  cx.font=(bold?'bold ':'')+sz+'px "'+fm+'",monospace';
+  cx.fillStyle=color;cx.textAlign=align;cx.textBaseline=base;
+  cx.fillText(s,x,y);cx.restore();
+}
+
+function line(x1,y1,x2,y2,opt={}){
+  const{color=C.line,w=1.5,dash=false}=opt;
+  cx.save();cx.beginPath();cx.moveTo(x1,y1);cx.lineTo(x2,y2);
+  cx.strokeStyle=color;cx.lineWidth=w;
+  if(dash)cx.setLineDash([6,4]);
+  cx.stroke();cx.restore();
+}
+
+function arrow(x1,y1,x2,y2,opt={}){
+  const{color=C.line,w=2,dash=false}=opt;
+  cx.save();cx.beginPath();cx.moveTo(x1,y1);cx.lineTo(x2,y2);
+  cx.strokeStyle=color;cx.lineWidth=w;
+  if(dash)cx.setLineDash([8,5]);
+  cx.stroke();
+  const a=Math.atan2(y2-y1,x2-x1),hl=10;
+  cx.beginPath();cx.moveTo(x2,y2);
+  cx.lineTo(x2-hl*Math.cos(a-.45),y2-hl*Math.sin(a-.45));
+  cx.lineTo(x2-hl*Math.cos(a+.45),y2-hl*Math.sin(a+.45));
+  cx.closePath();cx.fillStyle=color;cx.fill();
+  cx.restore();
+}
+
+function curveArrow(x1,y1,x2,y2,opt={}){
+  const{color=C.red,w=2.5,label}=opt;
+  const mx=(x1+x2)/2,my=Math.min(y1,y2)-50;
+  cx.save();cx.beginPath();cx.moveTo(x1,y1);cx.quadraticCurveTo(mx,my,x2,y2);
+  cx.strokeStyle=color;cx.lineWidth=w;cx.setLineDash([10,6]);cx.stroke();
+  // arrowhead
+  const t=.95;
+  const px=2*(1-t)*(mx-x1)+2*t*(x2-mx);
+  const py=2*(1-t)*(my-y1)+2*t*(y2-my);
+  const a=Math.atan2(py,px),hl=11;
+  const ax=x1*(1-t)*(1-t)+2*(1-t)*t*mx+t*t*x2;
+  const ay=y1*(1-t)*(1-t)+2*(1-t)*t*my+t*t*y2;
+  cx.setLineDash([]);
+  cx.beginPath();cx.moveTo(ax,ay);
+  cx.lineTo(ax-hl*Math.cos(a-.4),ay-hl*Math.sin(a-.4));
+  cx.lineTo(ax-hl*Math.cos(a+.4),ay-hl*Math.sin(a+.4));
+  cx.closePath();cx.fillStyle=color;cx.fill();
+  if(label){
+    txt(label,mx,my-14,{sz:13,color,bold:true,fm:'Noto Sans SC'});
+  }
+  cx.restore();
+}
+
+// ===================== STATE =====================
+let tab='c'; // 'c' or 's'
+let hl={nodes:[],edges:[],keys:[],showCmp:false};
+let timers=[];
+
+function clr(){
+  cx.clearRect(0,0,W,H);cx.fillStyle=C.bg;cx.fillRect(0,0,W,H);
+}
+
+function switchTab(t){
+  tab=t;
+  document.getElementById('t1').classList.toggle('active',t==='c');
+  document.getElementById('t2').classList.toggle('active',t==='s');
+  render();
+}
+
+// ===================== DRAW TREES =====================
+// Clustered index positions
+const CL={
+  root:{x:W/2,y:75},
+  leaves:[{x:W/2-230,y:280},{x:W/2+230,y:280}]
+};
+// Secondary index positions
+const SL={
+  root:{x:W/2,y:75},
+  leaves:[{x:W/2-230,y:280},{x:W/2+230,y:280}]
+};
+
+function drawClustered(h){
+  const L=CL;
+  // title
+  txt('聚簇索引（主键 B+ 树）',W/2,18,{sz:15,color:C.blue,bold:true,fm:'Noto Sans SC'});
+
+  // edges
+  const ry=L.root.y+22;
+  [0,1].forEach(i=>{
+    const ly=L.leaves[i].y-28;
+    const isHl=h.edges.includes(i);
+    line(L.root.x,ry,L.leaves[i].x,ly,{color:isHl?C.blue:C.line,w:isHl?3:1.5});
+  });
+
+  // leaf-to-leaf
+  const l0=L.leaves[0],l1=L.leaves[1];
+  line(l0.x+190,l0.y,l1.x-190,l1.y,{color:C.purple,w:1.5,dash:true});
+  txt('↔',(l0.x+l1.x)/2,l0.y-14,{sz:11,color:C.purple});
+
+  // root node
+  const rw=100,rh=44;
+  const isR=h.nodes.includes('root');
+  drawNode(L.root.x-rw/2,L.root.y-rh/2,rw,rh,{border:isR?C.blue:C.border,glow:isR?C.blue:null});
+  txt('5',L.root.x,L.root.y,{sz:20,bold:true,color:isR?'#fff':C.text});
+
+  if(h.showCmp){
+    txt('≤4 → 左',L.root.x-90,L.root.y+50,{sz:11,color:C.muted,fm:'Noto Sans SC'});
+    txt('>4 → 右',L.root.x+90,L.root.y+50,{sz:11,color:C.muted,fm:'Noto Sans SC'});
+  }
+
+  // leaf nodes
+  const leafData=[
+    {ids:[1,2,3,4],users:U.filter(u=>u.id<=4)},
+    {ids:[5,6,7,8],users:U.filter(u=>u.id>=5)}
+  ];
+
+  leafData.forEach((lf,i)=>{
+    const p=L.leaves[i];
+    const lw=380,lhh=170;
+    const isL=h.nodes.includes('leaf-'+i);
+    drawNode(p.x-lw/2,p.y-lhh/2,lw,lhh,{border:isL?C.blue:C.border,glow:isL?C.blue:null});
+
+    txt('叶子节点（存储完整行数据）',p.x,p.y-lhh/2+15,{sz:11,color:C.muted,fm:'Noto Sans SC'});
+
+    // separator
+    line(p.x-lw/2+10,p.y-lhh/2+28,p.x+lw/2-10,p.y-lhh/2+28,{color:C.border,w:1});
+
+    lf.users.forEach((u,j)=>{
+      const ry2=p.y-lhh/2+44+j*30;
+      const isK=h.keys.includes(u.id);
+      if(isK){
+        cx.save();rr(p.x-lw/2+8,ry2-11,lw-16,24,4);
+        cx.fillStyle='rgba(0,180,255,.12)';cx.fill();cx.restore();
+      }
+      const c=isK?C.blue:C.text;
+      txt('id='+u.id,p.x-140,ry2,{sz:12,color:c});
+      txt(u.name,p.x-55,ry2,{sz:12,color:c,fm:'Noto Sans SC'});
+      txt('age='+u.age,p.x+30,ry2,{sz:12,color:isK?c:C.muted});
+      txt(u.email,p.x+130,ry2,{sz:10,color:C.muted});
+    });
+  });
+
+  // label
+  txt('每个叶子节点通过双向链表相连，支持高效范围查询',W/2,H-18,{sz:11,color:C.muted,fm:'Noto Sans SC'});
+}
+
+function drawSecondary(h){
+  const L=SL;
+  txt('二级索引（age 字段 B+ 树）',W/2,18,{sz:15,color:C.amber,bold:true,fm:'Noto Sans SC'});
+
+  const ry=L.root.y+22;
+  [0,1].forEach(i=>{
+    const ly=L.leaves[i].y-24;
+    const isHl=h.edges.includes(i);
+    line(L.root.x,ry,L.leaves[i].x,ly,{color:isHl?C.amber:C.line,w:isHl?3:1.5});
+  });
+
+  const l0=L.leaves[0],l1=L.leaves[1];
+  line(l0.x+150,l0.y,l1.x-200,l1.y,{color:C.purple,w:1.5,dash:true});
+
+  const rw=100,rh=44;
+  const isR=h.nodes.includes('root');
+  drawNode(L.root.x-rw/2,L.root.y-rh/2,rw,rh,{border:isR?C.amber:C.border,glow:isR?C.amber:null});
+  txt('28',L.root.x,L.root.y,{sz:20,bold:true,color:isR?'#000':C.text});
+
+  if(h.showCmp){
+    txt('<28 → 左',L.root.x-85,L.root.y+50,{sz:11,color:C.muted,fm:'Noto Sans SC'});
+    txt('≥28 → 右',L.root.x+85,L.root.y+50,{sz:11,color:C.muted,fm:'Noto Sans SC'});
+  }
+
+  const leafData=[
+    [{age:22,id:5},{age:25,id:1},{age:27,id:7}],
+    [{age:28,id:3},{age:29,id:8},{age:30,id:2},{age:32,id:6},{age:35,id:4}]
+  ];
+
+  leafData.forEach((items,i)=>{
+    const p=L.leaves[i];
+    const lw=280,lhh=items.length*26+48;
+    const isL=h.nodes.includes('leaf-'+i);
+    drawNode(p.x-lw/2,p.y-lhh/2,lw,lhh,{border:isL?C.amber:C.border,glow:isL?C.amber:null});
+
+    txt('叶子节点（age + 主键 id）',p.x,p.y-lhh/2+15,{sz:11,color:C.muted,fm:'Noto Sans SC'});
+    line(p.x-lw/2+10,p.y-lhh/2+28,p.x+lw/2-10,p.y-lhh/2+28,{color:C.border,w:1});
+
+    items.forEach((r,j)=>{
+      const ry2=p.y-lhh/2+44+j*26;
+      const isK=h.keys.includes(r.age);
+      if(isK){
+        cx.save();rr(p.x-lw/2+8,ry2-10,lw-16,22,4);
+        cx.fillStyle='rgba(255,184,71,.12)';cx.fill();cx.restore();
+      }
+      const c=isK?C.amber:C.text;
+      txt('age='+r.age,p.x-55,ry2,{sz:12,color:c});
+      txt('→ id='+r.id,p.x+60,ry2,{sz:12,color:isK?c:C.muted});
+    });
+  });
+
+  txt('二级索引叶子节点只存「索引列 + 主键」，不含其他列数据',W/2,H-18,{sz:11,color:C.muted,fm:'Noto Sans SC'});
+}
+
+function render(){
+  clr();
+  if(tab==='c')drawClustered(hl);
+  else drawSecondary(hl);
+}
+
+// ===================== LOG =====================
+function addLog(n,title,desc,color){
+  const el=document.getElementById('log');
+  const d=document.createElement('div');d.className='le';
+  d.innerHTML=`<div class="ln ln-${color}">${n}</div><div class="lc"><h4>${title}</h4><p>${desc}</p></div>`;
+  el.appendChild(d);
+}
+function addResult(html){
+  const el=document.getElementById('log');
+  const d=document.createElement('div');d.className='rc';
+  d.innerHTML=`<div class="rl">✓ 查询结果</div><div>${html}</div>`;
+  el.appendChild(d);
+}
+function clearLog(){document.getElementById('log').innerHTML=''}
+function clearTimers(){timers.forEach(t=>clearTimeout(t));timers=[]}
+
+// ===================== QUERIES =====================
+function run(n){
+  clearTimers();clearLog();
+  document.querySelectorAll('.qbtn').forEach((b,i)=>b.classList.toggle('active',i===n-1));
+  hl={nodes:[],edges:[],keys:[],showCmp:false};
+  if(n===1)q1();else if(n===2)q2();else q3();
+}
+
+function q1(){
+  // SELECT * FROM users WHERE id = 5
+  const steps=[
+    {t:0,fn:()=>{
+      switchTab('c');
+      hl={nodes:['root'],edges:[],keys:[],showCmp:true};
+      render();
+      addLog('1','从聚簇索引根节点开始','MySQL 选择主键索引（聚簇索引）执行查询。根节点常驻内存，直接读取。根节点 key=<code>5</code>。','b');
+    }},
+    {t:1100,fn:()=>{
+      hl.edges=[1];render();
+      addLog('2','比较 id=5，走右子树','<code>id=5 ≥ 5</code>，因此走右子树指针。B+ 树内部节点只存键值和子指针，不存数据行。','b');
+    }},
+    {t:2300,fn:()=>{
+      hl={nodes:['leaf-1'],edges:[],keys:[5],showCmp:false};render();
+      addLog('3','到达叶子节点，找到 id=5','在右叶子节点中定位到 <code>id=5</code>。叶子节点之间有双向链表（紫色虚线），支持范围扫描。','b');
+    }},
+    {t:3500,fn:()=>{
+      addLog('4','直接返回完整行数据','聚簇索引叶子节点<strong>已包含完整行数据</strong>，无需任何额外操作。<strong style="color:#4ade80">不需要回表！</strong>','g');
+      addResult('id=5, name=孙七, age=22, email=sunqi@mail.com');
+    }}
+  ];
+  steps.forEach(s=>{const t=setTimeout(s.fn,s.t);timers.push(t)});
+}
+
+function q2(){
+  // SELECT * FROM users WHERE age = 28
+  const steps=[
+    // Phase 1: secondary index
+    {t:0,fn:()=>{
+      switchTab('s');
+      hl={nodes:['root'],edges:[],keys:[],showCmp:true};render();
+      addLog('1','从二级索引 idx_age 根节点开始','查询条件 <code>age=28</code>，MySQL 选择二级索引。根节点 key=<code>28</code>。','a');
+    }},
+    {t:1100,fn:()=>{
+      hl.edges=[1];render();
+      addLog('2','比较 age=28，走右子树','<code>age=28 ≥ 28</code>，走右子树。','a');
+    }},
+    {t:2200,fn:()=>{
+      hl={nodes:['leaf-1'],edges:[],keys:[28],showCmp:false};render();
+      addLog('3','在叶子节点中找到 age=28','定位到 <code>age=28</code>，获取主键 <code>id=3</code>。二级索引叶子只存「索引列 + 主键」。','a');
+    }},
+    // Phase 2: 回表
+    {t:3800,fn:()=>{
+      switchTab('c');
+      hl={nodes:['root'],edges:[],keys:[],showCmp:false};render();
+      addLog('4','⚡ 回表！用 id=3 查聚簇索引','查询需要 <code>name</code>、<code>email</code> 等列，二级索引中没有。必须用 <code>id=3</code> 回到聚簇索引查找完整行 —— 这就是<strong style="color:#ff6b6b">回表</strong>！会产生额外磁盘 IO。','r');
+    }},
+    {t:5000,fn:()=>{
+      hl.edges=[0];render();
+      addLog('5','比较 id=3，走左子树','<code>id=3 < 5</code>，走左子树。','r');
+    }},
+    {t:6100,fn:()=>{
+      hl={nodes:['leaf-0'],edges:[],keys:[3],showCmp:false};render();
+      addLog('6','在叶子节点中找到 id=3','定位到 <code>id=3</code>，获取完整行数据。回表完成！','r');
+    }},
+    {t:7300,fn:()=>{
+      addLog('7','返回完整行数据','整个过程：二级索引查找 → 取出主键 → 回表到聚簇索引 → 取完整行。共访问了<strong>两棵 B+ 树</strong>。','g');
+      addResult('id=3, name=王五, age=28, email=wangwu@mail.com');
+    }}
+  ];
+  steps.forEach(s=>{const t=setTimeout(s.fn,s.t);timers.push(t)});
+}
+
+function q3(){
+  // SELECT id, age FROM users WHERE age = 28
+  const steps=[
+    {t:0,fn:()=>{
+      switchTab('s');
+      hl={nodes:['root'],edges:[],keys:[],showCmp:true};render();
+      addLog('1','从二级索引 idx_age 根节点开始','查询条件 <code>age=28</code>，选择二级索引。','g');
+    }},
+    {t:1100,fn:()=>{
+      hl.edges=[1];render();
+      addLog('2','比较 age=28，走右子树','<code>age=28 ≥ 28</code>，走右子树。','g');
+    }},
+    {t:2200,fn:()=>{
+      hl={nodes:['leaf-1'],edges:[],keys:[28],showCmp:false};render();
+      addLog('3','在叶子节点中找到 age=28','定位到 <code>age=28</code>，获取 <code>id=3</code> 和 <code>age=28</code>。','g');
+    }},
+    {t:3400,fn:()=>{
+      addLog('4','🎉 覆盖索引：无需回表！','查询只需要 <code>id</code> 和 <code>age</code> 两列。二级索引叶子节点恰好存储了 <code>age</code>（索引列）和 <code>id</code>（主键）。<strong style="color:#4ade80">所有数据都已到手，不需要回表！</strong>这就是<strong>覆盖索引</strong>——可以通过 EXPLAIN 看到 Using index。','g');
+      addResult('id=3, age=28（直接从索引返回，零回表开销）');
+    }}
+  ];
+  steps.forEach(s=>{const t=setTimeout(s.fn,s.t);timers.push(t)});
+}
+
+// ===================== INIT =====================
+render();
+</script>
+</body>
+</html>
