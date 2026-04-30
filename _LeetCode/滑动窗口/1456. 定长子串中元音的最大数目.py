@@ -32,34 +32,6 @@ from collections import Counter
 
 
 class Solution:
-    def maxVowels_1(self, s: str, k: int) -> int:
-        s_set = {'a', 'e', 'i', 'o', 'u'}
-        cnt = 0
-        l, r = 0, 0  # 0 -> k-1
-
-        while r <= k - 1:
-            if s[r] in s_set:
-                cnt += 1
-            r += 1
-
-        res = cnt
-
-        r -= 1
-        while True:
-            l += 1
-            r += 1
-            if r == len(s):
-                break
-            if s[l - 1] in s_set and s[r] in s_set:
-                pass
-            if s[l - 1] in s_set and s[r] not in s_set:
-                cnt -= 1
-            if s[l - 1] not in s_set and s[r] in s_set:
-                cnt += 1
-            res = max(res, cnt)
-
-        return res
-
     def maxVowels(self, s: str, k: int) -> int:
         s_set = 'aeiou'
         cnt = sum(1 for i in range(k) if s[i] in s_set)
@@ -72,32 +44,6 @@ class Solution:
             cnt += -int(s[l - 1] in s_set and s[r] not in s_set) or int(s[l - 1] not in s_set and s[r] in s_set)
             res = max(res, cnt)
         return res
-
-    def maxVowels_其他(self, s: str, k: int) -> int:
-        """ 2026/04/16：最长连续的韵母数量 """
-        n = len(s)
-        vowels = ('a', 'e', 'i', 'o', 'u')
-        if n == 1 and s[0] in vowels:
-            return 1
-        res = 0
-        c = 0
-        p = 0
-        while p < n:
-            if s[p] in vowels:
-                c += 1
-                p += 1
-                res = max(res, c)
-            else:
-                res = max(res, c)
-                p += 1
-                c = 0
-        return res
-
-    def maxVowels_2(self, s: str, k: int) -> int:
-        s_set = 'aeiou'
-        cnt = sum(1 for i in range(k) if s[i] in s_set)
-
-        return 0
 
 
 if __name__ == '__main__':
