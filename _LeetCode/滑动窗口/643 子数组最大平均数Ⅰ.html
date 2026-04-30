@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LeetCode 643 — 滑动窗口可视化</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Sans+SC:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e17;
+    --surface: #131a2b;
+    --surface2: #1a2340;
+    --accent: #00e5a0;
+    --accent-dim: rgba(0,229,160,0.15);
+    --accent-glow: rgba(0,229,160,0.3);
+    --red: #ff4d6a;
+    --red-dim: rgba(255,77,106,0.15);
+    --blue: #4d9fff;
+    --blue-dim: rgba(77,159,255,0.15);
+    --yellow: #ffd166;
+    --text-primary: #e8ecf4;
+    --text-muted: #5a6580;
+    --border: #1e2a45;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans SC', 'JetBrains Mono', sans-serif;
+    background: var(--bg);
+    color: var(--text-primary);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse at 15% 20%, rgba(0,229,160,0.04) 0%, transparent 50%),
+      radial-gradient(ellipse at 85% 80%, rgba(77,159,255,0.03) 0%, transparent 50%);
+    pointer-events: none;
+  }
+
+  .container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 40px 24px 60px;
+  }
+
+  /* Header */
+  .header {
+    text-align: center;
+    margin-bottom: 48px;
+    animation: fadeDown 0.6s ease;
+  }
+
+  .header .tag {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: var(--accent-dim);
+    border: 1px solid rgba(0,229,160,0.2);
+    padding: 4px 14px;
+    border-radius: 4px;
+    margin-bottom: 16px;
+  }
+
+  .header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, var(--text-primary), var(--accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .header p {
+    font-size: 15px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  /* Config Panel — full-width row */
+  .config-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 32px;
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    animation: fadeUp 0.6s ease 0.1s both;
+  }
+
+  .config-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .config-group.grow {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .config-group.shrink {
+    flex: 0 0 auto;
+  }
+
+  .config-group label {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .config-group input {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    width: 100%;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .config-group input:focus {
+    border-color: var(--accent);
+  }
+
+  .config-group input[type="number"] {
+    width: 80px;
+    text-align: center;
+  }
+
+  .btn-generate {
+    font-family: 'Noto Sans SC', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    padding: 10px 28px;
+    border: 1px solid var(--accent);
+    background: var(--accent-dim);
+    color: var(--accent);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    height: 42px;
+    flex-shrink: 0;
+  }
+
+  .btn-generate:hover {
+    background: var(--accent);
+    color: var(--bg);
+  }
+
+  /* Array Visualization */
+  .array-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px 24px;
+    margin-bottom: 24px;
+    animation: fadeUp 0.6s ease 0.2s both;
+  }
+
+  .section-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+  }
+
+  .array-visual {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    flex-wrap: wrap;
+    padding: 10px 0 0;
+    position: relative;
+  }
+
+  .cell-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    position: relative;
+  }
+
+  .cell-index {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    order: 3;
+  }
+
+  .cell {
+    width: 58px;
+    height: 58px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    font-weight: 700;
+    border-radius: 8px;
+    background: var(--bg);
+    border: 2px solid var(--border);
+    color: var(--text-primary);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    z-index: 1;
+    order: 2;
+  }
+
+  .cell.in-window {
+    border-color: var(--accent);
+    background: var(--accent-dim);
+    color: var(--accent);
+    box-shadow: 0 0 20px var(--accent-glow);
+    transform: translateY(-4px);
+  }
+
+  .cell.leaving {
+    border-color: var(--red);
+    background: var(--red-dim);
+    color: var(--red);
+    animation: shake 0.4s ease;
+  }
+
+  .cell.entering {
+    border-color: var(--yellow);
+    background: rgba(255,209,102,0.12);
+    color: var(--yellow);
+    animation: popIn 0.4s ease;
+  }
+
+  /* Role hint under cell */
+  .cell-role {
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    height: 16px;
+    order: 2;
+  }
+
+  .cell-role.left { color: var(--red); }
+  .cell-role.right { color: var(--yellow); }
+
+  /* ── L / R Pointer Labels ── */
+  .pointer-row {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+    min-height: 32px;
+    align-items: flex-end;
+  }
+
+  .pointer-slot {
+    width: 58px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .pointer-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    padding: 2px 10px;
+    border-radius: 4px;
+    line-height: 1.4;
+  }
+
+  .pointer-label.L {
+    color: var(--red);
+    background: var(--red-dim);
+    border: 1px solid rgba(255,77,106,0.3);
+  }
+
+  .pointer-label.R {
+    color: var(--yellow);
+    background: rgba(255,209,102,0.12);
+    border: 1px solid rgba(255,209,102,0.3);
+  }
+
+  .pointer-arrow {
+    font-size: 16px;
+    line-height: 1;
+    margin-top: 2px;
+  }
+
+  .pointer-arrow.L { color: var(--red); }
+  .pointer-arrow.R { color: var(--yellow); }
+
+  /* Step Info */
+  .step-info {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+    animation: fadeUp 0.6s ease 0.3s both;
+  }
+
+  .step-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+
+  .step-counter {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--accent);
+  }
+
+  .step-description {
+    font-size: 14px;
+    color: var(--text-muted);
+    line-height: 1.6;
+    padding: 12px 16px;
+    background: var(--bg);
+    border-radius: 8px;
+    border-left: 3px solid var(--accent);
+    margin-bottom: 20px;
+  }
+
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+  }
+
+  .metric-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+    transition: all 0.3s;
+  }
+
+  .metric-card.highlight {
+    border-color: var(--accent);
+    box-shadow: 0 0 16px var(--accent-glow);
+  }
+
+  .metric-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+
+  .metric-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .metric-value.accent { color: var(--accent); }
+  .metric-value.yellow { color: var(--yellow); }
+  .metric-value.red { color: var(--red); }
+
+  .metric-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  /* Calculation trace */
+  .calc-trace {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    margin-top: 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 2;
+    color: var(--text-muted);
+  }
+
+  .calc-trace .op { color: var(--yellow); }
+  .calc-trace .result { color: var(--accent); font-weight: 700; }
+  .calc-trace .removed { color: var(--red); text-decoration: line-through; }
+  .calc-trace .ltag { color: var(--red); font-weight: 700; }
+  .calc-trace .rtag { color: var(--yellow); font-weight: 700; }
+
+  /* History log */
+  .history-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+    animation: fadeUp 0.6s ease 0.35s both;
+  }
+
+  .history-log {
+    max-height: 240px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  .history-log::-webkit-scrollbar { width: 4px; }
+  .history-log::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .log-entry {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 2px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .log-entry:hover { background: rgba(255,255,255,0.03); }
+  .log-entry.current { background: var(--accent-dim); color: var(--text-primary); }
+  .log-entry.is-max { color: var(--accent); }
+
+  .log-step { width: 28px; text-align: right; color: var(--text-muted); flex-shrink: 0; }
+  .log-lr { width: 90px; flex-shrink: 0; }
+  .log-lr .lt { color: var(--red); }
+  .log-lr .rt { color: var(--yellow); }
+  .log-window { width: 140px; flex-shrink: 0; }
+  .log-sum { width: 80px; flex-shrink: 0; }
+  .log-avg { width: 80px; flex-shrink: 0; }
+  .log-badge {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: var(--accent-dim);
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+
+  /* Controls */
+  .controls {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 32px;
+    animation: fadeUp 0.6s ease 0.4s both;
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    font-family: 'Noto Sans SC', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    padding: 12px 28px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .btn:hover:not(:disabled) {
+    border-color: var(--accent);
+    background: var(--surface2);
+  }
+
+  .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .btn.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--bg);
+  }
+
+  .btn.primary:hover:not(:disabled) {
+    background: #00c98c;
+    box-shadow: 0 0 20px var(--accent-glow);
+  }
+
+  .btn-icon { font-size: 16px; line-height: 1; }
+
+  .speed-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 8px;
+    padding-left: 16px;
+    border-left: 1px solid var(--border);
+  }
+
+  .speed-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .speed-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    padding: 6px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .speed-btn.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-dim);
+  }
+
+  /* Final result */
+  .result-banner {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px;
+    text-align: center;
+    animation: fadeUp 0.6s ease 0.5s both;
+    display: none;
+  }
+
+  .result-banner.show { display: block; }
+
+  .result-banner h3 {
+    font-size: 14px;
+    color: var(--text-muted);
+    font-weight: 400;
+    margin-bottom: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .result-banner .big-number {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 48px;
+    font-weight: 700;
+    color: var(--accent);
+    text-shadow: 0 0 40px var(--accent-glow);
+  }
+
+  .result-banner .sub {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-top: 8px;
+  }
+
+  /* Animations */
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes popIn {
+    0%   { transform: scale(0.8); }
+    50%  { transform: scale(1.15); }
+    100% { transform: scale(1); }
+  }
+
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25%      { transform: translateX(-4px); }
+    75%      { transform: translateX(4px); }
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.5; }
+  }
+
+  .playing .btn.play-btn { animation: pulse 1s ease infinite; }
+
+  /* Responsive */
+  @media (max-width: 640px) {
+    .container { padding: 20px 12px 40px; }
+    .header h1 { font-size: 20px; }
+    .cell { width: 44px; height: 44px; font-size: 13px; }
+    .pointer-slot { width: 44px; }
+    .pointer-label { font-size: 11px; padding: 1px 6px; }
+    .config-panel { flex-direction: column; }
+    .config-group.grow { width: 100%; }
+    .config-group input { width: 100%; }
+    .config-group input[type="number"] { width: 100%; }
+    .btn-generate { width: 100%; }
+    .metrics { grid-template-columns: 1fr 1fr; }
+    .controls { flex-wrap: wrap; }
+    .speed-control { border-left: none; padding-left: 0; margin-left: 0; }
+    .log-entry { font-size: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="tag">LeetCode 643 · 滑动窗口 · Easy</div>
+    <h1>子数组最大平均数 I</h1>
+    <p>给定 n 个整数的数组 nums 和整数 k，找到长度为 k 的连续子数组，使其平均值最大。</p>
+  </div>
+
+  <!-- Config — full-width row -->
+  <div class="config-panel">
+    <div class="config-group grow">
+      <label>数组 nums</label>
+      <input type="text" id="inputArray" value="1, 12, -5, -6, 50, 3" placeholder="用逗号分隔，如 1, 12, -5, -6, 50, 3">
+    </div>
+    <div class="config-group shrink">
+      <label>窗口 k</label>
+      <input type="number" id="inputK" value="4" min="1">
+    </div>
+    <button class="btn-generate" onclick="initDemo()">生成演示</button>
+  </div>
+
+  <!-- Array Visualization -->
+  <div class="array-section">
+    <div class="section-label">数组 & 滑动窗口</div>
+
+    <!-- L / R pointer row -->
+    <div class="pointer-row" id="pointerRow"></div>
+
+    <!-- Cells -->
+    <div class="array-visual" id="arrayVisual"></div>
+  </div>
+
+  <!-- Step Info -->
+  <div class="step-info">
+    <div class="step-header">
+      <div class="section-label">当前步骤详情</div>
+      <div class="step-counter" id="stepCounter">第 0 步 / 共 0 步</div>
+    </div>
+    <div class="step-description" id="stepDesc">点击「下一步」开始演示</div>
+    <div class="metrics" id="metrics">
+      <div class="metric-card">
+        <div class="metric-label">窗口范围</div>
+        <div class="metric-value" id="mWindow">-</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">当前和</div>
+        <div class="metric-value accent" id="mSum">-</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">当前平均</div>
+        <div class="metric-value yellow" id="mAvg">-</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">历史最大和</div>
+        <div class="metric-value accent" id="mMaxSum">-</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">最大平均值</div>
+        <div class="metric-value accent" id="mMaxAvg">-</div>
+      </div>
+    </div>
+    <div class="calc-trace" id="calcTrace"></div>
+  </div>
+
+  <!-- History Log -->
+  <div class="history-section">
+    <div class="section-label">操作日志</div>
+    <div class="history-log" id="historyLog"></div>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <button class="btn" id="btnPrev" onclick="prevStep()" disabled>
+      <span class="btn-icon">←</span> 上一步
+    </button>
+    <button class="btn primary play-btn" id="btnPlay" onclick="togglePlay()">
+      <span class="btn-icon" id="playIcon">▶</span> <span id="playText">自动播放</span>
+    </button>
+    <button class="btn" id="btnNext" onclick="nextStep()">
+      下一步 <span class="btn-icon">→</span>
+    </button>
+    <button class="btn" onclick="resetDemo()">
+      <span class="btn-icon">↺</span> 重置
+    </button>
+    <div class="speed-control">
+      <span class="speed-label">速度</span>
+      <button class="speed-btn" data-speed="1200" onclick="setSpeed(this)">慢</button>
+      <button class="speed-btn active" data-speed="700" onclick="setSpeed(this)">中</button>
+      <button class="speed-btn" data-speed="300" onclick="setSpeed(this)">快</button>
+    </div>
+  </div>
+
+  <!-- Result Banner -->
+  <div class="result-banner" id="resultBanner">
+    <h3>最终结果</h3>
+    <div class="big-number" id="finalResult">-</div>
+    <div class="sub" id="finalSub">-</div>
+  </div>
+
+</div>
+
+<script>
+let nums = [1, 12, -5, -6, 50, 3];
+let k = 4;
+let steps = [];
+let currentStep = -1;
+let playing = false;
+let playTimer = null;
+let speed = 700;
+
+function buildSteps() {
+  steps = [];
+  const n = nums.length;
+
+  let sum = 0;
+  for (let i = 0; i < k; i++) sum += nums[i];
+  let maxSum = sum;
+
+  steps.push({
+    left: 0, right: k - 1,
+    sum, avg: sum / k, maxSum, maxAvg: maxSum / k,
+    isMax: true,
+    desc: `初始窗口：计算 nums[0..${k-1}] 的和 = ${sum}，平均值 = ${(sum/k).toFixed(4)}。当前最大和 = ${maxSum}。`,
+    entering: -1, leaving: -1
+  });
+
+  for (let i = k; i < n; i++) {
+    const leaveIdx = i - k;
+    const leaveVal = nums[leaveIdx];
+    const enterVal = nums[i];
+    sum = sum - leaveVal + enterVal;
+    const isNewMax = sum > maxSum;
+    if (isNewMax) maxSum = sum;
+
+    steps.push({
+      left: leaveIdx + 1, right: i,
+      sum, avg: sum / k, maxSum, maxAvg: maxSum / k,
+      isMax: isNewMax,
+      desc: `窗口右滑：左侧 nums[${leaveIdx}]=${leaveVal} 离开，右侧 nums[${i}]=${enterVal} 进入。` +
+            `新和 = ${sum - enterVal + leaveVal} ${leaveVal >= 0 ? '- ' + leaveVal : '+ ' + Math.abs(leaveVal)} + ${enterVal} = ${sum}，` +
+            `平均 = ${(sum/k).toFixed(4)}。${isNewMax ? '🎉 新的最大和！' : '最大和仍为 ' + maxSum + '。'}`,
+      entering: i, leaving: leaveIdx
+    });
+  }
+}
+
+/* ── Render Pointer Row (L / R) ── */
+function renderPointers(step) {
+  const row = document.getElementById('pointerRow');
+  row.innerHTML = '';
+
+  if (!step) {
+    // empty slots
+    nums.forEach(() => {
+      const slot = document.createElement('div');
+      slot.className = 'pointer-slot';
+      row.appendChild(slot);
+    });
+    return;
+  }
+
+  nums.forEach((_, idx) => {
+    const slot = document.createElement('div');
+    slot.className = 'pointer-slot';
+
+    if (idx === step.left) {
+      const lbl = document.createElement('div');
+      lbl.className = 'pointer-label L';
+      lbl.textContent = 'L';
+      slot.appendChild(lbl);
+      const arrow = document.createElement('div');
+      arrow.className = 'pointer-arrow L';
+      arrow.textContent = '▼';
+      slot.appendChild(arrow);
+    }
+
+    if (idx === step.right) {
+      const lbl = document.createElement('div');
+      lbl.className = 'pointer-label R';
+      lbl.textContent = 'R';
+      slot.appendChild(lbl);
+      const arrow = document.createElement('div');
+      arrow.className = 'pointer-arrow R';
+      arrow.textContent = '▼';
+      slot.appendChild(arrow);
+    }
+
+    row.appendChild(slot);
+  });
+}
+
+/* ── Render Array Cells ── */
+function renderArray(step) {
+  const container = document.getElementById('arrayVisual');
+  container.innerHTML = '';
+
+  const left = step ? step.left : -1;
+  const right = step ? step.right : -1;
+  const entering = step ? step.entering : -1;
+  const leaving = step ? step.leaving : -1;
+
+  nums.forEach((val, idx) => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'cell-wrapper';
+
+    // Role hint
+    const role = document.createElement('div');
+    role.className = 'cell-role';
+    if (step) {
+      if (idx === leaving) { role.classList.add('left'); role.textContent = '←离开'; }
+      else if (idx === entering) { role.classList.add('right'); role.textContent = '进入→'; }
+    }
+    wrapper.appendChild(role);
+
+    // Cell
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    if (step) {
+      if (idx >= left && idx <= right) cell.classList.add('in-window');
+      if (idx === leaving) { cell.classList.remove('in-window'); cell.classList.add('leaving'); }
+      if (idx === entering) cell.classList.add('entering');
+    }
+    cell.textContent = val;
+    wrapper.appendChild(cell);
+
+    // Index
+    const indexLabel = document.createElement('div');
+    indexLabel.className = 'cell-index';
+    indexLabel.textContent = `[${idx}]`;
+    wrapper.appendChild(indexLabel);
+
+    container.appendChild(wrapper);
+  });
+}
+
+/* ── Render Step ── */
+function renderStep() {
+  const step = steps[currentStep];
+
+  document.getElementById('stepCounter').textContent =
+    `第 ${currentStep + 1} 步 / 共 ${steps.length} 步`;
+  document.getElementById('stepDesc').textContent = step.desc;
+
+  document.getElementById('mWindow').textContent = `[${step.left} .. ${step.right}]`;
+  document.getElementById('mSum').textContent = step.sum;
+  document.getElementById('mAvg').textContent = step.avg.toFixed(2);
+  document.getElementById('mMaxSum').textContent = step.maxSum;
+  document.getElementById('mMaxAvg').textContent = step.maxAvg.toFixed(2);
+
+  document.querySelectorAll('.metric-card').forEach(c => c.classList.remove('highlight'));
+  if (step.isMax) {
+    document.querySelectorAll('.metric-card')[3].classList.add('highlight');
+    document.querySelectorAll('.metric-card')[4].classList.add('highlight');
+  }
+
+  // Calc trace with L / R tags
+  const trace = document.getElementById('calcTrace');
+  if (currentStep === 0) {
+    const parts = nums.slice(step.left, step.right + 1).map((v, i) =>
+      `<span class="${step.left + i === step.left ? 'ltag' : ''}${step.left + i === step.right ? ' rtag' : ''}">${v}</span>`
+    );
+    trace.innerHTML = `<span class="op">初始计算：</span>${parts.join(' + ')} = <span class="result">${step.sum}</span> &nbsp;` +
+      `| <span class="ltag">L=${step.left}</span> &nbsp; <span class="rtag">R=${step.right}</span>`;
+  } else {
+    trace.innerHTML =
+      `<span class="op">滑动：</span>` +
+      `<span class="ltag">L→${step.leaving}</span> 离开 <span class="removed">nums[${step.leaving}]=${nums[step.leaving]}</span>，` +
+      `<span class="rtag">R→${step.entering}</span> 进入 nums[${step.entering}]=${nums[step.entering]}` +
+      `<br>新和 = ${step.sum - nums[step.entering] + nums[step.leaving]} ` +
+      `${nums[step.leaving] >= 0 ? '- ' + nums[step.leaving] : '+ ' + Math.abs(nums[step.leaving])} ` +
+      `+ ${nums[step.entering]} = <span class="result">${step.sum}</span>` +
+      ` &nbsp;| <span class="ltag">L=${step.left}</span> &nbsp; <span class="rtag">R=${step.right}</span>`;
+  }
+
+  renderPointers(step);
+  renderArray(step);
+  renderHistory();
+  updateButtons();
+
+  // Result banner
+  const banner = document.getElementById('resultBanner');
+  if (currentStep === steps.length - 1) {
+    banner.classList.add('show');
+    document.getElementById('finalResult').textContent = step.maxAvg.toFixed(4);
+    let bestStep = steps[0];
+    steps.forEach(s => { if (s.maxSum >= bestStep.maxSum) bestStep = s; });
+    document.getElementById('finalSub').textContent =
+      `最大平均值 = ${step.maxSum} / ${k} = ${step.maxAvg.toFixed(4)}，窗口位于 [${bestStep.left} .. ${bestStep.right}]`;
+  } else {
+    banner.classList.remove('show');
+  }
+}
+
+function renderHistory() {
+  const log = document.getElementById('historyLog');
+  log.innerHTML = '';
+  steps.forEach((s, i) => {
+    const entry = document.createElement('div');
+    entry.className = 'log-entry' + (i === currentStep ? ' current' : '') + (s.isMax ? ' is-max' : '');
+
+    const windowVals = nums.slice(s.left, s.right + 1).join(',');
+    entry.innerHTML =
+      `<span class="log-step">#${i}</span>` +
+      `<span class="log-lr"><span class="lt">L=${s.left}</span> <span class="rt">R=${s.right}</span></span>` +
+      `<span class="log-window">[${windowVals}]</span>` +
+      `<span class="log-sum">和=${s.sum}</span>` +
+      `<span class="log-avg">均=${s.avg.toFixed(2)}</span>` +
+      (s.isMax ? '<span class="log-badge">MAX</span>' : '');
+
+    entry.onclick = () => { currentStep = i; renderStep(); };
+    log.appendChild(entry);
+  });
+
+  const current = log.querySelector('.current');
+  if (current) current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
+function updateButtons() {
+  document.getElementById('btnPrev').disabled = currentStep <= 0;
+  document.getElementById('btnNext').disabled = currentStep >= steps.length - 1;
+}
+
+function nextStep() {
+  if (currentStep < steps.length - 1) { currentStep++; renderStep(); }
+  else stopPlay();
+}
+
+function prevStep() {
+  if (currentStep > 0) { currentStep--; renderStep(); }
+}
+
+function resetDemo() {
+  stopPlay();
+  currentStep = -1;
+  renderPointers(null);
+  renderArray(null);
+  document.getElementById('stepCounter').textContent = '第 0 步 / 共 0 步';
+  document.getElementById('stepDesc').textContent = '点击「下一步」开始演示';
+  document.getElementById('mWindow').textContent = '-';
+  document.getElementById('mSum').textContent = '-';
+  document.getElementById('mAvg').textContent = '-';
+  document.getElementById('mMaxSum').textContent = '-';
+  document.getElementById('mMaxAvg').textContent = '-';
+  document.getElementById('calcTrace').innerHTML = '';
+  document.getElementById('historyLog').innerHTML = '';
+  document.getElementById('resultBanner').classList.remove('show');
+  document.getElementById('btnPrev').disabled = true;
+  document.getElementById('btnNext').disabled = false;
+  document.querySelectorAll('.metric-card').forEach(c => c.classList.remove('highlight'));
+}
+
+function togglePlay() {
+  if (playing) { stopPlay(); }
+  else {
+    playing = true;
+    document.getElementById('playIcon').textContent = '⏸';
+    document.getElementById('playText').textContent = '暂停';
+    document.body.classList.add('playing');
+    if (currentStep >= steps.length - 1) resetDemo();
+    playNext();
+  }
+}
+
+function playNext() {
+  if (!playing) return;
+  if (currentStep < steps.length - 1) {
+    nextStep();
+    playTimer = setTimeout(playNext, speed);
+  } else { stopPlay(); }
+}
+
+function stopPlay() {
+  playing = false;
+  clearTimeout(playTimer);
+  document.getElementById('playIcon').textContent = '▶';
+  document.getElementById('playText').textContent = '自动播放';
+  document.body.classList.remove('playing');
+}
+
+function setSpeed(btn) {
+  document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  speed = parseInt(btn.dataset.speed);
+  if (playing) { clearTimeout(playTimer); playTimer = setTimeout(playNext, speed); }
+}
+
+function initDemo() {
+  const arrStr = document.getElementById('inputArray').value;
+  const kVal = parseInt(document.getElementById('inputK').value);
+  const parsed = arrStr.split(/[,，\s]+/).map(Number).filter(n => !isNaN(n));
+
+  if (parsed.length === 0) { alert('请输入有效的数组'); return; }
+  if (isNaN(kVal) || kVal < 1 || kVal > parsed.length) { alert('k 的范围应在 1 到数组长度之间'); return; }
+
+  nums = parsed;
+  k = kVal;
+  stopPlay();
+  currentStep = -1;
+  buildSteps();
+  resetDemo();
+  document.getElementById('btnNext').disabled = false;
+}
+
+// Init
+buildSteps();
+renderPointers(null);
+renderArray(null);
+</script>
+
+</body>
+</html>
