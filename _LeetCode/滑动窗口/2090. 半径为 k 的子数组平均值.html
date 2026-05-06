@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LeetCode 2090 · 半径为 k 的子数组平均值 · 滑动窗口可视化</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0b0b0f;
+            --surface: #13131a;
+            --surface-2: #1c1c26;
+            --surface-3: #252530;
+            --accent: #d4a843;
+            --accent-glow: rgba(212,168,67,.08);
+            --accent-dim: rgba(212,168,67,.15);
+            --text-bright: #f0ece4;
+            --text-primary: #c8c4bc;
+            --text-muted: #7a7670;
+            --success: #4ade80;
+            --success-bg: rgba(74,222,128,.1);
+            --fail: #f87171;
+            --fail-bg: rgba(248,113,113,.1);
+            --vowel: #e8c547;
+            --border: rgba(255,255,255,.06);
+            --ptr-c: #4ade80;
+            --ptr-c-bg: rgba(74,222,128,.08);
+            --ptr-c-border: rgba(74,222,128,.25);
+        }
+        *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+        body{
+            background:var(--bg);color:var(--text-primary);
+            font-family:'Noto Sans SC',sans-serif;line-height:1.8;min-height:100vh;
+        }
+        body::before{
+            content:'';position:fixed;inset:0;
+            background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E");
+            opacity:.03;pointer-events:none;z-index:0;
+        }
+        .container{max-width:920px;margin:0 auto;padding:3rem 2rem 5rem;position:relative;z-index:1}
+
+        .header{margin-bottom:2.5rem;animation:fadeUp .8s ease}
+        .tag{
+            display:inline-block;font-family:'JetBrains Mono',monospace;
+            font-size:.72rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;
+            color:var(--accent);background:var(--accent-glow);
+            border:1px solid rgba(212,168,67,.2);padding:.3em .9em;border-radius:2px;
+            margin-bottom:1.2rem;
+        }
+        .header h1{
+            font-family:'Noto Serif SC',serif;font-weight:700;font-size:2rem;
+            color:var(--text-bright);line-height:1.3;margin-bottom:.8rem;letter-spacing:-.01em;
+        }
+        .header p{font-size:.93rem;color:var(--text-muted);max-width:680px;line-height:1.85}
+        .header code{
+            font-family:'JetBrains Mono',monospace;font-size:.82em;
+            background:var(--surface-2);padding:.12em .35em;border-radius:3px;color:var(--vowel);
+        }
+
+        .section{margin-bottom:2.8rem;animation:fadeUp .8s ease both}
+        .section:nth-child(2){animation-delay:.08s}
+        .section:nth-child(3){animation-delay:.16s}
+        .section:nth-child(4){animation-delay:.24s}
+        .section:nth-child(5){animation-delay:.32s}
+        .section:nth-child(6){animation-delay:.4s}
+        .section:nth-child(7){animation-delay:.48s}
+        .section-title{
+            font-family:'Noto Serif SC',serif;font-size:1.25rem;font-weight:700;
+            color:var(--text-bright);margin-bottom:1.2rem;display:flex;align-items:center;gap:.6rem;
+        }
+        .section-title .ico{font-size:1.1rem}
+
+        .card{
+            background:var(--surface);border:1px solid var(--border);
+            border-radius:6px;padding:1.5rem 1.8rem;margin-bottom:1rem;
+        }
+        .card h3{font-family:'Noto Serif SC',serif;font-size:1rem;color:var(--text-bright);margin-bottom:.8rem}
+        .card p,.card li{font-size:.9rem;color:var(--text-primary);line-height:1.9}
+        .card ul,.card ol{padding-left:1.2rem}
+        .card li{margin-bottom:.35rem}
+        .card code{
+            font-family:'JetBrains Mono',monospace;font-size:.82em;
+            background:var(--surface-2);padding:.12em .4em;border-radius:3px;color:var(--vowel);
+        }
+        .hl{color:var(--accent);font-weight:500}
+        .ok{color:var(--success)}
+        .ng{color:var(--fail)}
+        .card-vis{
+            background:var(--surface-2);border:1px solid var(--border);border-radius:6px;
+            padding:1rem 1.4rem;margin-top:.8rem;
+            font-family:'JetBrains Mono',monospace;font-size:.85rem;color:var(--text-primary);
+            overflow-x:auto;
+        }
+        .metaphor{
+            background:linear-gradient(135deg,rgba(212,168,67,.05),rgba(212,168,67,.02));
+            border-color:rgba(212,168,67,.12);
+        }
+
+        .step-list{counter-reset:sc;list-style:none;padding:0}
+        .step-list li{
+            counter-increment:sc;padding:.8rem 1rem .8rem 3rem;position:relative;
+            font-size:.9rem;color:var(--text-primary);border-left:2px solid var(--border);margin-left:1rem;
+        }
+        .step-list li::before{
+            content:counter(sc);position:absolute;left:-14px;top:.7rem;width:26px;height:26px;
+            background:var(--accent);color:var(--bg);font-family:'JetBrains Mono',monospace;
+            font-size:.75rem;font-weight:600;display:flex;align-items:center;justify-content:center;border-radius:50%;
+        }
+        .step-list li code{
+            font-family:'JetBrains Mono',monospace;font-size:.82em;
+            background:var(--surface-2);padding:.12em .4em;border-radius:3px;color:var(--vowel);
+        }
+
+        /* ===== Visualization ===== */
+        .viz-wrap{
+            background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;
+        }
+        .viz-head{
+            padding:1rem 1.5rem;border-bottom:1px solid var(--border);
+            display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;
+        }
+        .viz-head-title{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--text-muted);letter-spacing:.05em;text-transform:uppercase}
+        .viz-head-step{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--accent)}
+        .viz-body{padding:1.5rem}
+
+        /* Params Editor */
+        .params-editor{
+            background:var(--surface-2);border:1px solid var(--border);border-radius:6px;
+            padding:1.2rem 1.5rem;margin-bottom:1.5rem;
+        }
+        .params-editor-title{
+            font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--text-muted);
+            text-transform:uppercase;letter-spacing:.08em;margin-bottom:.8rem;
+            display:flex;align-items:center;gap:.4em;
+        }
+        .params-row{display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end}
+        .param-group{display:flex;flex-direction:column;gap:.35rem;flex:1;min-width:140px}
+        .param-group.wide{flex:3;min-width:240px}
+        .param-label{
+            font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--text-muted);letter-spacing:.04em;
+        }
+        .param-input{
+            font-family:'JetBrains Mono',monospace;font-size:.85rem;
+            background:var(--surface);color:var(--text-bright);border:1px solid var(--border);
+            border-radius:4px;padding:.55em .8em;outline:none;transition:border-color .2s;width:100%;
+        }
+        .param-input:focus{border-color:var(--accent-dim)}
+        .param-input.error{border-color:var(--fail)}
+        .param-hint{
+            font-family:'JetBrains Mono',monospace;font-size:.65rem;color:var(--text-muted);line-height:1.4;
+        }
+        .param-hint.err{color:var(--fail)}
+        .param-hint.warn{color:#fbbf24}
+        .params-actions{display:flex;gap:.6rem;align-items:flex-end;padding-top:.15rem}
+        .btn-run{
+            font-family:'JetBrains Mono',monospace;font-size:.78rem;font-weight:600;
+            padding:.6em 1.6em;border:1px solid var(--accent-dim);border-radius:4px;
+            background:var(--accent-glow);color:var(--accent);cursor:pointer;
+            transition:all .2s;white-space:nowrap;
+        }
+        .btn-run:hover{background:var(--accent-dim)}
+        .btn-run:active{transform:scale(.97)}
+        .btn-preset{
+            font-family:'JetBrains Mono',monospace;font-size:.72rem;font-weight:500;
+            padding:.45em .9em;border:1px solid var(--border);border-radius:3px;
+            background:var(--surface);color:var(--text-muted);cursor:pointer;
+            transition:all .2s;white-space:nowrap;
+        }
+        .btn-preset:hover{border-color:var(--accent-dim);color:var(--text-primary)}
+        .presets-row{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.8rem}
+
+        /* Params Display */
+        .params{display:flex;gap:1.5rem;margin-bottom:1.2rem;flex-wrap:wrap}
+        .prm{display:flex;align-items:center;gap:.5rem;font-size:.82rem}
+        .prm-l{font-family:'JetBrains Mono',monospace;color:var(--text-muted);font-size:.75rem}
+        .prm-v{font-family:'JetBrains Mono',monospace;color:var(--text-bright);background:var(--surface-2);padding:.2em .6em;border-radius:3px;font-weight:500}
+
+        /* Array scroll */
+        .arr-scroll{
+            overflow-x:auto;overflow-y:hidden;padding:1rem 0;margin-bottom:1rem;
+            scrollbar-width:thin;scrollbar-color:var(--surface-3) var(--surface);
+        }
+        .arr-scroll::-webkit-scrollbar{height:6px}
+        .arr-scroll::-webkit-scrollbar-track{background:var(--surface);border-radius:3px}
+        .arr-scroll::-webkit-scrollbar-thumb{background:var(--surface-3);border-radius:3px}
+        .arr-inner{
+            display:inline-flex;flex-direction:column;align-items:center;
+            min-width:100%;padding:0 2rem;
+        }
+
+        /* Pointer row */
+        .ptr-row{display:flex;gap:8px;min-height:38px;align-items:flex-end;margin-bottom:4px}
+        .ptr-cell{width:56px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px;flex-shrink:0}
+        .ptr-lbl{
+            font-family:'JetBrains Mono',monospace;font-size:.7rem;font-weight:600;
+            padding:.12em .45em;border-radius:3px;position:relative;white-space:nowrap;
+        }
+        .ptr-lbl.L{color:var(--accent);background:var(--accent-glow);border:1px solid var(--accent-dim)}
+        .ptr-lbl.L::after{
+            content:'';position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);
+            width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;
+            border-top:5px solid var(--accent-dim);
+        }
+        .ptr-lbl.C{color:var(--ptr-c);background:var(--ptr-c-bg);border:1px solid var(--ptr-c-border)}
+        .ptr-lbl.C::after{
+            content:'';position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);
+            width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;
+            border-top:5px solid var(--ptr-c-border);
+        }
+        .ptr-lbl.R{color:#60a5fa;background:rgba(96,165,250,.08);border:1px solid rgba(96,165,250,.2)}
+        .ptr-lbl.R::after{
+            content:'';position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);
+            width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;
+            border-top:5px solid rgba(96,165,250,.2);
+        }
+        .ptr-lbl.combined{color:var(--accent);background:var(--accent-glow);border:1px solid var(--accent-dim);font-size:.6rem}
+
+        /* Elements */
+        .el-row{display:flex;gap:8px}
+        .el{
+            width:56px;height:56px;display:flex;align-items:center;justify-content:center;
+            font-family:'JetBrains Mono',monospace;font-size:1.05rem;font-weight:600;
+            color:var(--text-bright);background:var(--surface-2);
+            border:2px solid var(--border);border-radius:6px;
+            transition:all .35s ease;position:relative;flex-shrink:0;
+        }
+        .el.in-win{
+            border-color:var(--accent-dim);background:rgba(212,168,67,.08);color:var(--accent);
+            transform:translateY(-2px);box-shadow:0 4px 12px rgba(212,168,67,.1);
+        }
+        .el.center-el{
+            border-color:var(--ptr-c-border) !important;background:rgba(74,222,128,.1) !important;
+            color:var(--ptr-c) !important;
+            box-shadow:0 0 14px rgba(74,222,128,.15);
+        }
+        .el.center-disabled{
+            border-color:rgba(248,113,113,.25) !important;background:rgba(248,113,113,.06) !important;
+            color:var(--fail) !important;
+        }
+
+        /* Index row */
+        .idx-row{display:flex;gap:8px;margin-top:6px}
+        .idx-c{width:56px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--text-muted);flex-shrink:0}
+
+        /* Result separator */
+        .res-sep{
+            width:100%;text-align:center;padding:10px 0 4px;
+            font-family:'JetBrains Mono',monospace;font-size:.65rem;color:var(--text-muted);
+            letter-spacing:.06em;border-top:1px dashed rgba(255,255,255,.06);margin-top:8px;
+        }
+
+        /* Result row */
+        .res-row{display:flex;gap:8px}
+        .res-c{
+            width:56px;height:38px;display:flex;align-items:center;justify-content:center;
+            font-family:'JetBrains Mono',monospace;font-size:.82rem;font-weight:600;
+            border-radius:4px;flex-shrink:0;transition:all .35s ease;
+        }
+        .res-c.res-valid{color:var(--success);background:var(--success-bg)}
+        .res-c.res-invalid{color:var(--text-muted);background:var(--surface-3)}
+        .res-c.res-pending{color:var(--text-muted);opacity:.25}
+        .res-c.res-current{box-shadow:0 0 0 2px var(--accent);animation:pulse 1.5s infinite}
+
+        /* Window detail */
+        .win-detail{
+            margin-top:1.2rem;padding:.8rem 1.2rem;background:var(--surface-2);
+            border-radius:6px;border:1px solid var(--border);
+            font-family:'JetBrains Mono',monospace;font-size:.85rem;color:var(--text-primary);
+            display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;line-height:1.8;
+        }
+        .win-els{display:flex;gap:3px;align-items:center;flex-wrap:wrap}
+        .win-el{background:var(--surface-3);padding:.12em .45em;border-radius:3px;color:var(--accent);font-weight:500;font-size:.82rem}
+        .win-calc{color:var(--text-muted);font-size:.82rem}
+        .win-res{font-weight:600;padding:.15em .6em;border-radius:3px;font-size:.85rem}
+        .win-res.pass{color:var(--success);background:var(--success-bg)}
+        .win-res.fail{color:var(--fail);background:var(--fail-bg)}
+        .win-slide{color:var(--accent);font-size:.8rem}
+
+        /* Info panel */
+        .info-panel{
+            display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));
+            gap:.8rem;margin-top:1rem;padding:1.2rem;background:var(--surface-2);
+            border-radius:6px;border:1px solid var(--border);
+        }
+        .info-it{display:flex;flex-direction:column;gap:.25rem}
+        .info-l{font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em}
+        .info-v{font-family:'JetBrains Mono',monospace;font-size:1rem;font-weight:600;color:var(--text-bright)}
+        .info-v.ok{color:var(--success)}.info-v.fail{color:var(--fail)}.info-v.accent{color:var(--accent)}
+
+        /* Controls */
+        .ctrls{display:flex;gap:.6rem;margin-top:1.2rem;flex-wrap:wrap}
+        .btn{
+            font-family:'JetBrains Mono',monospace;font-size:.78rem;font-weight:500;
+            padding:.55em 1.2em;border:1px solid var(--border);border-radius:4px;
+            background:var(--surface-2);color:var(--text-primary);cursor:pointer;
+            transition:all .2s ease;display:flex;align-items:center;gap:.4em;
+        }
+        .btn:hover{border-color:var(--accent-dim);color:var(--text-bright);background:var(--surface-3)}
+        .btn:active{transform:scale(.97)}
+        .btn.primary{border-color:var(--accent-dim);color:var(--accent);background:var(--accent-glow)}
+        .btn.primary:hover{background:var(--accent-dim)}
+        .btn:disabled{opacity:.35;cursor:not-allowed}
+        .btn:disabled:hover{border-color:var(--border);color:var(--text-primary);background:var(--surface-2)}
+        .speed-sel{
+            font-family:'JetBrains Mono',monospace;font-size:.78rem;
+            background:var(--surface-2);color:var(--text-primary);border:1px solid var(--border);
+            border-radius:4px;padding:.5em .8em;cursor:pointer;outline:none;
+        }
+        .speed-sel:hover{border-color:var(--accent-dim)}
+
+        /* Log */
+        .log-sec{margin-top:1.2rem}
+        .log-title{font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.6rem}
+        .log-box{
+            max-height:220px;overflow-y:auto;background:var(--surface-2);
+            border:1px solid var(--border);border-radius:6px;padding:.6rem;
+            scrollbar-width:thin;scrollbar-color:var(--surface-3) var(--surface-2);
+        }
+        .log-box::-webkit-scrollbar{width:5px}
+        .log-box::-webkit-scrollbar-track{background:var(--surface-2)}
+        .log-box::-webkit-scrollbar-thumb{background:var(--surface-3);border-radius:3px}
+        .log-e{
+            font-family:'JetBrains Mono',monospace;font-size:.73rem;
+            padding:.35em .6em;border-radius:3px;margin-bottom:2px;
+            color:var(--text-muted);display:flex;align-items:center;gap:.5em;
+            transition:all .2s;white-space:nowrap;
+        }
+        .log-e.visited{color:var(--text-primary)}
+        .log-e.active{background:var(--surface-3);color:var(--text-bright)}
+        .log-e .ls{color:var(--accent);font-weight:600;min-width:2em}
+        .log-e .lr{font-weight:500;margin-left:auto}
+        .log-e .lr.pass{color:var(--success)}.log-e .lr.fail{color:var(--fail)}
+        .log-empty{
+            font-family:'JetBrains Mono',monospace;font-size:.8rem;color:var(--text-muted);
+            text-align:center;padding:1.5rem;
+        }
+
+        /* Code Block */
+        .code-blk{background:var(--surface);border:1px solid var(--border);border-radius:6px;overflow:hidden}
+        .code-hd{
+            padding:.6rem 1rem;border-bottom:1px solid var(--border);
+            font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--text-muted);
+            display:flex;align-items:center;gap:.5rem;
+        }
+        .code-hd .dot{width:8px;height:8px;border-radius:50%}
+        .code-hd .dot:nth-child(1){background:#ff5f56}
+        .code-hd .dot:nth-child(2){background:#ffbd2e}
+        .code-hd .dot:nth-child(3){background:#27c93f}
+        .pre-code{
+            padding:1.2rem 1.5rem;overflow-x:auto;
+            font-family:'JetBrains Mono',monospace;font-size:.82rem;line-height:1.85;
+            color:var(--text-primary);tab-size:4;
+        }
+        .kw{color:#c792ea}.fn{color:#82aaff}.str{color:#c3e88d}.num{color:#f78c6c}
+        .cmt{color:#546e7a;font-style:italic}.op{color:#89ddff}.vr{color:#f0ece4}.dc{color:#ffcb6b}
+
+        /* Complexity */
+        .cx-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+        .cx-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:1.2rem 1.5rem}
+        .cx-card h4{font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.6rem}
+        .cx-card .val{font-family:'JetBrains Mono',monospace;font-size:1.4rem;font-weight:700;color:var(--accent)}
+        .cx-card p{font-size:.85rem;color:var(--text-muted);margin-top:.5rem;line-height:1.7}
+        .cmp-tbl{margin-top:1rem}
+        .cmp-tbl table{width:100%;border-collapse:collapse;font-size:.85rem}
+        .cmp-tbl th,.cmp-tbl td{padding:.6rem 1rem;text-align:left;border-bottom:1px solid var(--border)}
+        .cmp-tbl th{font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em}
+        .cmp-tbl td{color:var(--text-primary)}
+        .cmp-tbl td code{font-family:'JetBrains Mono',monospace;font-size:.82em;background:var(--surface-2);padding:.12em .4em;border-radius:3px;color:var(--vowel)}
+
+        /* Answer */
+        .answer-bar{
+            margin-top:1rem;padding:.8rem 1.2rem;background:var(--surface-2);
+            border:1px solid var(--border);border-radius:6px;
+            font-family:'JetBrains Mono',monospace;font-size:.85rem;
+            display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;
+        }
+        .answer-bar .lbl{color:var(--text-muted);font-size:.78rem}
+        .answer-bar .val{color:var(--accent);font-weight:700;font-size:1rem}
+
+        @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(212,168,67,.3)}50%{box-shadow:0 0 0 6px rgba(212,168,67,0)}}
+
+        @media(max-width:640px){
+            .container{padding:2rem 1rem 3rem}
+            .header h1{font-size:1.5rem}
+            .cx-grid{grid-template-columns:1fr}
+            .info-panel{grid-template-columns:1fr 1fr}
+            .params-row{flex-direction:column}
+            .param-group,.param-group.wide{min-width:100%}
+            .params-actions{width:100%}
+            .btn-run{width:100%;justify-content:center}
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <!-- Header -->
+    <div class="header">
+        <div class="tag">LeetCode 2090 · 滑动窗口 · Medium</div>
+        <h1>半径为 k 的子数组平均值</h1>
+        <p>给定一个 <code>0-indexed</code> 的整数数组 <code>nums</code> 和整数 <code>k</code>，返回一个数组 <code>avgs</code>，其中 <code>avgs[i]</code> 是以索引 <code>i</code> 为中心、半径为 <code>k</code> 的子数组的平均值（整数除法）。如果某一侧元素不够 <code>k</code> 个，则 <code>avgs[i] = -1</code>。</p>
+    </div>
+
+    <!-- 题意解读 -->
+    <div class="section">
+        <h2 class="section-title"><span class="ico">📋</span>题意解读</h2>
+        <div class="card">
+            <h3>简单来说，这道题在问什么？</h3>
+            <p>想象你站在一排数字的某个位置上，你的<strong>视野半径是 <code>k</code></strong>——也就是说你能看到左边 <code>k</code> 个数和右边 <code>k</code> 个数（加上你自己，一共 <code>2k+1</code> 个数）。</p>
+            <p>题目要求你从最左边走到最右边，每到一个位置就算一次<strong>视野内所有数的平均值</strong>（向下取整）。</p>
+            <p>但是！如果你站得太靠边——左边或右边凑不齐 <code>k</code> 个数——那就没法算，结果记为 <code>-1</code>。</p>
+        </div>
+        <div class="card metaphor">
+            <h3>生活类比</h3>
+            <p>就像你拿着一个<strong>固定宽度的取景框</strong>拍照：</p>
+            <ul>
+                <li>取景框宽度 = <code>2k + 1</code>，你在正中间</li>
+                <li>站在人群中间时，取景框刚好框住 <code>2k+1</code> 个人，算出他们的平均身高</li>
+                <li>站在太靠左或太靠右时，取景框的一边会超出人群范围——没法拍，结果为 <code>-1</code></li>
+            </ul>
+        </div>
+        <div class="card">
+            <h3>示例推演</h3>
+            <p><code>nums = [7, 4, 3, 9, 1, 8, 5, 2, 6]</code>，<code>k = 3</code>，窗口大小 = <code>2×3+1 = 7</code></p>
+            <ul>
+                <li>位置 0：左边缺 3 个 → <span class="ng">-1</span></li>
+                <li>位置 1：左边缺 2 个 → <span class="ng">-1</span></li>
+                <li>位置 2：左边缺 1 个 → <span class="ng">-1</span></li>
+                <li>位置 3：<code>[7,4,3,9,1,8,5]</code> → 总和 37 → 平均 <span class="ok">5</span></li>
+                <li>位置 4：<code>[4,3,9,1,8,5,2]</code> → 总和 32 → 平均 <span class="ok">4</span></li>
+                <li>位置 5：<code>[3,9,1,8,5,2,6]</code> → 总和 34 → 平均 <span class="ok">4</span></li>
+                <li>位置 6：右边缺 1 个 → <span class="ng">-1</span></li>
+                <li>位置 7：右边缺 2 个 → <span class="ng">-1</span></li>
+                <li>位置 8：右边缺 3 个 → <span class="ng">-1</span></li>
+            </ul>
+            <p style="margin-top:.6rem"><strong>答案：<span class="hl">[-1, -1, -1, 5, 4, 4, -1, -1, -1]</span></strong></p>
+        </div>
+    </div>
+
+    <!-- 为什么用滑动窗口 -->
+    <div class="section">
+        <h2 class="section-title"><span class="ico">🔍</span>为什么用滑动窗口？</h2>
+        <div class="card">
+            <h3>暴力做法的问题</h3>
+            <p>最直觉的方法：对每个有效位置，重新把 <code>2k+1</code> 个数加一遍。能做对，但<strong>重复计算太多</strong>。</p>
+            <p>比如上面的例子，位置 3 的窗口是 <code>[7,4,3,9,1,8,5]</code>，位置 4 的窗口是 <code>[4,3,9,1,8,5,2]</code>。</p>
+            <p>两个窗口有 <code>[4,3,9,1,8,5]</code> 这 <strong>6 个数完全一样</strong>，只有"一头一尾"不同——左边的 <code>7</code> 出去了，右边的 <code>2</code> 进来了。没必要重新加一遍！</p>
+        </div>
+        <div class="card metaphor">
+            <h3>滑动窗口的巧妙之处</h3>
+            <p>窗口每向右滑一格，你只需要做<strong>两步操作</strong>：</p>
+            <ul>
+                <li><strong>减去</strong>最左边离开窗口的那个数</li>
+                <li><strong>加上</strong>最右边新进入窗口的那个数</li>
+            </ul>
+            <p>一步操作就能从旧窗口的总和得到新窗口的总和，<strong>O(1) 完成</strong>！</p>
+            <p>核心思想：<span class="hl">维护一个"窗口总和"，每次只处理变化的部分</span>。</p>
+        </div>
+    </div>
+
+    <!-- 可视化演示 -->
+    <div class="section">
+        <h2 class="section-title"><span class="ico">🎯</span>数组 · 滑动窗口可视化</h2>
+        <div class="viz-wrap">
+            <div class="viz-head">
+                <span class="viz-head-title">Sliding Window · K Radius Averages</span>
+                <span class="viz-head-step" id="stepInd">Step 0 / 0</span>
+            </div>
+            <div class="viz-body">
+
+                <!-- 参数编辑器 -->
+                <div class="params-editor">
+                    <div class="params-editor-title"><span>⚙</span> 修改入参</div>
+                    <div class="params-row">
+                        <div class="param-group wide">
+                            <label class="param-label">nums（数组，逗号分隔）</label>
+                            <input type="text" class="param-input" id="inputArr" value="7, 4, 3, 9, 1, 8, 5, 2, 6" spellcheck="false">
+                            <span class="param-hint" id="hintArr">输入整数，用逗号或空格分隔</span>
+                        </div>
+                        <div class="param-group">
+                            <label class="param-label">k（半径）</label>
+                            <input type="text" class="param-input" id="inputK" value="3" spellcheck="false">
+                            <span class="param-hint" id="hintK">k ≥ 0 的整数</span>
+                        </div>
+                    </div>
+                    <div class="presets-row">
+                        <button class="btn-preset" onclick="applyPreset([7,4,3,9,1,8,5,2,6],3)">LeetCode 示例</button>
+                        <button class="btn-preset" onclick="applyPreset([1,2,3,4,5,6,7,8,9,10],3)">递增数组</button>
+                        <button class="btn-preset" onclick="applyPreset([3,1,4,1,5,9],0)">k=0 逐个</button>
+                        <button class="btn-preset" onclick="applyPreset([5,5,5,5,5,5,5],2)">全相同</button>
+                        <button class="btn-preset" onclick="applyPreset([1,2,3],5)">窗口 &gt; 数组</button>
+                    </div>
+                    <div style="margin-top:.8rem">
+                        <button class="btn-run" onclick="applyParams()">▶ 运行可视化</button>
+                    </div>
+                </div>
+
+                <!-- 当前参数 -->
+                <div class="params" id="paramsDisplay">
+                    <div class="prm"><span class="prm-l">nums</span><span class="prm-v" id="dispArr">[7, 4, 3, 9, 1, 8, 5, 2, 6]</span></div>
+                    <div class="prm"><span class="prm-l">k</span><span class="prm-v" id="dispK">3</span></div>
+                    <div class="prm"><span class="prm-l">窗口大小</span><span class="prm-v" id="dispW">7</span></div>
+                </div>
+
+                <!-- 数组可视化 -->
+                <div class="arr-scroll" id="arrScroll">
+                    <div class="arr-inner" id="arrInner">
+                        <div class="ptr-row" id="ptrRow"></div>
+                        <div class="el-row" id="elRow"></div>
+                        <div class="idx-row" id="idxRow"></div>
+                        <div class="res-sep">↓ 结果数组 avgs</div>
+                        <div class="res-row" id="resRow"></div>
+                    </div>
+                </div>
+
+                <!-- 窗口详情 -->
+                <div class="win-detail" id="winDetail"></div>
+
+                <!-- 信息面板 -->
+                <div class="info-panel" id="infoPanel"></div>
+
+                <!-- 最终答案 -->
+                <div class="answer-bar" id="answerBar" style="display:none">
+                    <span class="lbl">最终答案 →</span>
+                    <span class="val" id="answerVal"></span>
+                </div>
+
+                <!-- 控制按钮 -->
+                <div class="ctrls">
+                    <button class="btn" id="btnReset" onclick="doReset()">↺ 重置</button>
+                    <button class="btn" id="btnPrev" onclick="doPrev()">◀ 上一步</button>
+                    <button class="btn" id="btnNext" onclick="doNext()">下一步 ▶</button>
+                    <button class="btn primary" id="btnAuto" onclick="doAuto()">▶ 自动播放</button>
+                    <select class="speed-sel" id="speedSel" onchange="updateSpeed()">
+                        <option value="1600">慢速</option>
+                        <option value="1000" selected>正常</option>
+                        <option value="500">快速</option>
+                        <option value="250">极速</option>
+                    </select>
+                </div>
+
+                <!-- 操作日志 -->
+                <div class="log-sec">
+                    <div class="log-title">操作日志</div>
+                    <div class="log-box" id="logBox">
+                        <div class="log-empty">点击「运行可视化」开始演示</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 算法步骤 -->
+    <div class="section">
+        <h2 class="section-title"><span class="ico">📐</span>算法具体步骤</h2>
+        <div class="card">
+            <ol class="step-list">
+                <li>计算窗口大小 <code>w = 2k + 1</code>。如果 <code>w > n</code>（数组长度），说明没有任何位置能凑齐足够的元素，直接返回全 <code>-1</code> 的数组。</li>
+                <li>计算前 <code>w</code> 个元素的总和 <code>window_sum</code>，作为第一个有效窗口（中心在索引 <code>k</code>）的值。</li>
+                <li>将 <code>result[k] = window_sum // w</code>（整数除法 = 向下取整）。</li>
+                <li>开始滑动窗口：中心从 <code>k+1</code> 到 <code>n-1-k</code>，每次滑动时：
+                    <ul style="margin-top:.4rem">
+                        <li><strong>减去</strong>左边离开窗口的元素 <code>nums[i - k - 1]</code></li>
+                        <li><strong>加上</strong>右边新进入窗口的元素 <code>nums[i + k]</code></li>
+                    </ul>
+                </li>
+                <li>每滑一步，计算 <code>result[i] = window_sum // w</code>。</li>
+                <li>对于索引 <code>0 ~ k-1</code> 和 <code>n-k ~ n-1</code> 的位置，结果直接设为 <code>-1</code>。</li>
+                <li>返回结果数组 <code>result</code>。</li>
+            </ol>
+        </div>
+    </div>
+
+    <!-- 代码实现 -->
+    <div class="section">
+        <h2 class="section-title"><span class="ico">💻</span>代码实现（Python）</h2>
+        <div class="code-blk">
+            <div class="code-hd">
+                <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                <span style="margin-left:.5rem">solution.py</span>
+            </div>
+            <pre class="pre-code"><span class="kw">class</span> <span class="dc">Solution</span>:
+    <span class="kw">def</span> <span class="fn">getAverages</span>(<span class="vr">self</span>, <span class="vr">nums</span>: <span class="dc">List</span>[<span class="dc">int</span>], <span class="vr">k</span>: <span class="dc">int</span>) <span class="op">-></span> <span class="dc">List</span>[<span class="dc">int</span>]:
+        <span class="vr">n</span> <span class="op">=</span> <span class="fn">len</span>(<span class="vr">nums</span>)
+        <span class="vr">w</span> <span class="op">=</span> <span class="num">2</span> <span class="op">*</span> <span class="vr">k</span> <span class="op">+</span> <span class="num">1</span>          <span class="cmt"># 窗口大小</span>
+        <span class="vr">result</span> <span class="op">=</span> [<span class="op">-</span><span class="num">1</span>] <span class="op">*</span> <span class="vr">n</span>      <span class="cmt"># 默认全 -1</span>
+
+        <span class="cmt"># 窗口比数组还大 → 全是 -1</span>
+        <span class="kw">if</span> <span class="vr">w</span> <span class="op">></span> <span class="vr">n</span>:
+            <span class="kw">return</span> <span class="vr">result</span>
+
+        <span class="cmt"># 第一步：计算第一个窗口的总和</span>
+        <span class="vr">window_sum</span> <span class="op">=</span> <span class="fn">sum</span>(<span class="vr">nums</span>[:<span class="vr">w</span>])
+        <span class="vr">result</span>[<span class="vr">k</span>] <span class="op">=</span> <span class="vr">window_sum</span> <span class="op">//</span> <span class="vr">w</span>
+
+        <span class="cmt"># 第二步：滑动窗口</span>
+        <span class="kw">for</span> <span class="vr">i</span> <span class="kw">in</span> <span class="fn">range</span>(<span class="vr">k</span> <span class="op">+</span> <span class="num">1</span>, <span class="vr">n</span> <span class="op">-</span> <span class="vr">k</span>):
+            <span class="cmt"># 减去离开的，加上新来的</span>
+            <span class="vr">window_sum</span> <span class="op">+=</span> <span class="vr">nums</span>[<span class="vr">i</span> <span class="op">+</span> <span class="vr">k</span>] <span class="op">-</span> <span class="vr">nums</span>[<span class="vr">i</span> <span class="op">-</span> <span class="vr">k</span> <span class="op">-</span> <span class="num">1</span>]
+            <span class="vr">result</span>[<span class="vr">i</span>] <span class="op">=</span> <span class="vr">window_sum</span> <span class="op">//</span> <span class="vr">w</span>
+
+        <span class="kw">return</span> <span class="vr">result</span></pre>
+        </div>
+    </div>
+
+    <!-- 复杂度分析 -->
+    <div class="section">
+        <h2 class="section-title"><span class="ico">📊</span>复杂度分析</h2>
+        <div class="cx-grid">
+            <div class="cx-card">
+                <h4>时间复杂度</h4>
+                <div class="val">O(n)</div>
+                <p>计算第一个窗口 O(w)，之后每次滑动 O(1)，共滑 n−w 次。总计 O(n)。</p>
+            </div>
+            <div class="cx-card">
+                <h4>空间复杂度</h4>
+                <div class="val">O(1)</div>
+                <p>除了返回的结果数组外，只用了 <code>window_sum</code> 等常数个变量。额外空间 O(1)。</p>
+            </div>
+        </div>
+        <div class="card" style="margin-top:1rem">
+            <h3>与暴力法对比</h3>
+            <div class="cmp-tbl">
+                <table>
+                    <thead><tr><th>方法</th><th>时间复杂度</th><th>空间复杂度</th></tr></thead>
+                    <tbody>
+                        <tr>
+                            <td>暴力法（每个位置重新求和）</td>
+                            <td><code>O(n × k)</code></td>
+                            <td><code>O(1)</code></td>
+                        </tr>
+                        <tr>
+                            <td style="color:var(--accent);font-weight:500">滑动窗口</td>
+                            <td><code>O(n)</code></td>
+                            <td><code>O(1)</code></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <p style="margin-top:.8rem;font-size:.85rem;color:var(--text-muted)">当 <code>k</code> 较大时优势非常明显。比如 n=100000, k=50000，暴力法约 50 亿次加法，滑动窗口只需约 10 万次。</p>
+        </div>
+    </div>
+
+</div>
+
+<script>
+/* ============================================================
+   VISUALIZATION ENGINE — LeetCode 2090
+   ============================================================ */
+let arr = [7, 4, 3, 9, 1, 8, 5, 2, 6];
+let k = 3;
+let steps = [];
+let cur = 0;
+let playing = false;
+let timer = null;
+let speed = 1000;
+
+/* ---------- Build Steps ---------- */
+function buildSteps() {
+    steps = [];
+    const n = arr.length;
+    const wSize = 2 * k + 1;
+    const result = new Array(n).fill(-1);
+    let windowSum = 0;
+
+    for (let i = 0; i < n; i++) {
+        const isValid = (i >= k) && (i + k < n);
+
+        if (!isValid) {
+            let reason;
+            if (i < k && (i + k >= n)) reason = 'both';
+            else if (i < k) reason = 'left';
+            else reason = 'right';
+
+            steps.push({
+                index: i, valid: false, reason,
+                result: [...result],
+                windowSum: 0, avg: 0,
+                isFirst: false, removed: null, added: null, prevSum: null
+            });
+        } else if (i === k) {
+            // First valid window — compute from scratch
+            windowSum = 0;
+            for (let j = 0; j < wSize; j++) windowSum += arr[j];
+            const avg = Math.floor(windowSum / wSize);
+            result[i] = avg;
+
+            steps.push({
+                index: i, valid: true,
+                left: 0, right: wSize - 1,
+                window: arr.slice(0, wSize),
+                windowSum, avg,
+                result: [...result],
+                isFirst: true, removed: null, added: null, prevSum: null
+            });
+        } else {
+            // Sliding window
+            const removed = arr[i - k - 1];
+            const added = arr[i + k];
+            const prevSum = windowSum;
+            windowSum = windowSum - removed + added;
+            const avg = Math.floor(windowSum / wSize);
+            result[i] = avg;
+
+            steps.push({
+                index: i, valid: true,
+                left: i - k, right: i + k,
+                window: arr.slice(i - k, i + k + 1),
+                windowSum, avg,
+                result: [...result],
+                isFirst: false, removed, added, prevSum
+            });
+        }
+    }
+}
+
+/* ---------- Parse & Validate ---------- */
+function parseArr(str) {
+    const cleaned = str.replace(/[\[\]]/g, '').trim();
+    if (!cleaned) return null;
+    const parts = cleaned.split(/[,\s]+/).filter(Boolean);
+    const nums = [];
+    for (const p of parts) {
+        const n = Number(p);
+        if (!Number.isFinite(n)) return null;
+        nums.push(Math.round(n));
+    }
+    return nums.length > 0 ? nums : null;
+}
+
+function validateInputs() {
+    let valid = true;
+    const arrEl = document.getElementById('inputArr');
+    const kEl = document.getElementById('inputK');
+    const hArr = document.getElementById('hintArr');
+    const hK = document.getElementById('hintK');
+
+    [arrEl, kEl].forEach(e => e.classList.remove('error'));
+    [hArr, hK].forEach(e => { e.classList.remove('err'); e.classList.remove('warn'); });
+
+    const parsed = parseArr(arrEl.value);
+    if (!parsed) {
+        arrEl.classList.add('error');
+        hArr.classList.add('err');
+        hArr.textContent = '✗ 请输入有效的整数数组';
+        valid = false;
+    } else {
+        hArr.textContent = `已解析 ${parsed.length} 个元素`;
+    }
+
+    const kVal = Number(kEl.value);
+    if (!Number.isFinite(kVal) || kVal < 0 || !Number.isInteger(kVal)) {
+        kEl.classList.add('error');
+        hK.classList.add('err');
+        hK.textContent = '✗ 请输入 ≥ 0 的整数';
+        valid = false;
+    } else if (parsed && (2 * kVal + 1 > parsed.length)) {
+        hK.classList.add('warn');
+        hK.textContent = `⚠ 窗口 ${2*kVal+1} > 数组长度 ${parsed.length}，所有位置结果为 -1`;
+    } else {
+        hK.textContent = `窗口大小 = ${2 * kVal + 1}`;
+    }
+
+    return valid ? { arr: parsed, k: kVal } : null;
+}
+
+/* ---------- Apply Params ---------- */
+function applyParams() {
+    const result = validateInputs();
+    if (!result) return;
+    stopAuto();
+    arr = result.arr;
+    k = result.k;
+    cur = 0;
+    buildSteps();
+
+    document.getElementById('dispArr').textContent = '[' + arr.join(', ') + ']';
+    document.getElementById('dispK').textContent = k;
+    document.getElementById('dispW').textContent = 2 * k + 1;
+
+    const finalResult = steps.length > 0 ? steps[steps.length - 1].result : [];
+    document.getElementById('answerVal').textContent = '[' + finalResult.join(', ') + ']';
+    document.getElementById('answerBar').style.display = 'flex';
+
+    render();
+}
+
+function applyPreset(pArr, pK) {
+    document.getElementById('inputArr').value = pArr.join(', ');
+    document.getElementById('inputK').value = pK;
+    applyParams();
+}
+
+/* ---------- Render Array ---------- */
+function renderArr() {
+    const ptrRow = document.getElementById('ptrRow');
+    const elRow = document.getElementById('elRow');
+    const idxRow = document.getElementById('idxRow');
+    const resRow = document.getElementById('resRow');
+    ptrRow.innerHTML = '';
+    elRow.innerHTML = '';
+    idxRow.innerHTML = '';
+    resRow.innerHTML = '';
+
+    const s = steps[cur];
+    const n = arr.length;
+
+    for (let i = 0; i < n; i++) {
+        // Pointer cell
+        const pc = document.createElement('div');
+        pc.className = 'ptr-cell';
+
+        if (s.valid) {
+            if (k === 0) {
+                // L, C, R all at same position
+                if (i === s.index) {
+                    const lb = document.createElement('span');
+                    lb.className = 'ptr-lbl combined';
+                    lb.textContent = 'L·C·R';
+                    pc.appendChild(lb);
+                }
+            } else {
+                if (i === s.left) {
+                    const lb = document.createElement('span');
+                    lb.className = 'ptr-lbl L';
+                    lb.textContent = 'L';
+                    pc.appendChild(lb);
+                }
+                if (i === s.index) {
+                    const lb = document.createElement('span');
+                    lb.className = 'ptr-lbl C';
+                    lb.textContent = 'C';
+                    pc.appendChild(lb);
+                }
+                if (i === s.right) {
+                    const lb = document.createElement('span');
+                    lb.className = 'ptr-lbl R';
+                    lb.textContent = 'R';
+                    pc.appendChild(lb);
+                }
+            }
+        } else {
+            if (i === s.index) {
+                const lb = document.createElement('span');
+                lb.className = 'ptr-lbl C';
+                lb.textContent = 'C';
+                pc.appendChild(lb);
+            }
+        }
+        ptrRow.appendChild(pc);
+
+        // Element
+        const el = document.createElement('div');
+        el.className = 'el';
+        el.textContent = arr[i];
+        if (s.valid && i >= s.left && i <= s.right) {
+            el.classList.add('in-win');
+        }
+        if (i === s.index) {
+            el.classList.add(s.valid ? 'center-el' : 'center-disabled');
+        }
+        elRow.appendChild(el);
+
+        // Index
+        const ic = document.createElement('div');
+        ic.className = 'idx-c';
+        ic.textContent = `[${i}]`;
+        idxRow.appendChild(ic);
+
+        // Result
+        const rc = document.createElement('div');
+        rc.className = 'res-c';
+        if (i <= s.index) {
+            rc.textContent = s.result[i];
+            rc.classList.add(s.result[i] === -1 ? 'res-invalid' : 'res-valid');
+            if (i === s.index) rc.classList.add('res-current');
+        } else {
+            rc.textContent = '?';
+            rc.classList.add('res-pending');
+        }
+        resRow.appendChild(rc);
+    }
+
+    // Auto-scroll
+    if (s.valid) {
+        scrollToRange(s.left, s.right);
+    } else {
+        scrollToIndex(s.index);
+    }
+}
+
+function scrollToRange(li, ri) {
+    const box = document.getElementById('arrScroll');
+    const els = document.querySelectorAll('#elRow .el');
+    if (!els[li] || !els[ri]) return;
+    const l = els[li].offsetLeft;
+    const r = els[ri].offsetLeft + els[ri].offsetWidth;
+    const mid = (l + r) / 2;
+    box.scrollTo({ left: Math.max(0, mid - box.clientWidth / 2), behavior: 'smooth' });
+}
+
+function scrollToIndex(i) {
+    const box = document.getElementById('arrScroll');
+    const els = document.querySelectorAll('#elRow .el');
+    if (!els[i]) return;
+    const l = els[i].offsetLeft + els[i].offsetWidth / 2;
+    box.scrollTo({ left: Math.max(0, l - box.clientWidth / 2), behavior: 'smooth' });
+}
+
+/* ---------- Render Window Detail ---------- */
+function renderWinDetail() {
+    const s = steps[cur];
+    const wd = document.getElementById('winDetail');
+    const wSize = 2 * k + 1;
+
+    if (!s.valid) {
+        let reason;
+        if (s.reason === 'left') {
+            const avail = s.index;
+            reason = `左侧只有 ${avail} 个元素，需要 ${k} 个`;
+        } else if (s.reason === 'right') {
+            const avail = arr.length - 1 - s.index;
+            reason = `右侧只有 ${avail} 个元素，需要 ${k} 个`;
+        } else {
+            reason = `左、右侧元素均不足 (各需 ${k} 个)`;
+        }
+        wd.innerHTML = `
+            <span style="color:var(--fail)">✗</span>
+            <span>位置 ${s.index}：${reason}</span>
+            <span class="win-res fail">→ -1</span>
+        `;
+        return;
+    }
+
+    const elsH = s.window.map(v => `<span class="win-el">${v}</span>`).join('<span style="color:var(--text-muted);font-size:.75rem">+</span>');
+
+    if (s.isFirst) {
+        wd.innerHTML = `
+            <div class="win-els">${elsH}</div>
+            <span class="win-calc">= ${s.windowSum} → ⌊${s.windowSum} ÷ ${wSize}⌋ = </span>
+            <span class="win-res pass">${s.avg}</span>
+        `;
+    } else {
+        wd.innerHTML = `
+            <span class="win-slide">滑动 →</span>
+            <span class="win-calc">${s.prevSum} − arr[${s.left - 1}]=${s.removed} + arr[${s.right}]=${s.added} = ${s.windowSum}</span>
+            <span class="win-calc">→ ⌊${s.windowSum} ÷ ${wSize}⌋ = </span>
+            <span class="win-res pass">${s.avg}</span>
+        `;
+    }
+}
+
+/* ---------- Render Info ---------- */
+function renderInfo() {
+    const s = steps[cur];
+    const wSize = 2 * k + 1;
+    document.getElementById('stepInd').textContent = `Step ${cur + 1} / ${steps.length}`;
+
+    const ip = document.getElementById('infoPanel');
+    const validCount = steps.slice(0, cur + 1).filter(st => st.valid).length;
+
+    if (!s.valid) {
+        let reasonShort = s.reason === 'left' ? '左侧不足' : s.reason === 'right' ? '右侧不足' : '两侧不足';
+        ip.innerHTML = `
+            <div class="info-it"><span class="info-l">当前位置</span><span class="info-v">${s.index}</span></div>
+            <div class="info-it"><span class="info-l">状态</span><span class="info-v fail">${reasonShort}</span></div>
+            <div class="info-it"><span class="info-l">本步结果</span><span class="info-v fail">-1</span></div>
+            <div class="info-it"><span class="info-l">已计算有效位</span><span class="info-v accent">${validCount}</span></div>
+        `;
+    } else {
+        ip.innerHTML = `
+            <div class="info-it"><span class="info-l">中心位置</span><span class="info-v">${s.index}</span></div>
+            <div class="info-it"><span class="info-l">窗口范围</span><span class="info-v">[${s.left} .. ${s.right}]</span></div>
+            <div class="info-it"><span class="info-l">窗口总和</span><span class="info-v">${s.windowSum}</span></div>
+            <div class="info-it"><span class="info-l">平均值</span><span class="info-v ok">${s.avg}</span></div>
+            <div class="info-it"><span class="info-l">窗口大小</span><span class="info-v">${wSize}</span></div>
+            <div class="info-it"><span class="info-l">已计算有效位</span><span class="info-v accent">${validCount}</span></div>
+        `;
+    }
+}
+
+/* ---------- Render Log ---------- */
+function renderLog() {
+    const box = document.getElementById('logBox');
+    box.innerHTML = '';
+    const wSize = 2 * k + 1;
+
+    for (let i = 0; i < steps.length; i++) {
+        const s = steps[i];
+        const d = document.createElement('div');
+        d.className = 'log-e';
+        if (i < cur) d.classList.add('visited');
+        if (i === cur) d.classList.add('active');
+
+        if (!s.valid) {
+            const reasonShort = s.reason === 'left' ? '左不足' : s.reason === 'right' ? '右不足' : '都不足';
+            d.innerHTML = `
+                <span class="ls">#${i}</span>
+                <span>${reasonShort}</span>
+                <span class="lr fail">→ -1</span>
+            `;
+        } else {
+            const winStr = s.window.join('+');
+            d.innerHTML = `
+                <span class="ls">#${i}</span>
+                <span>[${winStr}]=${s.windowSum}</span>
+                <span style="color:var(--text-muted)">÷${wSize}</span>
+                <span class="lr pass">→ ${s.avg}</span>
+            `;
+        }
+        box.appendChild(d);
+    }
+
+    const act = box.querySelector('.active');
+    if (act) act.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
+/* ---------- Button State ---------- */
+function updateBtn() {
+    document.getElementById('btnPrev').disabled = cur <= 0;
+    document.getElementById('btnNext').disabled = cur >= steps.length - 1;
+}
+
+/* ---------- Full Render ---------- */
+function render() {
+    if (steps.length === 0) return;
+    renderArr();
+    renderWinDetail();
+    renderInfo();
+    renderLog();
+    updateBtn();
+}
+
+/* ---------- Navigation ---------- */
+function doNext() {
+    if (cur < steps.length - 1) { cur++; render(); }
+}
+function doPrev() {
+    if (cur > 0) { cur--; render(); }
+}
+function doReset() {
+    stopAuto(); cur = 0; render();
+    document.getElementById('arrScroll').scrollTo({ left: 0, behavior: 'smooth' });
+}
+function doAuto() {
+    if (playing) { stopAuto(); return; }
+    if (steps.length === 0) return;
+    if (cur >= steps.length - 1) { cur = 0; render(); }
+    playing = true;
+    document.getElementById('btnAuto').textContent = '⏸ 暂停';
+    document.getElementById('btnAuto').classList.remove('primary');
+    timer = setInterval(() => {
+        if (cur < steps.length - 1) { doNext(); } else { stopAuto(); }
+    }, speed);
+}
+function stopAuto() {
+    playing = false;
+    document.getElementById('btnAuto').textContent = '▶ 自动播放';
+    document.getElementById('btnAuto').classList.add('primary');
+    if (timer) { clearInterval(timer); timer = null; }
+}
+function updateSpeed() {
+    speed = Number(document.getElementById('speedSel').value);
+    if (playing) { stopAuto(); doAuto(); }
+}
+
+/* ---------- Keyboard ---------- */
+document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT') return;
+    if (e.key === 'ArrowRight') doNext();
+    if (e.key === 'ArrowLeft') doPrev();
+    if (e.key === ' ') { e.preventDefault(); doAuto(); }
+    if (e.key === 'r' || e.key === 'R') doReset();
+});
+
+/* ---------- Enter on inputs ---------- */
+document.querySelectorAll('.param-input').forEach(el => {
+    el.addEventListener('keydown', e => { if (e.key === 'Enter') applyParams(); });
+});
+
+/* ---------- Init ---------- */
+buildSteps();
+const finalResult = steps.length > 0 ? steps[steps.length - 1].result : [];
+document.getElementById('answerVal').textContent = '[' + finalResult.join(', ') + ']';
+document.getElementById('answerBar').style.display = 'flex';
+render();
+</script>
+</body>
+</html>
