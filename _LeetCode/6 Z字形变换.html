@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LeetCode 6 · Z 字形变换可视化</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0b0b0f;
+            --surface: #13131a;
+            --surface-2: #1c1c26;
+            --surface-3: #252530;
+            --accent: #d4a843;
+            --accent-glow: rgba(212,168,67,.08);
+            --accent-dim: rgba(212,168,67,.15);
+            --text-bright: #f0ece4;
+            --text-primary: #c8c4bc;
+            --text-muted: #7a7670;
+            --success: #4ade80;
+            --success-bg: rgba(74,222,128,.1);
+            --fail: #f87171;
+            --fail-bg: rgba(248,113,113,.1);
+            --vowel: #e8c547;
+            --border: rgba(255,255,255,.06);
+            --down: #60a5fa;
+            --down-bg: rgba(96,165,250,.08);
+            --down-bd: rgba(96,165,250,.2);
+            --up: #c084fc;
+            --up-bg: rgba(192,132,252,.08);
+            --up-bd: rgba(192,132,252,.2);
+        }
+        *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+        body{background:var(--bg);color:var(--text-primary);font-family:'Noto Sans SC',sans-serif;line-height:1.8;min-height:100vh}
+        body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E");opacity:.03;pointer-events:none;z-index:0}
+        .container{max-width:880px;margin:0 auto;padding:3rem 2rem 5rem;position:relative;z-index:1}
+        .header{margin-bottom:2.5rem;animation:fadeUp .8s ease}
+        .tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.72rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);background:var(--accent-glow);border:1px solid rgba(212,168,67,.2);padding:.3em .9em;border-radius:2px;margin-bottom:1.2rem}
+        .header h1{font-family:'Noto Serif SC',serif;font-weight:700;font-size:2rem;color:var(--text-bright);line-height:1.3;margin-bottom:.8rem;letter-spacing:-.01em}
+        .header p{font-size:.93rem;color:var(--text-muted);max-width:640px;line-height:1.85}
+        .header code{font-family:'JetBrains Mono',monospace;font-size:.82em;background:var(--surface-2);padding:.12em .35em;border-radius:3px;color:var(--vowel)}
+        .section{margin-bottom:2.8rem;animation:fadeUp .8s ease both}
+        .section:nth-child(2){animation-delay:.08s}.section:nth-child(3){animation-delay:.16s}.section:nth-child(4){animation-delay:.24s}.section:nth-child(5){animation-delay:.32s}.section:nth-child(6){animation-delay:.4s}.section:nth-child(7){animation-delay:.48s}
+        .section-title{font-family:'Noto Serif SC',serif;font-size:1.25rem;font-weight:700;color:var(--text-bright);margin-bottom:1.2rem;display:flex;align-items:center;gap:.6rem}
+        .section-title .ico{font-size:1.1rem}
+        .card{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:1.5rem 1.8rem;margin-bottom:1rem}
+        .card h3{font-family:'Noto Serif SC',serif;font-size:1rem;color:var(--text-bright);margin-bottom:.8rem}
+        .card p,.card li{font-size:.9rem;color:var(--text-primary);line-height:1.9}
+        .card ul,.card ol{padding-left:1.2rem}
+        .card li{margin-bottom:.35rem}
+        .card code{font-family:'JetBrains Mono',monospace;font-size:.82em;background:var(--surface-2);padding:.12em .4em;border-radius:3px;color:var(--vowel)}
+        .hl{color:var(--accent);font-weight:500}.ok{color:var(--success)}.ng{color:var(--fail)}
+        .card-vis{background:var(--surface-2);border:1px solid var(--border);border-radius:6px;padding:1rem 1.4rem;margin-top:.8rem;font-family:'JetBrains Mono',monospace;font-size:.82rem;color:var(--text-primary);overflow-x:auto;white-space:pre;line-height:1.7}
+        .metaphor{background:linear-gradient(135deg,rgba(212,168,67,.05),rgba(212,168,67,.02));border-color:rgba(212,168,67,.12)}
+        .step-list{counter-reset:sc;list-style:none;padding:0}
+        .step-list li{counter-increment:sc;padding:.8rem 1rem .8rem 3rem;position:relative;font-size:.9rem;color:var(--text-primary);border-left:2px solid var(--border);margin-left:1rem}
+        .step-list li::before{content:counter(sc);position:absolute;left:-14px;top:.7rem;width:26px;height:26px;background:var(--accent);color:var(--bg);font-family:'JetBrains Mono',monospace;font-size:.75rem;font-weight:600;display:flex;align-items:center;justify-content:center;border-radius:50%}
+        .step-list li code{font-family:'JetBrains Mono',monospace;font-size:.82em;background:var(--surface-2);padding:.12em .4em;border-radius:3px;color:var(--vowel)}
+        .viz-wrap{background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+        .viz-head{padding:1rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem}
+        .viz-head-title{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--text-muted);letter-spacing:.05em;text-transform:uppercase}
+        .viz-head-step{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--accent)}
+        .viz-body{padding:1.5rem}
+        .params-editor{background:var(--surface-2);border:1px solid var(--border);border-radius:6px;padding:1.2rem 1.5rem;margin-bottom:1.5rem}
+        .params-editor-title{font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.8rem;display:flex;align-items:center;gap:.4em}
+        .params-row{display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end}
+        .param-group{display:flex;flex-direction:column;gap:.35rem;flex:1;min-width:140px}
+        .param-group.wide{flex:3;min-width:240px}
+        .param-label{font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--text-muted);letter-spacing:.04em}
+        .param-input{font-family:'JetBrains Mono',monospace;font-size:.85rem;background:var(--surface);color:var(--text-bright);border:1px solid var(--border);border-radius:4px;padding:.55em .8em;outline:none;transition:border-color .2s;width:100%}
+        .param-input:focus{border-color:var(--accent-dim)}.param-input.error{border-color:var(--fail)}
+        .param-hint{font-family:'JetBrains Mono',monospace;font-size:.65rem;color:var(--text-muted);line-height:1.4}
+        .param-hint.err{color:var(--fail)}
+        .btn-run{font-family:'JetBrains Mono',monospace;font-size:.78rem;font-weight:600;padding:.6em 1.6em;border:1px solid var(--accent-dim);border-radius:4px;background:var(--accent-glow);color:var(--accent);cursor:pointer;transition:all .2s;white-space:nowrap}
+        .btn-run:hover{background:var(--accent-dim)}.btn-run:active{transform:scale(.97)}
+        .btn-preset{font-family:'JetBrains Mono',monospace;font-size:.72rem;font-weight:500;padding:.45em .9em;border:1px solid var(--border);border-radius:3px;background:var(--surface);color:var(--text-muted);cursor:pointer;transition:all .2s;white-space:nowrap}
+        .btn-preset:hover{border-color:var(--accent-dim);color:var(--text-primary)}
+        .presets-row{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.8rem}
+        .params{display:flex;gap:1.5rem;margin-bottom:1.2rem;flex-wrap:wrap}
+        .prm{display:flex;align-items:center;gap:.5rem;font-size:.82rem}
+        .prm-l{font-family:'JetBrains Mono',monospace;color:var(--text-muted);font-size:.75rem}
+        .prm-v{font-family:'JetBrains Mono',monospace;color:var(--text-bright);background:var(--surface-2);padding:.2em .6em;border-radius:3px;font-weight:500}
+        .str-scroll{overflow-x:auto;overflow-y:hidden;padding:.5rem 0;margin-bottom:.8rem;scrollbar-width:thin;scrollbar-color:var(--surface-3) var(--surface)}
+        .str-scroll::-webkit-scrollbar{height:6px}.str-scroll::-webkit-scrollbar-track{background:var(--surface);border-radius:3px}.str-scroll::-webkit-scrollbar-thumb{background:var(--surface-3);border-radius:3px}
+        .str-inner{display:inline-flex;flex-direction:column;align-items:center;min-width:100%;padding:0 1rem}
+        .el-row{display:flex;gap:6px}
+        .el{width:44px;height:44px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:1rem;font-weight:600;color:var(--text-bright);background:var(--surface-2);border:2px solid var(--border);border-radius:6px;transition:all .35s ease;flex-shrink:0}
+        .el.active{border-color:var(--accent);background:var(--accent-glow);color:var(--accent);transform:translateY(-2px);box-shadow:0 4px 12px rgba(212,168,67,.15)}
+        .el.done{border-color:rgba(74,222,128,.2);background:rgba(74,222,128,.05);color:var(--success)}
+        .idx-row{display:flex;gap:6px;margin-top:4px}
+        .idx-c{width:44px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:.65rem;color:var(--text-muted);flex-shrink:0}
+        .dir-section{display:flex;align-items:center;gap:1rem;margin-bottom:1rem;flex-wrap:wrap;padding:.6rem 1rem;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:.82rem}
+        .dir-label{font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em}
+        .dir-badge{display:inline-flex;align-items:center;gap:.4em;padding:.3em .8em;border-radius:4px;font-weight:600;font-size:.85rem}
+        .dir-badge.down{color:var(--down);background:var(--down-bg);border:1px solid var(--down-bd)}
+        .dir-badge.up{color:var(--up);background:var(--up-bg);border:1px solid var(--up-bd)}
+        .dir-badge.flat{color:var(--text-muted);background:var(--surface-3);border:1px solid var(--border)}
+        .dir-chr{color:var(--text-bright)}.dir-chr code{background:var(--surface-3);padding:.1em .4em;border-radius:3px;color:var(--accent)}
+        .dir-change{color:var(--accent);font-size:.75rem;font-weight:500}
+        .zz-scroll{overflow-x:auto;overflow-y:hidden;padding:.5rem 0;margin-bottom:1rem;scrollbar-width:thin;scrollbar-color:var(--surface-3) var(--surface)}
+        .zz-scroll::-webkit-scrollbar{height:6px}.zz-scroll::-webkit-scrollbar-track{background:var(--surface);border-radius:3px}.zz-scroll::-webkit-scrollbar-thumb{background:var(--surface-3);border-radius:3px}
+        .zz-grid{display:grid;gap:5px;width:fit-content;padding:0 .5rem}
+        .zz-cell{width:44px;height:44px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:.95rem;font-weight:600;border-radius:6px;transition:all .35s ease;flex-shrink:0}
+        .zz-cell.empty{background:transparent;border:1px dashed rgba(255,255,255,.03)}
+        .zz-cell.placed{background:var(--surface-2);border:2px solid var(--border);color:var(--text-primary)}
+        .zz-cell.current{background:var(--accent-glow);border:2px solid var(--accent);color:var(--accent);box-shadow:0 0 14px rgba(212,168,67,.2);animation:popIn .35s ease}
+        .row-str-section{margin-bottom:1rem}
+        .row-str-title{font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.6rem}
+        .row-str-list{display:flex;flex-direction:column;gap:.4rem}
+        .row-str-item{display:flex;align-items:center;gap:.8rem;padding:.5rem .8rem;background:var(--surface-2);border:1px solid var(--border);border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:.82rem;overflow:hidden}
+        .row-str-item.hl{border-color:var(--accent-dim);background:rgba(212,168,67,.03)}
+        .row-str-label{color:var(--text-muted);font-size:.72rem;min-width:3.5em;flex-shrink:0}
+        .row-str-chars{display:flex;gap:3px;flex-wrap:nowrap;overflow-x:auto;min-width:0;flex:1}
+        .rsc{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;background:var(--surface-3);border:1px solid var(--border);border-radius:3px;color:var(--text-bright);font-weight:500;font-size:.78rem;transition:all .3s ease;flex-shrink:0}
+        .rsc.new{background:var(--accent-glow);border-color:var(--accent-dim);color:var(--accent);animation:popIn .3s ease}
+        .row-str-val{margin-left:auto;color:var(--text-bright);font-weight:500;font-size:.82rem;flex-shrink:0}
+        .info-panel{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:.8rem;margin-top:1rem;padding:1.2rem;background:var(--surface-2);border-radius:6px;border:1px solid var(--border)}
+        .info-it{display:flex;flex-direction:column;gap:.25rem}
+        .info-l{font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em}
+        .info-v{font-family:'JetBrains Mono',monospace;font-size:.95rem;font-weight:600;color:var(--text-bright)}
+        .info-v.ok{color:var(--success)}.info-v.accent{color:var(--accent)}
+        .answer-bar{margin-top:1rem;padding:.8rem 1.2rem;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:.9rem;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
+        .answer-bar .lbl{color:var(--text-muted);font-size:.78rem}
+        .answer-bar .val{color:var(--accent);font-weight:700;font-size:1.1rem}
+        .ctrls{display:flex;gap:.6rem;margin-top:1.2rem;flex-wrap:wrap}
+        .btn{font-family:'JetBrains Mono',monospace;font-size:.78rem;font-weight:500;padding:.55em 1.2em;border:1px solid var(--border);border-radius:4px;background:var(--surface-2);color:var(--text-primary);cursor:pointer;transition:all .2s ease;display:flex;align-items:center;gap:.4em}
+        .btn:hover{border-color:var(--accent-dim);color:var(--text-bright);background:var(--surface-3)}
+        .btn:active{transform:scale(.97)}
+        .btn.primary{border-color:var(--accent-dim);color:var(--accent);background:var(--accent-glow)}
+        .btn.primary:hover{background:var(--accent-dim)}
+        .btn:disabled{opacity:.35;cursor:not-allowed}
+        .btn:disabled:hover{border-color:var(--border);color:var(--text-primary);background:var(--surface-2)}
+        .speed-sel{font-family:'JetBrains Mono',monospace;font-size:.78rem;background:var(--surface-2);color:var(--text-primary);border:1px solid var(--border);border-radius:4px;padding:.5em .8em;cursor:pointer;outline:none}
+        .speed-sel:hover{border-color:var(--accent-dim)}
+        .log-sec{margin-top:1.2rem}
+        .log-title{font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.6rem}
+        .log-box{max-height:210px;overflow-y:auto;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;padding:.6rem;scrollbar-width:thin;scrollbar-color:var(--surface-3) var(--surface-2)}
+        .log-box::-webkit-scrollbar{width:5px}.log-box::-webkit-scrollbar-track{background:var(--surface-2)}.log-box::-webkit-scrollbar-thumb{background:var(--surface-3);border-radius:3px}
+        .log-e{font-family:'JetBrains Mono',monospace;font-size:.72rem;padding:.35em .6em;border-radius:3px;margin-bottom:2px;color:var(--text-muted);display:flex;align-items:center;gap:.5em;transition:all .2s;flex-wrap:wrap}
+        .log-e.visited{color:var(--text-primary)}.log-e.active{background:var(--surface-3);color:var(--text-bright)}
+        .log-e .ls{color:var(--accent);font-weight:600;min-width:2em}.log-e .lc{color:var(--text-bright);font-weight:500}.log-e .lp{color:var(--text-muted)}.log-e .ld{font-weight:500}.log-e .ld.down{color:var(--down)}.log-e .ld.up{color:var(--up)}.log-e .ld.flat{color:var(--text-muted)}
+        .log-e .lchange{color:var(--accent);font-size:.68rem}
+        .log-empty{font-family:'JetBrains Mono',monospace;font-size:.8rem;color:var(--text-muted);text-align:center;padding:1.5rem}
+        .code-blk{background:var(--surface);border:1px solid var(--border);border-radius:6px;overflow:hidden}
+        .code-hd{padding:.6rem 1rem;border-bottom:1px solid var(--border);font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--text-muted);display:flex;align-items:center;gap:.5rem}
+        .code-hd .dot{width:8px;height:8px;border-radius:50%}
+        .code-hd .dot:nth-child(1){background:#ff5f56}.code-hd .dot:nth-child(2){background:#ffbd2e}.code-hd .dot:nth-child(3){background:#27c93f}
+        .pre-code{padding:1.2rem 1.5rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.82rem;line-height:1.85;color:var(--text-primary);tab-size:4}
+        .kw{color:#c792ea}.fn{color:#82aaff}.str{color:#c3e88d}.num{color:#f78c6c}.cmt{color:#546e7a;font-style:italic}.op{color:#89ddff}.vr{color:#f0ece4}.dc{color:#ffcb6b}
+        .cx-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+        .cx-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:1.2rem 1.5rem}
+        .cx-card h4{font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.6rem}
+        .cx-card .val{font-family:'JetBrains Mono',monospace;font-size:1.4rem;font-weight:700;color:var(--accent)}
+        .cx-card p{font-size:.85rem;color:var(--text-muted);margin-top:.5rem;line-height:1.7}
+        @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes popIn{0%{transform:scale(.5);opacity:0}70%{transform:scale(1.1)}100%{transform:scale(1);opacity:1}}
+        @media(max-width:640px){.container{padding:2rem 1rem 3rem}.header h1{font-size:1.5rem}.cx-grid{grid-template-columns:1fr}.info-panel{grid-template-columns:1fr 1fr}.params-row{flex-direction:column}.param-group,.param-group.wide{min-width:100%}.btn-run{width:100%;justify-content:center}}
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <div class="header">
+        <div class="tag">LeetCode 6 · 模拟 · Medium</div>
+        <h1>Z 字形变换</h1>
+        <p>将一个给定字符串 <code>s</code> 根据给定的行数 <code>numRows</code>，以从上往下、从左到右进行 Z 字形排列，然后逐行读取得到新字符串。</p>
+    </div>
+
+    <div class="section">
+        <h2 class="section-title"><span class="ico">📋</span>题意解读</h2>
+        <div class="card">
+            <h3>简单来说，这道题在问什么？</h3>
+            <p>想象你有一根绳子（字符串），要把上面的字符按 <strong>Z 字形</strong>排列成多行：</p>
+            <div class="card-vis">s = "PAYPALISHIRING", numRows = 3
+
+排列成 Z 字形：
+P   A   H   N        ← 第 0 行
+A P L S I I G        ← 第 1 行
+Y   I   R            ← 第 2 行
+
+然后从上到下、从左到右逐行读取：
+→ "PAHN" + "APLSIIG" + "YIR" = "PAHNAPLSIIGYIR"</div>
+            <p style="margin-top:.8rem">就像蛇形走楼梯：<span class="hl">先往下走到底，再斜着往上走回来，如此反复</span>。最后把每一行的字符拼起来。</p>
+        </div>
+        <div class="card metaphor">
+            <h3>生活类比</h3>
+            <p>想象你在一面墙上按 Z 字形挂照片：</p>
+            <ul>
+                <li>先从最上面一排<strong>往下</strong>挂</li>
+                <li>挂到最底下后，<strong>斜着往上</strong>挂回来</li>
+                <li>到了最上面再<strong>往下</strong>挂……</li>
+                <li>挂完后，按<strong>每一行从左到右</strong>的顺序读出照片编号</li>
+            </ul>
+        </div>
+        <div class="card">
+            <h3>更多示例</h3>
+            <p><strong>示例 2：</strong><code>s = "PAYPALISHIRING"</code>，<code>numRows = 4</code></p>
+            <div class="card-vis">P     I    N        ← 第 0 行
+A   L S  I G        ← 第 1 行
+Y A   H R           ← 第 2 行
+P     I             ← 第 3 行
+
+结果: "PINALSIGYAHRPI"</div>
+            <p style="margin-top:.6rem"><strong>示例 3：</strong><code>s = "A"</code>，<code>numRows = 1</code> → 直接返回 <code>"A"</code>（只有一行，不需要排列）</p>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2 class="section-title"><span class="ico">🔍</span>为什么用"模拟"而不是其他算法？</h2>
+        <div class="card">
+            <h3>为什么不用滑动窗口 / 动态规划 / DFS？</h3>
+            <ul>
+                <li><strong>滑动窗口</strong>：适合找满足某种条件的连续子数组/子串，但这道题不是在"找"，而是在"排列"</li>
+                <li><strong>动态规划</strong>：适合有重叠子问题的最优化问题，这里没有最优解的概念</li>
+                <li><strong>DFS / 回溯</strong>：适合搜索所有可能路径，这里路径是固定的</li>
+                <li><strong>双指针</strong>：适合在有序数据中搜索，这里不涉及查找</li>
+            </ul>
+            <p style="margin-top:.6rem">这道题的核心是<span class="hl">按规则把字符放到对应行</span>，最直接的方法就是<strong>模拟</strong>这个过程——用一个变量跟踪"当前行"和"方向"，逐字符放置。</p>
+        </div>
+        <div class="card metaphor">
+            <h3>核心思路</h3>
+            <p>准备 <code>numRows</code> 个"篮子"（字符串），然后沿着 Z 字形路径走：</p>
+            <ul>
+                <li>每走一步，把当前字符<strong>扔进当前行的篮子</strong></li>
+                <li>走到最底下 → <strong>调头向上</strong></li>
+                <li>走到最上面 → <strong>调头向下</strong></li>
+                <li>走完后，把所有篮子的字符<strong>按顺序拼接</strong>起来</li>
+            </ul>
+            <p style="margin-top:.6rem">关键：只需要 <code>numRows</code> 个字符串 + 一个方向变量，<span class="hl">一次遍历就能完成</span>。</p>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2 class="section-title"><span class="ico">🎯</span>Z 字形 · 逐字符放置可视化</h2>
+        <div class="viz-wrap">
+            <div class="viz-head">
+                <span class="viz-head-title">Zigzag Conversion Visualization</span>
+                <span class="viz-head-step" id="stepInd">Step 0 / 0</span>
+            </div>
+            <div class="viz-body">
+                <div class="params-editor">
+                    <div class="params-editor-title"><span>⚙</span> 修改入参</div>
+                    <div class="params-row">
+                        <div class="param-group wide">
+                            <label class="param-label">s（输入字符串）</label>
+                            <input type="text" class="param-input" id="inputS" value="PAYPALISHIRING" spellcheck="false">
+                            <span class="param-hint" id="hintS">输入字符串，如 PAYPALISHIRING</span>
+                        </div>
+                        <div class="param-group">
+                            <label class="param-label">numRows（行数）</label>
+                            <input type="text" class="param-input" id="inputRows" value="3" spellcheck="false">
+                            <span class="param-hint" id="hintRows">≥ 1 的整数</span>
+                        </div>
+                    </div>
+                    <div class="presets-row">
+                        <button class="btn-preset" onclick="applyPreset('PAYPALISHIRING',3)">默认示例</button>
+                        <button class="btn-preset" onclick="applyPreset('PAYPALISHIRING',4)">numRows=4</button>
+                        <button class="btn-preset" onclick="applyPreset('ABCD',2)">短字符串</button>
+                        <button class="btn-preset" onclick="applyPreset('ABCDEF',1)">单行(无变换)</button>
+                        <button class="btn-preset" onclick="applyPreset('ABCDEFGHIJKLMNOPQRSTUVWXYZ',5)">长字符串</button>
+                    </div>
+                    <div style="margin-top:.8rem">
+                        <button class="btn-run" onclick="applyParams()">▶ 运行可视化</button>
+                    </div>
+                </div>
+
+                <div class="params" id="paramsDisplay">
+                    <div class="prm"><span class="prm-l">s</span><span class="prm-v" id="dispS">"PAYPALISHIRING"</span></div>
+                    <div class="prm"><span class="prm-l">numRows</span><span class="prm-v" id="dispRows">3</span></div>
+                </div>
+
+                <div class="str-scroll" id="strScroll">
+                    <div class="str-inner" id="strInner">
+                        <div class="el-row" id="strRow"></div>
+                        <div class="idx-row" id="strIdxRow"></div>
+                    </div>
+                </div>
+
+                <div class="dir-section" id="dirSection"></div>
+
+                <div class="zz-scroll" id="zzScroll">
+                    <div class="zz-grid" id="zzGrid"></div>
+                </div>
+
+                <div class="row-str-section" id="rowStrSection"></div>
+
+                <div class="info-panel" id="infoPanel"></div>
+
+                <div class="answer-bar" id="answerBar" style="display:none">
+                    <span class="lbl">最终结果 →</span>
+                    <span class="val" id="answerVal"></span>
+                </div>
+
+                <div class="ctrls">
+                    <button class="btn" id="btnReset" onclick="doReset()">↺ 重置</button>
+                    <button class="btn" id="btnPrev" onclick="doPrev()">◀ 上一步</button>
+                    <button class="btn" id="btnNext" onclick="doNext()">下一步 ▶</button>
+                    <button class="btn primary" id="btnAuto" onclick="doAuto()">▶ 自动播放</button>
+                    <select class="speed-sel" id="speedSel" onchange="updateSpeed()">
+                        <option value="2000">慢速</option>
+                        <option value="1000" selected>正常</option>
+                        <option value="500">快速</option>
+                        <option value="250">极速</option>
+                    </select>
+                </div>
+
+                <div class="log-sec">
+                    <div class="log-title">操作日志</div>
+                    <div class="log-box" id="logBox">
+                        <div class="log-empty">点击「运行可视化」开始演示</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2 class="section-title"><span class="ico">📐</span>算法具体步骤</h2>
+        <div class="card">
+            <ol class="step-list">
+                <li><strong>边界判断：</strong>如果 <code>numRows == 1</code> 或 <code>numRows >= len(s)</code>，直接返回原字符串（不需要 Z 字形排列）。</li>
+                <li><strong>准备篮子：</strong>创建 <code>numRows</code> 个空字符串 <code>rows</code>，用来存放每一行的字符。</li>
+                <li><strong>初始化方向：</strong>设当前行 <code>cur_row = 0</code>，方向 <code>direction = 1</code>（1=向下走，-1=向上走）。</li>
+                <li><strong>逐字符放置：</strong>遍历字符串中的每个字符：
+                    <ul style="margin-top:.4rem">
+                        <li>把当前字符追加到 <code>rows[cur_row]</code></li>
+                        <li>如果 <code>cur_row == 0</code>：到顶了，方向改为向下（<code>direction = 1</code>）</li>
+                        <li>如果 <code>cur_row == numRows - 1</code>：到底了，方向改为向上（<code>direction = -1</code>）</li>
+                        <li><code>cur_row += direction</code>（沿方向移动到下一行）</li>
+                    </ul>
+                </li>
+                <li><strong>拼接结果：</strong>把所有行的字符串拼起来 <code>''.join(rows)</code>，返回。</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2 class="section-title"><span class="ico">💻</span>代码实现（Python）</h2>
+        <div class="code-blk">
+            <div class="code-hd">
+                <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                <span style="margin-left:.5rem">solution.py</span>
+            </div>
+            <pre class="pre-code"><span class="kw">class</span> <span class="dc">Solution</span>:
+    <span class="kw">def</span> <span class="fn">convert</span>(<span class="vr">self</span>, <span class="vr">s</span>: <span class="dc">str</span>, <span class="vr">numRows</span>: <span class="dc">int</span>) <span class="op">-></span> <span class="dc">str</span>:
+        <span class="cmt"># 边界情况：只有一行或行数 ≥ 字符串长度，无需变换</span>
+        <span class="kw">if</span> <span class="vr">numRows</span> <span class="op">==</span> <span class="num">1</span> <span class="kw">or</span> <span class="vr">numRows</span> <span class="op">>=</span> <span class="fn">len</span>(<span class="vr">s</span>):
+            <span class="kw">return</span> <span class="vr">s</span>
+
+        <span class="cmt"># 创建 numRows 个空字符串，每行一个"篮子"</span>
+        <span class="vr">rows</span> <span class="op">=</span> [<span class="str">''</span>] <span class="op">*</span> <span class="vr">numRows</span>
+        <span class="vr">cur_row</span> <span class="op">=</span> <span class="num">0</span>
+        <span class="vr">direction</span> <span class="op">=</span> <span class="num">1</span>  <span class="cmt"># 1 = 向下, -1 = 向上</span>
+
+        <span class="cmt"># 遍历每个字符，按 Z 字形路径放入对应行</span>
+        <span class="kw">for</span> <span class="vr">c</span> <span class="kw">in</span> <span class="vr">s</span>:
+            <span class="vr">rows</span>[<span class="vr">cur_row</span>] <span class="op">+=</span> <span class="vr">c</span>
+
+            <span class="cmt"># 到达顶部或底部时调头</span>
+            <span class="kw">if</span> <span class="vr">cur_row</span> <span class="op">==</span> <span class="num">0</span>:
+                <span class="vr">direction</span> <span class="op">=</span> <span class="num">1</span>
+            <span class="kw">elif</span> <span class="vr">cur_row</span> <span class="op">==</span> <span class="vr">numRows</span> <span class="op">-</span> <span class="num">1</span>:
+                <span class="vr">direction</span> <span class="op">=</span> <span class="op">-</span><span class="num">1</span>
+
+            <span class="vr">cur_row</span> <span class="op">+=</span> <span class="vr">direction</span>
+
+        <span class="cmt"># 拼接所有行</span>
+        <span class="kw">return</span> <span class="str">''</span>.<span class="fn">join</span>(<span class="vr">rows</span>)</pre>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2 class="section-title"><span class="ico">📊</span>复杂度分析</h2>
+        <div class="cx-grid">
+            <div class="cx-card">
+                <h4>时间复杂度</h4>
+                <div class="val">O(n)</div>
+                <p>只遍历了一遍字符串（n 个字符），每个字符处理 O(1)。最后拼接 rows 也是 O(n)。总计 O(n)。</p>
+            </div>
+            <div class="cx-card">
+                <h4>空间复杂度</h4>
+                <div class="val">O(n)</div>
+                <p>需要 numRows 个字符串来存储所有字符，总字符数为 n，所以额外空间为 O(n)。</p>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+/* ==================== STATE ==================== */
+let s = 'PAYPALISHIRING';
+let numRows = 3;
+let positions = [];
+let arrivalDirs = [];
+let maxCol = 0;
+let steps = [];
+let cur = 0;
+let playing = false;
+let timer = null;
+let speed = 1000;
+
+/* ==================== BUILD DATA ==================== */
+function buildData() {
+    const n = s.length;
+    positions = [];
+    arrivalDirs = [];
+    if (n === 0) { steps = []; maxCol = 0; return; }
+
+    let nr = numRows;
+
+    if (nr <= 1) {
+        for (let i = 0; i < n; i++) {
+            positions.push({ char: s[i], row: 0, col: i, index: i });
+            arrivalDirs.push(0);
+        }
+        maxCol = n - 1;
+        nr = 1;
+    } else {
+        let row = 0, col = 0, dir = 1;
+        for (let i = 0; i < n; i++) {
+            positions.push({ char: s[i], row, col, index: i });
+            arrivalDirs.push(dir);
+            if (dir === 1) {
+                if (row === nr - 1) { dir = -1; row--; col++; }
+                else { row++; }
+            } else {
+                if (row === 0) { dir = 1; row++; }
+                else { row--; col++; }
+            }
+        }
+        maxCol = Math.max(...positions.map(p => p.col));
+    }
+    numRows = nr;
+
+    steps = [];
+    for (let i = 0; i < n; i++) {
+        const placed = positions.slice(0, i + 1);
+        const rowStrings = [];
+        for (let r = 0; r < numRows; r++) {
+            rowStrings.push(placed.filter(p => p.row === r).map(p => p.char).join(''));
+        }
+        let dirChange = '';
+        if (i < n - 1 && arrivalDirs[i] !== arrivalDirs[i + 1]) {
+            dirChange = arrivalDirs[i] === 1 ? '到达底部，切换为 ↑上行' : '到达顶部，切换为 ↓下行';
+        }
+        steps.push({ placed, rowStrings, dir: arrivalDirs[i], curChar: positions[i], result: rowStrings.join(''), dirChange });
+    }
+}
+
+/* ==================== RENDER ==================== */
+function render() {
+    if (!steps.length) return;
+    renderStepInd(); renderInputStr(); renderDirection();
+    renderGrid(); renderRowStr(); renderInfo();
+    renderLog(); renderControls(); renderAnswer();
+}
+
+function renderStepInd() {
+    document.getElementById('stepInd').textContent = `Step ${cur + 1} / ${steps.length}`;
+}
+
+function renderInputStr() {
+    const strRow = document.getElementById('strRow');
+    const strIdxRow = document.getElementById('strIdxRow');
+    strRow.innerHTML = ''; strIdxRow.innerHTML = '';
+    const step = steps[cur];
+    const placedSet = new Set(step.placed.map(p => p.index));
+    for (let i = 0; i < s.length; i++) {
+        const el = document.createElement('div');
+        el.className = 'el';
+        el.textContent = s[i];
+        if (i === step.curChar.index) el.classList.add('active');
+        else if (placedSet.has(i)) el.classList.add('done');
+        strRow.appendChild(el);
+        const ic = document.createElement('div');
+        ic.className = 'idx-c';
+        ic.textContent = i;
+        strIdxRow.appendChild(ic);
+    }
+    scrollToEl(document.getElementById('strScroll'), strRow.children[step.curChar.index]);
+}
+
+function renderDirection() {
+    const sec = document.getElementById('dirSection');
+    const step = steps[cur];
+    const d = step.dir;
+    let cls, txt, arrow;
+    if (d === 1) { cls = 'down'; txt = '下行'; arrow = '↓'; }
+    else if (d === -1) { cls = 'up'; txt = '上行'; arrow = '↑'; }
+    else { cls = 'flat'; txt = '水平'; arrow = '→'; }
+    let h = `<span class="dir-label">移动方向</span><span class="dir-badge ${cls}">${arrow} ${txt}</span>`;
+    h += `<span class="dir-chr">放置 <code>'${step.curChar.char}'</code> → Row ${step.curChar.row}</span>`;
+    if (step.dirChange) h += `<span class="dir-change">⚡ ${step.dirChange}</span>`;
+    sec.innerHTML = h;
+}
+
+function renderGrid() {
+    const grid = document.getElementById('zzGrid');
+    const scroll = document.getElementById('zzScroll');
+    grid.innerHTML = '';
+    const nr = numRows, mc = maxCol;
+    const step = steps[cur];
+    const gridRows = Math.min(nr, s.length);
+    grid.style.gridTemplateRows = `repeat(${gridRows}, 44px)`;
+    grid.style.gridTemplateColumns = `repeat(${mc + 1}, 44px)`;
+    const pMap = {};
+    for (const p of step.placed) pMap[p.row + ',' + p.col] = p;
+    for (let r = 0; r < gridRows; r++) {
+        for (let c = 0; c <= mc; c++) {
+            const cell = document.createElement('div');
+            cell.className = 'zz-cell';
+            cell.style.gridRow = r + 1;
+            cell.style.gridColumn = c + 1;
+            const k = r + ',' + c;
+            if (pMap[k]) {
+                const p = pMap[k];
+                cell.classList.add(p.index === step.curChar.index ? 'current' : 'placed');
+                cell.textContent = p.char;
+            } else {
+                cell.classList.add('empty');
+            }
+            grid.appendChild(cell);
+        }
+    }
+    const cc = grid.querySelector('.current');
+    if (cc) scrollToEl(scroll, cc);
+}
+
+function renderRowStr() {
+    const sec = document.getElementById('rowStrSection');
+    const step = steps[cur];
+    let h = '<div class="row-str-title">各行累积字符串</div><div class="row-str-list">';
+    for (let r = 0; r < numRows; r++) {
+        const rc = step.placed.filter(p => p.row === r);
+        const isHl = step.curChar.row === r;
+        h += `<div class="row-str-item ${isHl ? 'hl' : ''}">`;
+        h += `<span class="row-str-label">Row ${r}</span><div class="row-str-chars">`;
+        for (const p of rc) {
+            h += `<span class="rsc ${p.index === step.curChar.index ? 'new' : ''}">${p.char}</span>`;
+        }
+        h += `</div><span class="row-str-val">"${step.rowStrings[r]}"</span></div>`;
+    }
+    h += '</div>';
+    sec.innerHTML = h;
+}
+
+function renderInfo() {
+    const ip = document.getElementById('infoPanel');
+    const step = steps[cur];
+    const cc = step.curChar;
+    const dt = step.dir === 1 ? '↓ 下行' : step.dir === -1 ? '↑ 上行' : '→ 水平';
+    ip.innerHTML = `
+        <div class="info-it"><span class="info-l">当前字符</span><span class="info-v">'${cc.char}'</span></div>
+        <div class="info-it"><span class="info-l">字符索引</span><span class="info-v">${cc.index}</span></div>
+        <div class="info-it"><span class="info-l">放置位置</span><span class="info-v">R${cc.row} C${cc.col}</span></div>
+        <div class="info-it"><span class="info-l">方向</span><span class="info-v accent">${dt}</span></div>
+        <div class="info-it"><span class="info-l">进度</span><span class="info-v accent">${cur + 1} / ${steps.length}</span></div>`;
+}
+
+function renderLog() {
+    const box = document.getElementById('logBox');
+    box.innerHTML = '';
+    for (let i = 0; i < steps.length; i++) {
+        const st = steps[i];
+        const d = document.createElement('div');
+        d.className = 'log-e';
+        if (i < cur) d.classList.add('visited');
+        if (i === cur) d.classList.add('active');
+        const dc = st.dir === 1 ? 'down' : st.dir === -1 ? 'up' : 'flat';
+        const da = st.dir === 1 ? '↓' : st.dir === -1 ? '↑' : '→';
+        d.innerHTML = `<span class="ls">#${i + 1}</span><span class="lc">'${st.curChar.char}'</span><span class="lp">→ Row ${st.curChar.row}, Col ${st.curChar.col}</span><span class="ld ${dc}">${da}</span>${st.dirChange ? '<span class="lchange">' + st.dirChange + '</span>' : ''}`;
+        box.appendChild(d);
+    }
+    const act = box.querySelector('.active');
+    if (act) act.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
+function renderControls() {
+    document.getElementById('btnPrev').disabled = cur <= 0;
+    document.getElementById('btnNext').disabled = cur >= steps.length - 1;
+}
+
+function renderAnswer() {
+    const bar = document.getElementById('answerBar');
+    if (cur === steps.length - 1) {
+        bar.style.display = 'flex';
+        document.getElementById('answerVal').textContent = '"' + steps[cur].result + '"';
+    } else {
+        bar.style.display = 'none';
+    }
+}
+
+/* ==================== HELPERS ==================== */
+function scrollToEl(container, target) {
+    if (!target) return;
+    const l = target.offsetLeft, r = l + target.offsetWidth, w = container.clientWidth;
+    if (r > container.scrollLeft + w) container.scrollLeft = r - w + 20;
+    else if (l < container.scrollLeft) container.scrollLeft = l - 20;
+}
+
+/* ==================== NAVIGATION ==================== */
+function doNext() { if (cur < steps.length - 1) { cur++; render(); } }
+function doPrev() { if (cur > 0) { cur--; render(); } }
+function doReset() {
+    stopAuto(); cur = 0; render();
+    document.getElementById('strScroll').scrollTo({ left: 0, behavior: 'smooth' });
+    document.getElementById('zzScroll').scrollTo({ left: 0, behavior: 'smooth' });
+}
+function doAuto() {
+    if (playing) { stopAuto(); return; }
+    if (!steps.length) return;
+    if (cur >= steps.length - 1) { cur = 0; render(); }
+    playing = true;
+    document.getElementById('btnAuto').textContent = '⏸ 暂停';
+    document.getElementById('btnAuto').classList.remove('primary');
+    timer = setInterval(() => { if (cur < steps.length - 1) doNext(); else stopAuto(); }, speed);
+}
+function stopAuto() {
+    playing = false;
+    document.getElementById('btnAuto').textContent = '▶ 自动播放';
+    document.getElementById('btnAuto').classList.add('primary');
+    if (timer) { clearInterval(timer); timer = null; }
+}
+function updateSpeed() {
+    speed = Number(document.getElementById('speedSel').value);
+    if (playing) { stopAuto(); doAuto(); }
+}
+
+/* ==================== PARAMS ==================== */
+function applyParams() {
+    const sIn = document.getElementById('inputS').value.trim();
+    const rIn = document.getElementById('inputRows').value.trim();
+    const hS = document.getElementById('hintS'), hR = document.getElementById('hintRows');
+    const eS = document.getElementById('inputS'), eR = document.getElementById('inputRows');
+    [eS, eR].forEach(e => e.classList.remove('error'));
+    [hS, hR].forEach(e => e.classList.remove('err'));
+    if (!sIn) { eS.classList.add('error'); hS.classList.add('err'); hS.textContent = '✗ 请输入非空字符串'; return; }
+    const rVal = Number(rIn);
+    if (!Number.isFinite(rVal) || rVal < 1 || !Number.isInteger(rVal)) {
+        eR.classList.add('error'); hR.classList.add('err'); hR.textContent = '✗ 请输入 ≥1 的整数'; return;
+    }
+    stopAuto(); s = sIn; numRows = rVal; cur = 0; buildData();
+    document.getElementById('dispS').textContent = '"' + s + '"';
+    document.getElementById('dispRows').textContent = numRows;
+    render();
+}
+function applyPreset(pS, pR) {
+    document.getElementById('inputS').value = pS;
+    document.getElementById('inputRows').value = pR;
+    applyParams();
+}
+
+/* ==================== KEYBOARD ==================== */
+document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT') return;
+    if (e.key === 'ArrowRight') doNext();
+    if (e.key === 'ArrowLeft') doPrev();
+    if (e.key === ' ') { e.preventDefault(); doAuto(); }
+    if (e.key === 'r' || e.key === 'R') doReset();
+});
+document.querySelectorAll('.param-input').forEach(el => {
+    el.addEventListener('keydown', e => { if (e.key === 'Enter') applyParams(); });
+});
+
+/* ==================== INIT ==================== */
+buildData();
+render();
+</script>
+</body>
+</html>
