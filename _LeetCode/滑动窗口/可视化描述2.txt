@@ -1,0 +1,780 @@
+我有以下需求：
+1.通俗直白地讲解LeetCode算法题
+1.1 题目：`2461. 长度为 K 子数组中的最大和`
+1.2 要求用容易理解的语言解释题意、思路和解法（避免过于抽象的术语）。
+2.重点说明解题过程
+2.1 解释为什么可以使用这种算法（`滑动窗口（指针或双指针）、回溯、DFS、动态规划等等`
+2.2 涉及指针移动时的逻辑变化的，标注指针变化（左指针、右指针如何移动）
+3.可视化演示（HTML），编写一个简单的 HTML 示例页面，用来演示：
+3.1 字符串或数组或者其他数据结构的变化过程
+3.2 字符串或数组、队列等的下标、滑动窗口（左右指针）等位置变化
+3.3 每一步中字符或其他数据结构的变化
+3.4 `字符串 · 滑动窗口可视化`部分，在输入参数（参数可编辑）字符串过多的时候，不换行，解决两个指针显示会超过窗口，导致看不见问题
+4.演示要求
+4.1 用直观方式展示（例如高亮当前窗口）
+4.2 随着指针移动，实时展示字符串状态变化
+4.3 最好有“上一步”、“下一步”、“自动播放”、“重置”等按钮逐步演示过程，并且参数可修改编辑
+4.4 添加每一步的操作日志记录
+5.算法解析模块包含
+5.1 解释一下为什么使用滑动窗口或其他算法，以及如何使用
+5.2 具体步骤：给出该算法具体步骤
+5.2 示例代码使用Python代码
+5.3 给出时间空间复杂度分析情况和结果
+
+参考一下html的布局和样式风格要求：
+```html
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LeetCode 1456 · 定长子串中元音的最大数目</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500;700&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+        :root{
+            --bg:#08080f;--surface:#111827;--surface-2:#1a2234;--border:#1e293b;
+            --accent:#d4a843;--accent-glow:rgba(212,168,67,.18);
+            --vowel:#34d399;--vowel-bg:rgba(52,211,153,.1);
+            --consonant:#94a3b8;--consonant-bg:rgba(148,163,184,.05);
+            --window-bg:rgba(212,168,67,.06);--window-border:rgba(212,168,67,.5);
+            --left-ptr:#a3e635;--right-ptr:#fb923c;
+            --removed:#f87171;--added:#38bdf8;
+            --text:#e2e8f0;--text-muted:#64748b;--text-bright:#f8fafc;
+            --cell-sz:54px;--cell-gap:8px;
+        }
+        body{
+            background:var(--bg);color:var(--text);
+            font-family:'Noto Serif SC','Georgia',serif;
+            line-height:1.7;min-height:100vh;overflow-x:hidden;
+        }
+        body::before{
+            content:'';position:fixed;inset:0;
+            background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.025'/%3E%3C/svg%3E");
+            pointer-events:none;z-index:9999;
+        }
+        body::after{
+            content:'';position:fixed;inset:0;
+            background:
+                radial-gradient(ellipse at 15% 20%,rgba(212,168,67,.04) 0%,transparent 50%),
+                radial-gradient(ellipse at 85% 80%,rgba(52,211,153,.03) 0%,transparent 50%),
+                radial-gradient(ellipse at 50% 50%,rgba(30,41,59,.3) 0%,transparent 70%);
+            pointer-events:none;z-index:0;
+        }
+        .container{max-width:920px;margin:0 auto;padding:3rem 2rem;position:relative;z-index:1}
+
+        /* ---- Header ---- */
+        .header{margin-bottom:2.5rem;animation:fadeUp .8s ease}
+        .tag{
+            display:inline-block;font-family:'JetBrains Mono',monospace;
+            font-size:.72rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;
+            color:var(--accent);background:var(--accent-glow);
+            border:1px solid rgba(212,168,67,.2);padding:.3em .9em;border-radius:2px;
+            margin-bottom:1.2rem;
+        }
+        .header h1{
+            font-family:'Noto Serif SC',serif;font-weight:700;font-size:2rem;
+            color:var(--text-bright);line-height:1.3;margin-bottom:.8rem;letter-spacing:-.01em;
+        }
+        .header p{font-size:.93rem;color:var(--text-muted);max-width:620px;line-height:1.85}
+        .header code{
+            font-family:'JetBrains Mono',monospace;font-size:.82em;
+            background:var(--surface-2);padding:.12em .35em;border-radius:3px;color:var(--vowel);
+        }
+
+        /* ---- Input ---- */
+        .input-section{display:flex;gap:1rem;align-items:flex-end;margin-bottom:2rem;flex-wrap:wrap}
+        .input-group{display:flex;flex-direction:column;gap:.35rem}
+        .input-group label{
+            font-family:'JetBrains Mono',monospace;font-size:.65rem;
+            letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);
+        }
+        .input-group input{
+            font-family:'JetBrains Mono',monospace;font-size:.88rem;
+            padding:.55em .75em;background:var(--surface-2);border:1px solid var(--border);
+            border-radius:4px;color:var(--text);outline:none;transition:border-color .2s;
+        }
+        .input-group input:focus{border-color:var(--accent)}
+        .input-group.str-input{flex:1;min-width:180px}
+        .input-group.str-input input{width:100%}
+        .input-group.k-input input{width:72px}
+
+        /* ---- Buttons ---- */
+        .btn{
+            font-family:'JetBrains Mono',monospace;font-size:.76rem;font-weight:500;
+            letter-spacing:.04em;padding:.65em 1.3em;border:1px solid var(--border);
+            border-radius:4px;background:var(--surface);color:var(--text);cursor:pointer;
+            transition:all .2s ease;display:inline-flex;align-items:center;gap:.45em;white-space:nowrap;
+        }
+        .btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-glow)}
+        .btn:active{transform:scale(.97)}
+        .btn:disabled{opacity:.28;cursor:not-allowed}
+        .btn:disabled:hover{border-color:var(--border);color:var(--text);background:var(--surface)}
+        .btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent);font-weight:700}
+        .btn.primary:hover{background:#e0b64e;color:var(--bg)}
+        .btn.sm{font-size:.65rem;padding:.45em .85em}
+
+        /* ---- Viz Card ---- */
+        .viz-card{
+            background:var(--surface);border:1px solid var(--border);border-radius:8px;
+            padding:2.5rem 1.2rem 2rem;margin-bottom:1.2rem;position:relative;overflow:hidden;
+        }
+        .viz-card::before{
+            content:'';position:absolute;top:0;left:0;right:0;height:1px;
+            background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:.3;
+        }
+        .section-label{
+            font-family:'JetBrains Mono',monospace;font-size:.65rem;font-weight:500;
+            letter-spacing:.15em;text-transform:uppercase;color:var(--text-muted);margin-bottom:1.8rem;
+            padding:0 .8rem;
+        }
+
+        /* ---- Scrollable Visualization ---- */
+        .viz-scroll-outer{position:relative;overflow:hidden;border-radius:4px}
+        .viz-scroll-wrap{
+            overflow-x:auto;overflow-y:hidden;padding:6px 0 10px;
+            scrollbar-width:thin;scrollbar-color:rgba(212,168,67,.25) transparent;
+        }
+        .viz-scroll-wrap::-webkit-scrollbar{height:5px}
+        .viz-scroll-wrap::-webkit-scrollbar-track{background:transparent}
+        .viz-scroll-wrap::-webkit-scrollbar-thumb{background:rgba(212,168,67,.25);border-radius:3px}
+        .viz-scroll-wrap::-webkit-scrollbar-thumb:hover{background:rgba(212,168,67,.4)}
+
+        .scroll-fade{
+            position:absolute;top:0;bottom:0;width:52px;pointer-events:none;z-index:5;
+            opacity:0;transition:opacity .35s ease;
+        }
+        .scroll-fade.left{left:0;background:linear-gradient(to right,var(--surface) 10%,transparent)}
+        .scroll-fade.right{right:0;background:linear-gradient(to left,var(--surface) 10%,transparent)}
+
+        .string-row,.ptr-row{
+            display:flex;justify-content:center;align-items:flex-end;
+            gap:var(--cell-gap);padding:0 28px;min-width:max-content;
+        }
+        .ptr-row{align-items:flex-start;min-height:52px}
+
+        /* ---- Char Cells ---- */
+        .char-cell{
+            width:var(--cell-sz);height:var(--cell-sz);flex-shrink:0;
+            display:flex;align-items:center;justify-content:center;
+            font-family:'JetBrains Mono',monospace;font-size:1.2rem;font-weight:700;
+            border-radius:6px;border:2px solid var(--border);background:var(--surface-2);
+            color:var(--consonant);position:relative;
+            transition:all .38s cubic-bezier(.4,0,.2,1);
+        }
+        .char-cell.is-vowel{color:var(--vowel)}
+        .char-cell.in-window{
+            border-color:var(--window-border);background:var(--window-bg);
+            box-shadow:0 0 22px rgba(212,168,67,.06);
+        }
+        .char-cell.in-window.is-vowel{
+            background:var(--vowel-bg);border-color:rgba(52,211,153,.3);
+            box-shadow:0 0 22px rgba(52,211,153,.08);
+        }
+        .char-cell.removing{
+            border-color:var(--removed)!important;background:rgba(248,113,113,.1)!important;
+            color:var(--removed)!important;transform:scale(.9);opacity:.45;
+        }
+        .char-cell.adding{
+            border-color:var(--added)!important;background:rgba(56,189,248,.1)!important;
+            animation:popIn .42s cubic-bezier(.34,1.56,.64,1);
+        }
+        .idx{
+            position:absolute;bottom:-17px;font-size:.55rem;color:var(--text-muted);
+            font-weight:400;pointer-events:none;
+        }
+
+        /* ---- Pointers ---- */
+        .ptr-slot{
+            width:var(--cell-sz);height:52px;flex-shrink:0;
+            display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+        }
+        .ptr-arrow{font-size:.9rem;line-height:1;animation:float 1.6s ease infinite}
+        .ptr-lbl{font-family:'JetBrains Mono',monospace;font-size:.65rem;font-weight:700;margin-top:1px}
+        .ptr-left .ptr-arrow,.ptr-left .ptr-lbl{color:var(--left-ptr)}
+        .ptr-right .ptr-arrow,.ptr-right .ptr-lbl{color:var(--right-ptr)}
+
+        /* ---- Step Card ---- */
+        .step-card{
+            background:var(--surface);border:1px solid var(--border);border-radius:8px;
+            padding:1.8rem 2rem;margin-bottom:1.2rem;
+        }
+        .step-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.2rem}
+        .step-num{font-family:'JetBrains Mono',monospace;font-size:.82rem;color:var(--accent)}
+        .step-desc{
+            font-size:.9rem;color:var(--text);line-height:1.85;
+            padding:.9rem 1.15rem;background:var(--surface-2);border-radius:6px;
+            border-left:3px solid var(--accent);margin-bottom:1.4rem;min-height:2.8rem;
+        }
+        .step-desc code{
+            font-family:'JetBrains Mono',monospace;font-size:.82em;
+            background:rgba(255,255,255,.04);padding:.1em .35em;border-radius:3px;color:var(--accent);
+        }
+        .hl-removed{color:var(--removed);font-family:'JetBrains Mono',monospace;font-weight:600}
+        .hl-added{color:var(--added);font-family:'JetBrains Mono',monospace;font-weight:600}
+        .hl-consonant{color:var(--consonant);font-family:'JetBrains Mono',monospace;font-weight:500}
+        .hl-note{font-size:.85em;color:var(--text-muted)}
+
+        /* ---- Counters ---- */
+        .counters{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+        .ctr-card{background:var(--surface-2);border-radius:6px;padding:1.1rem;text-align:center}
+        .ctr-label{
+            font-family:'JetBrains Mono',monospace;font-size:.62rem;
+            letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);margin-bottom:.4rem;
+        }
+        .ctr-val{
+            font-family:'JetBrains Mono',monospace;font-size:2rem;font-weight:700;transition:all .3s ease;
+        }
+        .ctr-val.cur{color:var(--accent)}
+        .ctr-val.mx{color:var(--vowel)}
+        .ctr-val.pop{transform:scale(1.18)}
+        .bar-track{margin-top:.6rem;height:4px;background:rgba(255,255,255,.04);border-radius:2px;overflow:hidden}
+        .bar-fill{height:100%;border-radius:2px;transition:width .5s cubic-bezier(.4,0,.2,1)}
+        .bar-fill.cur{background:var(--accent)}
+        .bar-fill.mx{background:var(--vowel)}
+
+        /* ---- Answer ---- */
+        .answer-banner{
+            margin-top:1.2rem;padding:1rem 1.4rem;border-radius:6px;text-align:center;
+            background:linear-gradient(135deg,rgba(212,168,67,.08),rgba(52,211,153,.06));
+            border:1px solid rgba(212,168,67,.25);animation:fadeUp .5s ease;display:none;
+        }
+        .answer-banner.show{display:block}
+        .answer-inner{display:flex;align-items:center;justify-content:center;gap:.8rem}
+        .answer-label{
+            font-family:'JetBrains Mono',monospace;font-size:.72rem;letter-spacing:.1em;
+            text-transform:uppercase;color:var(--text-muted);
+        }
+        .answer-num{font-family:'JetBrains Mono',monospace;font-size:2.4rem;font-weight:700;color:var(--accent);line-height:1}
+
+        /* ---- Controls ---- */
+        .controls{display:flex;justify-content:center;gap:.7rem;margin-bottom:1.2rem;flex-wrap:wrap}
+        .progress{display:flex;justify-content:center;gap:6px;margin-bottom:1rem}
+        .dot{
+            width:8px;height:8px;border-radius:50%;background:var(--border);
+            transition:all .3s ease;cursor:pointer;
+        }
+        .dot.active{background:var(--accent);box-shadow:0 0 8px var(--accent-glow);transform:scale(1.35)}
+        .dot.visited{background:rgba(212,168,67,.28)}
+        .kbd-hint{
+            text-align:center;font-family:'JetBrains Mono',monospace;
+            font-size:.62rem;color:var(--text-muted);margin-bottom:2rem;opacity:.55;
+        }
+        .kbd-hint kbd{
+            background:var(--surface-2);border:1px solid var(--border);
+            border-radius:3px;padding:.1em .4em;font-size:.68rem;
+        }
+
+        /* ---- Log Card ---- */
+        .log-card{
+            background:#0c1222;border:1px solid var(--border);border-radius:8px;
+            padding:1.6rem 1.8rem;margin-bottom:2rem;
+        }
+        .log-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
+        .log-container{
+            max-height:240px;overflow-y:auto;
+            font-family:'JetBrains Mono',monospace;font-size:.72rem;line-height:1.75;
+            scrollbar-width:thin;scrollbar-color:var(--border) transparent;
+        }
+        .log-container::-webkit-scrollbar{width:4px}
+        .log-container::-webkit-scrollbar-track{background:transparent}
+        .log-container::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+        .log-entry{
+            padding:.35rem .7rem;border-left:2px solid var(--border);
+            margin-bottom:.25rem;color:var(--text-muted);
+            transition:background .2s;
+        }
+        .log-entry:hover{background:rgba(255,255,255,.015)}
+        .log-entry:last-child{border-left-color:var(--accent);color:var(--text)}
+        .log-entry code{
+            font-family:'JetBrains Mono',monospace;font-size:.95em;color:var(--accent);
+        }
+        .log-entry strong{color:var(--text-bright)}
+        .log-step{
+            display:inline-block;min-width:2.4em;
+            color:var(--accent);font-weight:700;margin-right:.35em;
+        }
+        .log-stats{
+            display:inline-block;margin-left:.5em;
+            color:var(--vowel);font-weight:500;
+        }
+        .log-answer{
+            padding:.5rem .7rem;margin-top:.3rem;border-left:2px solid var(--vowel);
+            color:var(--vowel);font-weight:700;font-size:.78rem;
+            background:rgba(52,211,153,.04);border-radius:0 4px 4px 0;
+        }
+        .log-empty{
+            text-align:center;color:var(--text-muted);padding:1.5rem;
+            font-family:'JetBrains Mono',monospace;font-size:.75rem;
+        }
+
+        /* ---- Algorithm ---- */
+        .algo-card{
+            background:var(--surface);border:1px solid var(--border);border-radius:8px;
+            padding:2.5rem 2rem;margin-top:0;
+        }
+        .algo-card h2{font-family:'Noto Serif SC',serif;font-size:1.25rem;font-weight:700;color:var(--text-bright);margin-bottom:1.4rem}
+        .algo-card h3{font-family:'Noto Serif SC',serif;font-size:.95rem;font-weight:600;color:var(--accent);margin-top:1.4rem;margin-bottom:.7rem}
+        .algo-card p{font-size:.88rem;color:var(--text-muted);margin-bottom:.7rem}
+        .algo-card code{font-family:'JetBrains Mono',monospace;font-size:.8em;background:var(--surface-2);padding:.12em .35em;border-radius:3px;color:var(--vowel)}
+        .algo-card ul{padding-left:1.2rem;margin-bottom:.8rem}
+        .algo-card li{font-size:.88rem;color:var(--text-muted);margin-bottom:.4rem}
+        .code-block{background:var(--surface-2);border:1px solid var(--border);border-radius:6px;padding:1.2rem 1.4rem;margin:1rem 0;overflow-x:auto}
+        .code-block pre{font-family:'JetBrains Mono',monospace;font-size:.76rem;line-height:1.85;color:var(--text)}
+        .ck{color:#c792ea}.cf{color:#82aaff}.cs{color:#c3e88d}.cc{color:#546e7a}.cn{color:#f78c6c}.ct{color:#ffcb6b}
+
+        @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes popIn{0%{transform:scale(.65);opacity:0}100%{transform:scale(1);opacity:1}}
+        @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+
+        @media(max-width:640px){
+            .container{padding:2rem 1rem}
+            .header h1{font-size:1.45rem}
+            .counters{grid-template-columns:1fr}
+            .controls{gap:.4rem}
+            .btn{font-size:.68rem;padding:.55em .9em}
+            .viz-card{padding:2rem .6rem 1.6rem}
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <!-- Header -->
+    <div class="header">
+        <div class="tag">LeetCode 1456 · 滑动窗口 · Medium</div>
+        <h1>定长子串中元音的最大数目</h1>
+        <p>给定字符串 <code>s</code> 和整数 <code>k</code>，返回长度为 <code>k</code> 的子串中元音字母 (a, e, i, o, u) 的最大数目。</p>
+    </div>
+
+    <!-- Input -->
+    <div class="input-section">
+        <div class="input-group str-input">
+            <label>字符串 s</label>
+            <input type="text" id="inpS" value="abciiidef">
+        </div>
+        <div class="input-group k-input">
+            <label>窗口 k</label>
+            <input type="number" id="inpK" value="3" min="1" max="50">
+        </div>
+        <button class="btn primary" onclick="regenerate()">生成演示</button>
+    </div>
+
+    <!-- Visualization -->
+    <div class="viz-card">
+        <div class="section-label">字符串 &middot; 滑动窗口可视化</div>
+        <div class="viz-scroll-outer">
+            <div class="scroll-fade left" id="fadeLeft"></div>
+            <div class="scroll-fade right" id="fadeRight"></div>
+            <div class="viz-scroll-wrap" id="vizScrollWrap">
+                <div class="string-row" id="stringRow"></div>
+                <div class="ptr-row" id="ptrRow"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step Info -->
+    <div class="step-card" id="stepCard">
+        <div class="step-head">
+            <span class="section-label" style="margin-bottom:0">步骤详情</span>
+            <span class="step-num" id="stepNum">&mdash; / 0</span>
+        </div>
+        <div class="step-desc" id="stepDesc">点击「下一步」开始演示</div>
+        <div class="counters">
+            <div class="ctr-card">
+                <div class="ctr-label">当前窗口元音数</div>
+                <div class="ctr-val cur" id="ctrCur">&mdash;</div>
+                <div class="bar-track"><div class="bar-fill cur" id="barCur" style="width:0"></div></div>
+            </div>
+            <div class="ctr-card">
+                <div class="ctr-label">历史最大元音数</div>
+                <div class="ctr-val mx" id="ctrMax">&mdash;</div>
+                <div class="bar-track"><div class="bar-fill mx" id="barMax" style="width:0"></div></div>
+            </div>
+        </div>
+        <div class="answer-banner" id="answerBanner">
+            <div class="answer-inner">
+                <span class="answer-label">最终答案</span>
+                <span class="answer-num" id="answerNum">0</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+        <button class="btn" id="btnPrev" onclick="prevStep()">&#9664; 上一步</button>
+        <button class="btn primary" id="btnNext" onclick="nextStep()">下一步 &#9654;</button>
+        <button class="btn" id="btnPlay" onclick="togglePlay()">&#9193; 自动播放</button>
+        <button class="btn" id="btnReset" onclick="resetDemo()">&#8634; 重置</button>
+    </div>
+    <div class="progress" id="progress"></div>
+    <div class="kbd-hint"><kbd>&larr;</kbd> 上一步 &nbsp; <kbd>&rarr;</kbd> 下一步 &nbsp; <kbd>Space</kbd> 播放 / 暂停</div>
+
+    <!-- Operation Log -->
+    <div class="log-card">
+        <div class="log-header">
+            <span class="section-label" style="margin-bottom:0">操作日志</span>
+            <button class="btn sm" onclick="clearLog()">清空日志</button>
+        </div>
+        <div class="log-container" id="logContainer">
+            <div class="log-empty">等待开始演示...</div>
+        </div>
+    </div>
+
+    <!-- Algorithm -->
+    <div class="algo-card">
+        <h2>算法解析</h2>
+        <h3>为什么用滑动窗口？</h3>
+        <p>暴力做法：对每个起点都重新数一遍元音，O(n&middot;k)。但相邻两个窗口只差<strong>一个字符</strong>——左边移出一个、右边移入一个。所以只要做一减一加，O(n) 搞定。</p>
+        <h3>具体步骤</h3>
+        <ul>
+            <li>先数出前 <code>k</code> 个字符里的元音数，作为初始值。</li>
+            <li>窗口每次右移一格：移出的字符是元音就 <code>-1</code>，移入的字符是元音就 <code>+1</code>。</li>
+            <li>每滑动一次，更新最大值。</li>
+            <li>遍历结束，返回最大值。</li>
+        </ul>
+        <h3>代码</h3>
+        <div class="code-block"><pre><span class="ck">class</span> <span class="ct">Solution</span>:
+    <span class="ck">def</span> <span class="cf">maxVowels</span>(<span class="ct">self</span>, s: <span class="ct">str</span>, k: <span class="ct">int</span>) -> <span class="ct">int</span>:
+        vowels = <span class="cf">set</span>(<span class="cs">'aeiou'</span>)
+        count = <span class="cn">0</span>
+
+        <span class="cc"># 初始化第一个窗口</span>
+        <span class="ck">for</span> i <span class="ck">in</span> <span class="cf">range</span>(k):
+            <span class="ck">if</span> s[i] <span class="ck">in</span> vowels:
+                count += <span class="cn">1</span>
+        max_count = count
+
+        <span class="cc"># 滑动窗口：每次右移一格</span>
+        <span class="ck">for</span> i <span class="ck">in</span> <span class="cf">range</span>(k, <span class="cf">len</span>(s)):
+            <span class="ck">if</span> s[i - k] <span class="ck">in</span> vowels:   <span class="cc"># 移出左端</span>
+                count -= <span class="cn">1</span>
+            <span class="ck">if</span> s[i] <span class="ck">in</span> vowels:       <span class="cc"># 移入右端</span>
+                count += <span class="cn">1</span>
+            max_count = <span class="cf">max</span>(max_count, count)
+
+        <span class="ck">return</span> max_count</pre></div>
+        <h3>复杂度</h3>
+        <p><strong>时间：</strong>O(n) — 每个字符最多被访问两次（加入和移出各一次）。</p>
+        <p><strong>空间：</strong>O(1) — 只用了几个变量。</p>
+    </div>
+</div>
+
+<script>
+const VOWELS = new Set(['a','e','i','o','u']);
+let s = 'abciiidef', k = 3;
+let steps = [], cur = -1, playing = false, timer = null, visited = new Set();
+
+/* ======== Utilities ======== */
+function esc(c){ return c.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function getCellSize(){
+    if(s.length<=10) return 56;
+    if(s.length<=16) return 48;
+    if(s.length<=22) return 40;
+    if(s.length<=30) return 34;
+    return 28;
+}
+
+function applyCellSize(){
+    const sz = getCellSize();
+    document.documentElement.style.setProperty('--cell-sz', sz+'px');
+    document.documentElement.style.setProperty('--cell-gap', Math.max(4, Math.round(sz*0.15))+'px');
+}
+
+/* ======== Step Generation ======== */
+function genSteps(){
+    steps = [];
+    let count = 0;
+    for(let i=0;i<k;i++) if(VOWELS.has(s[i])) count++;
+    let mx = count;
+
+    steps.push({
+        l:0, r:k-1, count, mx,
+        removed:null, added:null,
+        desc: `初始化窗口 <code>[0, ${k-1}]</code>：子串 "<strong>${esc(s.substring(0,k))}</strong>"，包含 <strong>${count}</strong> 个元音`
+    });
+
+    for(let i=1;i<=s.length-k;i++){
+        const l=i, r=i+k-1;
+        const rc=s[l-1], ac=s[r];
+        const rv=VOWELS.has(rc), av=VOWELS.has(ac);
+        if(rv) count--;
+        if(av) count++;
+        mx = Math.max(mx, count);
+
+        const rTag = rv
+            ? `<span class="hl-removed">'${esc(rc)}' (元音 &minus;1)</span>`
+            : `<span class="hl-consonant">'${esc(rc)}' (辅音)</span>`;
+        const aTag = av
+            ? `<span class="hl-added">'${esc(ac)}' (元音 +1)</span>`
+            : `<span class="hl-consonant">'${esc(ac)}' (辅音)</span>`;
+
+        steps.push({
+            l, r, count, mx,
+            removed:{c:rc,idx:l-1,v:rv},
+            added:{c:ac,idx:r,v:av},
+            desc:`窗口右移 &rarr; <code>[${l}, ${r}]</code>：移出 ${rTag}，移入 ${aTag}，当前元音数 = <strong>${count}</strong>`
+        });
+    }
+}
+
+/* ======== Rendering ======== */
+function renderString(){
+    const row = document.getElementById('stringRow');
+    row.innerHTML = '';
+    for(let i=0;i<s.length;i++){
+        const d = document.createElement('div');
+        d.className = 'char-cell' + (VOWELS.has(s[i])?' is-vowel':'');
+        d.id = 'c'+i;
+        d.innerHTML = s[i] + `<span class="idx">${i}</span>`;
+        row.appendChild(d);
+    }
+}
+
+function renderPtrs(){
+    const row = document.getElementById('ptrRow');
+    row.innerHTML = '';
+    for(let i=0;i<s.length;i++){
+        const d = document.createElement('div');
+        d.className = 'ptr-slot';
+        d.id = 'p'+i;
+        row.appendChild(d);
+    }
+}
+
+function renderDots(){
+    const el = document.getElementById('progress');
+    el.innerHTML = '';
+    for(let i=0;i<steps.length;i++){
+        const d = document.createElement('div');
+        d.className = 'dot';
+        d.id = 'd'+i;
+        d.onclick = ()=> goTo(i);
+        el.appendChild(d);
+    }
+}
+
+/* ======== Scroll Helpers ======== */
+function scrollToWindow(){
+    if(cur<0) return;
+    const st = steps[cur];
+    const wrap = document.getElementById('vizScrollWrap');
+    const lCell = document.getElementById('c'+st.l);
+    const rCell = document.getElementById('c'+st.r);
+    if(!wrap||!lCell||!rCell) return;
+    if(wrap.scrollWidth <= wrap.clientWidth + 2) return;
+
+    const wR = wrap.getBoundingClientRect();
+    const lR = lCell.getBoundingClientRect();
+    const rR = rCell.getBoundingClientRect();
+    const windowCenter = (lR.left + rR.right)/2;
+    const viewCenter = wR.left + wR.width/2;
+
+    wrap.scrollBy({ left: windowCenter - viewCenter, behavior:'smooth' });
+}
+
+function updateFades(){
+    const wrap = document.getElementById('vizScrollWrap');
+    const fl = document.getElementById('fadeLeft');
+    const fr = document.getElementById('fadeRight');
+    if(!wrap||!fl||!fr) return;
+    const sl = wrap.scrollLeft;
+    const maxSl = wrap.scrollWidth - wrap.clientWidth;
+    fl.style.opacity = sl > 6 ? '1' : '0';
+    fr.style.opacity = sl < maxSl - 6 ? '1' : '0';
+}
+
+/* ======== Main Update ======== */
+function update(idx){
+    for(let i=0;i<s.length;i++){
+        const c = document.getElementById('c'+i);
+        if(c) c.classList.remove('in-window','removing','adding');
+    }
+    for(let i=0;i<s.length;i++){
+        const p = document.getElementById('p'+i);
+        if(p) p.innerHTML = '';
+    }
+
+    document.getElementById('answerBanner').classList.remove('show');
+
+    if(idx<0){
+        document.getElementById('stepNum').textContent = `\u2014 / ${steps.length}`;
+        document.getElementById('stepDesc').innerHTML = '点击「下一步」开始演示';
+        document.getElementById('ctrCur').textContent = '\u2014';
+        document.getElementById('ctrMax').textContent = '\u2014';
+        document.getElementById('barCur').style.width = '0';
+        document.getElementById('barMax').style.width = '0';
+        updBtns(); updDots(-1); rebuildLog();
+        return;
+    }
+
+    const st = steps[idx];
+
+    for(let i=st.l;i<=st.r;i++){
+        document.getElementById('c'+i).classList.add('in-window');
+    }
+    if(st.removed) document.getElementById('c'+st.removed.idx).classList.add('removing');
+    if(st.added) document.getElementById('c'+st.added.idx).classList.add('adding');
+
+    document.getElementById('p'+st.l).innerHTML =
+        '<div class="ptr-arrow ptr-left">\u25B2</div><div class="ptr-lbl ptr-left">L</div>';
+    document.getElementById('p'+st.r).innerHTML =
+        '<div class="ptr-arrow ptr-right">\u25B2</div><div class="ptr-lbl ptr-right">R</div>';
+
+    document.getElementById('stepNum').textContent = `${idx+1} / ${steps.length}`;
+    document.getElementById('stepDesc').innerHTML = st.desc;
+
+    const cEl = document.getElementById('ctrCur');
+    const mEl = document.getElementById('ctrMax');
+    cEl.textContent = st.count;
+    mEl.textContent = st.mx;
+    cEl.classList.add('pop'); mEl.classList.add('pop');
+    setTimeout(()=>{ cEl.classList.remove('pop'); mEl.classList.remove('pop'); },320);
+    document.getElementById('barCur').style.width = (st.count/k*100)+'%';
+    document.getElementById('barMax').style.width = (st.mx/k*100)+'%';
+
+    if(idx === steps.length-1){
+        document.getElementById('answerNum').textContent = st.mx;
+        document.getElementById('answerBanner').classList.add('show');
+    }
+
+    updBtns(); updDots(idx); rebuildLog();
+
+    setTimeout(()=>{
+        scrollToWindow();
+        updateFades();
+    }, 60);
+}
+
+function updBtns(){
+    document.getElementById('btnPrev').disabled = cur<0;
+    document.getElementById('btnNext').disabled = cur>=steps.length-1;
+}
+function updDots(active){
+    for(let i=0;i<steps.length;i++){
+        const d = document.getElementById('d'+i);
+        if(!d) continue;
+        d.classList.remove('active','visited');
+        if(i===active) d.classList.add('active');
+        else if(visited.has(i)) d.classList.add('visited');
+    }
+}
+
+/* ======== Operation Log ======== */
+function rebuildLog(){
+    const lc = document.getElementById('logContainer');
+    if(!lc) return;
+
+    if(cur<0){
+        lc.innerHTML = '<div class="log-empty">等待开始演示...</div>';
+        return;
+    }
+
+    lc.innerHTML = '';
+    for(let i=0;i<=cur;i++) appendLogEntry(i);
+
+    if(cur === steps.length-1){
+        const ans = document.createElement('div');
+        ans.className = 'log-answer';
+        ans.innerHTML = `\u2705 最终答案：${steps[cur].mx}`;
+        lc.appendChild(ans);
+    }
+
+    lc.scrollTop = lc.scrollHeight;
+}
+
+function appendLogEntry(idx){
+    const lc = document.getElementById('logContainer');
+    const st = steps[idx];
+    const entry = document.createElement('div');
+    entry.className = 'log-entry';
+
+    let msg;
+    if(idx===0){
+        msg = `初始化 <code>[${st.l},${st.r}]</code> 子串 "<strong>${esc(s.substring(st.l,st.r+1))}</strong>"`;
+    } else {
+        const rTag = st.removed.v
+            ? `<span class="hl-removed">'${esc(st.removed.c)}' 元音-1</span>`
+            : `<span class="hl-consonant">'${esc(st.removed.c)}' 辅音</span>`;
+        const aTag = st.added.v
+            ? `<span class="hl-added">'${esc(st.added.c)}' 元音+1</span>`
+            : `<span class="hl-consonant">'${esc(st.added.c)}' 辅音</span>`;
+        msg = `\u2192 <code>[${st.l},${st.r}]</code> 移出 ${rTag} 移入 ${aTag}`;
+    }
+
+    entry.innerHTML =
+        `<span class="log-step">#${idx}</span>${msg}` +
+        `<span class="log-stats">元音=${st.count} &nbsp; 最大=${st.mx}</span>`;
+    lc.appendChild(entry);
+}
+
+function clearLog(){
+    document.getElementById('logContainer').innerHTML = '<div class="log-empty">日志已清空</div>';
+}
+
+/* ======== Navigation ======== */
+function nextStep(){
+    if(cur<steps.length-1){ cur++; visited.add(cur); update(cur); }
+}
+function prevStep(){
+    if(cur>0){ cur--; update(cur); }
+    else if(cur===0){ cur=-1; update(-1); }
+}
+function goTo(i){ cur=i; for(let j=0;j<=i;j++) visited.add(j); update(i); }
+function resetDemo(){
+    stopPlay(); cur=-1; visited.clear(); update(-1);
+    const wrap = document.getElementById('vizScrollWrap');
+    if(wrap) wrap.scrollTo({left:0,behavior:'smooth'});
+    setTimeout(updateFades,80);
+}
+
+function togglePlay(){ playing ? stopPlay() : startPlay(); }
+function startPlay(){
+    playing = true;
+    document.getElementById('btnPlay').textContent = '\u23F8 暂停';
+    if(cur>=steps.length-1){ cur=-1; visited.clear(); }
+    timer = setInterval(()=>{
+        if(cur<steps.length-1) nextStep(); else stopPlay();
+    }, 1100);
+}
+function stopPlay(){
+    playing = false;
+    document.getElementById('btnPlay').textContent = '\u23E9 自动播放';
+    if(timer){ clearInterval(timer); timer=null; }
+}
+
+/* ======== Regenerate ======== */
+function regenerate(){
+    stopPlay();
+    const sv = document.getElementById('inpS').value.trim().toLowerCase();
+    const kv = parseInt(document.getElementById('inpK').value);
+    if(!sv||kv<1||kv>sv.length){ alert('请输入有效字符串，且 k ≤ 字符串长度'); return; }
+    s=sv; k=kv; cur=-1; visited.clear();
+    applyCellSize(); genSteps(); renderString(); renderPtrs(); renderDots(); update(-1);
+    const wrap = document.getElementById('vizScrollWrap');
+    if(wrap) wrap.scrollTo({left:0});
+    setTimeout(updateFades,80);
+}
+
+/* ======== Keyboard & Scroll Events ======== */
+document.addEventListener('keydown', e=>{
+    if(e.target.tagName==='INPUT') return;
+    if(e.key==='ArrowRight'){ e.preventDefault(); nextStep(); }
+    else if(e.key==='ArrowLeft'){ e.preventDefault(); prevStep(); }
+    else if(e.key===' '){ e.preventDefault(); togglePlay(); }
+});
+
+const scrollWrap = document.getElementById('vizScrollWrap');
+if(scrollWrap) scrollWrap.addEventListener('scroll', updateFades, {passive:true});
+
+/* ======== Init ======== */
+applyCellSize(); genSteps(); renderString(); renderPtrs(); renderDots(); update(-1);
+setTimeout(updateFades, 100);
+</script>
+</body>
+</html>
+
+```
