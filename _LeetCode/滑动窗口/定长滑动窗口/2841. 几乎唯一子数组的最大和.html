@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LeetCode 2841 · 几乎唯一子数组的最大和 · 滑动窗口可视化</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0b0b0f;
+            --surface: #13131a;
+            --surface-2: #1c1c26;
+            --surface-3: #252530;
+            --accent: #d4a843;
+            --accent-glow: rgba(212,168,67,.08);
+            --accent-dim: rgba(212,168,67,.15);
+            --text-bright: #f0ece4;
+            --text-primary: #c8c4bc;
+            --text-muted: #7a7670;
+            --success: #4ade80;
+            --success-bg: rgba(74,222,128,.1);
+            --fail: #f87171;
+            --fail-bg: rgba(248,113,113,.1);
+            --vowel: #e8c547;
+            --border: rgba(255,255,255,.06);
+        }
+        *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+        body{
+            background:var(--bg);color:var(--text-primary);
+            font-family:'Noto Sans SC',sans-serif;line-height:1.8;min-height:100vh;
+        }
+        body::before{
+            content:'';position:fixed;inset:0;
+            background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E");
+            opacity:.03;pointer-events:none;z-index:0;
+        }
+        .container{max-width:880px;margin:0 auto;padding:3rem 2rem 5rem;position:relative;z-index:1}
+
+        .header{margin-bottom:2.5rem;animation:fadeUp .8s ease}
+        .tag{
+            display:inline-block;font-family:'JetBrains Mono',monospace;
+            font-size:.72rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;
+            color:var(--accent);background:var(--accent-glow);
+            border:1px solid rgba(212,168,67,.2);padding:.3em .9em;border-radius:2px;
+            margin-bottom:1.2rem;
+        }
+        .header h1{
+            font-family:'Noto Serif SC',serif;font-weight:700;font-size:2rem;
+            color:var(--text-bright);line-height:1.3;margin-bottom:.8rem;letter-spacing:-.01em;
+        }
+        .header p{font-size:.93rem;color:var(--text-muted);max-width:640px;line-height:1.85}
+        .header code{
+            font-family:'JetBrains Mono',monospace;font-size:.82em;
+            background:var(--surface-2);padding:.12em .35em;border-radius:3px;color:var(--vowel);
+        }
+
+        .section{margin-bottom:2.8rem;animation:fadeUp .8s ease both}
+        .section:nth-child(2){animation-delay:.08s}
+        .section:nth-child(3){animation-delay:.16s}
+        .section:nth-child(4){animation-delay:.24s}
+        .section:nth-child(5){animation-delay:.32s}
+        .section:nth-child(6){animation-delay:.4s}
+        .section:nth-child(7){animation-delay:.48s}
+        .section-title{
+            font-family:'Noto Serif SC',serif;font-size:1.25rem;font-weight:700;
+            color:var(--text-bright);margin-bottom:1.2rem;display:flex;align-items:center;gap:.6rem;
+        }
+        .section-title .ico{font-size:1.1rem}
+
+        .card{
+            background:var(--surface);border:1px solid var(--border);
+            border-radius:6px;padding:1.5rem 1.8rem;margin-bottom:1rem;
+        }
+        .card h3{font-family:'Noto Serif SC',serif;font-size:1rem;color:var(--text-bright);margin-bottom:.8rem}
+        .card p,.card li{font-size:.9rem;color:var(--text-primary);line-height:1.9}
+        .card ul,.card ol{padding-left:1.2rem}
+        .card li{margin-bottom:.35rem}
+        .card code{
+            font-family:'JetBrains Mono',monospace;font-size:.82em;
+            background:var(--surface-2);padding:.12em .4em;border-radius:3px;color:var(--vowel);
+        }
+        .hl{color:var(--accent);font-weight:500}
+        .ok{color:var(--success)}
+        .ng{color:var(--fail)}
+        .card-vis{
+            background:var(--surface-2);border:1px solid var(--border);border-radius:6px;
+            padding:1rem 1.4rem;margin-top:.8rem;
+            font-family:'JetBrains Mono',monospace;font-size:.85rem;color:var(--text-primary);
+            overflow-x:auto;
+        }
+        .metaphor{
+            background:linear-gradient(135deg,rgba(212,168,67,.05),rgba(212,168,67,.02));
+            border-color:rgba(212,168,67,.12);
+        }
+
+        .step-list{counter-reset:sc;list-style:none;padding:0}
+        .step-list li{
+            counter-increment:sc;padding:.8rem 1rem .8rem 3rem;position:relative;
+            font-size:.9rem;color:var(--text-primary);border-left:2px solid var(--border);margin-left:1rem;
+        }
+        .step-list li::before{
+            content:counter(sc);position:absolute;left:-14px;top:.7rem;width:26px;height:26px;
+            background:var(--accent);color:var(--bg);font-family:'JetBrains Mono',monospace;
+            font-size:.75rem;font-weight:600;display:flex;align-items:center;justify-content:center;border-radius:50%;
+        }
+        .step-list li code{
+            font-family:'JetBrains Mono',monospace;font-size:.82em;
+            background:var(--surface-2);padding:.12em .4em;border-radius:3px;color:var(--vowel);
+        }
+
+        .viz-wrap{
+            background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;
+        }
+        .viz-head{
+            padding:1rem 1.5rem;border-bottom:1px solid var(--border);
+            display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;
+        }
+        .viz-head-title{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--text-muted);letter-spacing:.05em;text-transform:uppercase}
+        .viz-head-step{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--accent)}
+        .viz-body{padding:1.5rem}
+
+        .params-editor{
+            background:var(--surface-2);border:1px solid var(--border);border-radius:6px;
+            padding:1.2rem 1.5rem;margin-bottom:1.5rem;
+        }
+        .params-editor-title{
+            font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--text-muted);
+            text-transform:uppercase;letter-spacing:.08em;margin-bottom:.8rem;
+            display:flex;align-items:center;gap:.4em;
+        }
+        .params-row{display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end}
+        .param-group{display:flex;flex-direction:column;gap:.35rem;flex:1;min-width:140px}
+        .param-group.wide{flex:3;min-width:240px}
+        .param-label{
+            font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--text-muted);
+            letter-spacing:.04em;
+        }
+        .param-input{
+            font-family:'JetBrains Mono',monospace;font-size:.85rem;
+            background:var(--surface);color:var(--text-bright);border:1px solid var(--border);
+            border-radius:4px;padding:.55em .8em;outline:none;transition:border-color .2s;
+            width:100%;
+        }
+        .param-input:focus{border-color:var(--accent-dim)}
+        .param-input.error{border-color:var(--fail)}
+        .param-hint{
+            font-family:'JetBrains Mono',monospace;font-size:.65rem;color:var(--text-muted);
+            line-height:1.4;
+        }
+        .param-hint.err{color:var(--fail)}
+        .btn-run{
+            font-family:'JetBrains Mono',monospace;font-size:.78rem;font-weight:600;
+            padding:.6em 1.6em;border:1px solid var(--accent-dim);border-radius:4px;
+            background:var(--accent-glow);color:var(--accent);cursor:pointer;
+            transition:all .2s;white-space:nowrap;
+        }
+        .btn-run:hover{background:var(--accent-dim)}
+        .btn-run:active{transform:scale(.97)}
+        .btn-preset{
+            font-family:'JetBrains Mono',monospace;font-size:.72rem;font-weight:500;
+            padding:.45em .9em;border:1px solid var(--border);border-radius:3px;
+            background:var(--surface);color:var(--text-muted);cursor:pointer;
+            transition:all .2s;white-space:nowrap;
+        }
+        .btn-preset:hover{border-color:var(--accent-dim);color:var(--text-primary)}
+        .presets-row{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.8rem}
+
+        .params{display:flex;gap:1.5rem;margin-bottom:1.2rem;flex-wrap:wrap}
+        .prm{display:flex;align-items:center;gap:.5rem;font-size:.82rem}
+        .prm-l{font-family:'JetBrains Mono',monospace;color:var(--text-muted);font-size:.75rem}
+        .prm-v{font-family:'JetBrains Mono',monospace;color:var(--text-bright);background:var(--surface-2);padding:.2em .6em;border-radius:3px;font-weight:500}
+
+        .arr-scroll{
+            overflow-x:auto;overflow-y:hidden;padding:1rem 0;margin-bottom:1rem;
+            scrollbar-width:thin;scrollbar-color:var(--surface-3) var(--surface);
+        }
+        .arr-scroll::-webkit-scrollbar{height:6px}
+        .arr-scroll::-webkit-scrollbar-track{background:var(--surface);border-radius:3px}
+        .arr-scroll::-webkit-scrollbar-thumb{background:var(--surface-3);border-radius:3px}
+        .arr-inner{
+            display:inline-flex;flex-direction:column;align-items:center;
+            min-width:100%;padding:0 2rem;
+        }
+
+        .ptr-row{display:flex;gap:8px;height:34px;align-items:flex-end;margin-bottom:4px}
+        .ptr-cell{width:56px;display:flex;justify-content:center;align-items:flex-end}
+        .ptr-lbl{
+            font-family:'JetBrains Mono',monospace;font-size:.72rem;font-weight:600;
+            padding:.15em .5em;border-radius:3px;position:relative;
+        }
+        .ptr-lbl.L{color:var(--accent);background:var(--accent-glow);border:1px solid var(--accent-dim)}
+        .ptr-lbl.R{color:#60a5fa;background:rgba(96,165,250,.08);border:1px solid rgba(96,165,250,.2)}
+        .ptr-lbl::after{
+            content:'';position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);
+            width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;
+        }
+        .ptr-lbl.L::after{border-top:5px solid var(--accent-dim)}
+        .ptr-lbl.R::after{border-top:5px solid rgba(96,165,250,.2)}
+
+        .el-row{display:flex;gap:8px}
+        .el{
+            width:56px;height:56px;display:flex;align-items:center;justify-content:center;
+            font-family:'JetBrains Mono',monospace;font-size:1.1rem;font-weight:600;
+            color:var(--text-bright);background:var(--surface-2);
+            border:2px solid var(--border);border-radius:6px;
+            transition:all .35s ease;position:relative;flex-shrink:0;
+        }
+        .el.in-win{
+            border-color:var(--accent-dim);background:rgba(212,168,67,.08);color:var(--accent);
+            transform:translateY(-2px);box-shadow:0 4px 12px rgba(212,168,67,.1);
+        }
+        .el.in-win.pass{
+            border-color:rgba(74,222,128,.3);background:rgba(74,222,128,.08);color:var(--success);
+            box-shadow:0 4px 12px rgba(74,222,128,.1);
+        }
+        .el.in-win.fail{
+            border-color:rgba(248,113,113,.2);background:rgba(248,113,113,.05);color:var(--fail);
+            box-shadow:0 4px 12px rgba(248,113,113,.08);
+        }
+
+        .idx-row{display:flex;gap:8px;margin-top:6px}
+        .idx-c{width:56px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--text-muted);flex-shrink:0}
+
+        .freq-area{
+            margin-top:1rem;padding:1rem 1.2rem;
+            background:var(--surface-2);border:1px solid var(--border);border-radius:6px;
+        }
+        .freq-head{
+            display:flex;align-items:center;justify-content:space-between;
+            margin-bottom:.8rem;flex-wrap:wrap;gap:.5rem;
+        }
+        .freq-label{
+            font-family:'JetBrains Mono',monospace;font-size:.72rem;
+            color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;
+        }
+        .freq-action{
+            font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--text-primary);
+        }
+        .freq-action .leave{color:var(--fail)}
+        .freq-action .enter{color:var(--success)}
+        .freq-distinct{
+            font-family:'JetBrains Mono',monospace;font-size:.82rem;font-weight:600;
+        }
+        .freq-distinct.pass{color:var(--success)}
+        .freq-distinct.fail{color:var(--fail)}
+        .freq-tags{display:flex;gap:8px;flex-wrap:wrap}
+        .freq-entry{
+            display:inline-flex;align-items:center;gap:.3em;
+            background:var(--surface-3);border:1px solid var(--border);
+            border-radius:4px;padding:.3em .65em;
+            transition:all .3s ease;animation:fadeScale .3s ease;
+        }
+        .freq-entry.multi{border-color:var(--accent-dim);background:var(--accent-glow)}
+        .freq-val{
+            font-family:'JetBrains Mono',monospace;font-size:.95rem;
+            font-weight:600;color:var(--text-bright);
+        }
+        .freq-cnt{
+            font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--accent);
+        }
+        .freq-empty{
+            font-family:'JetBrains Mono',monospace;font-size:.82rem;
+            color:var(--text-muted);padding:.5rem 0;
+        }
+
+        .win-detail{
+            margin-top:1rem;padding:.8rem 1.2rem;background:var(--surface-2);
+            border-radius:6px;border:1px solid var(--border);
+            font-family:'JetBrains Mono',monospace;font-size:.85rem;color:var(--text-primary);
+            display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;
+        }
+        .win-els{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+        .win-el{background:var(--surface-3);padding:.15em .5em;border-radius:3px;color:var(--text-bright);font-weight:500}
+        .win-calc{color:var(--text-muted)}
+        .win-res{font-weight:600;padding:.15em .6em;border-radius:3px}
+        .win-res.pass{color:var(--success);background:var(--success-bg)}
+        .win-res.fail{color:var(--fail);background:var(--fail-bg)}
+
+        .info-panel{
+            display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+            gap:.8rem;margin-top:1rem;padding:1.2rem;background:var(--surface-2);
+            border-radius:6px;border:1px solid var(--border);
+        }
+        .info-it{display:flex;flex-direction:column;gap:.25rem}
+        .info-l{font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em}
+        .info-v{font-family:'JetBrains Mono',monospace;font-size:1rem;font-weight:600;color:var(--text-bright)}
+        .info-v.ok{color:var(--success)}.info-v.fail{color:var(--fail)}.info-v.accent{color:var(--accent)}
+
+        .ctrls{display:flex;gap:.6rem;margin-top:1.2rem;flex-wrap:wrap}
+        .btn{
+            font-family:'JetBrains Mono',monospace;font-size:.78rem;font-weight:500;
+            padding:.55em 1.2em;border:1px solid var(--border);border-radius:4px;
+            background:var(--surface-2);color:var(--text-primary);cursor:pointer;
+            transition:all .2s ease;display:flex;align-items:center;gap:.4em;
+        }
+        .btn:hover{border-color:var(--accent-dim);color:var(--text-bright);background:var(--surface-3)}
+        .btn:active{transform:scale(.97)}
+        .btn.primary{border-color:var(--accent-dim);color:var(--accent);background:var(--accent-glow)}
+        .btn.primary:hover{background:var(--accent-dim)}
+        .btn:disabled{opacity:.35;cursor:not-allowed}
+        .btn:disabled:hover{border-color:var(--border);color:var(--text-primary);background:var(--surface-2)}
+        .speed-sel{
+            font-family:'JetBrains Mono',monospace;font-size:.78rem;
+            background:var(--surface-2);color:var(--text-primary);border:1px solid var(--border);
+            border-radius:4px;padding:.5em .8em;cursor:pointer;outline:none;
+        }
+        .speed-sel:hover{border-color:var(--accent-dim)}
+
+        .log-sec{margin-top:1.2rem}
+        .log-title{font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.6rem}
+        .log-box{
+            max-height:210px;overflow-y:auto;background:var(--surface-2);
+            border:1px solid var(--border);border-radius:6px;padding:.6rem;
+            scrollbar-width:thin;scrollbar-color:var(--surface-3) var(--surface-2);
+        }
+        .log-box::-webkit-scrollbar{width:5px}
+        .log-box::-webkit-scrollbar-track{background:var(--surface-2)}
+        .log-box::-webkit-scrollbar-thumb{background:var(--surface-3);border-radius:3px}
+        .log-e{
+            font-family:'JetBrains Mono',monospace;font-size:.72rem;
+            padding:.35em .6em;border-radius:3px;margin-bottom:2px;
+            color:var(--text-muted);display:flex;align-items:center;gap:.5em;
+            transition:all .2s;flex-wrap:wrap;
+        }
+        .log-e.visited{color:var(--text-primary)}
+        .log-e.active{background:var(--surface-3);color:var(--text-bright)}
+        .log-e .ls{color:var(--accent);font-weight:600;min-width:2.2em}
+        .log-e .lr{font-weight:500;margin-left:auto;white-space:nowrap}
+        .log-e .lr.pass{color:var(--success)}.log-e .lr.fail{color:var(--fail)}
+        .log-empty{
+            font-family:'JetBrains Mono',monospace;font-size:.8rem;color:var(--text-muted);
+            text-align:center;padding:1.5rem;
+        }
+
+        .code-blk{background:var(--surface);border:1px solid var(--border);border-radius:6px;overflow:hidden}
+        .code-hd{
+            padding:.6rem 1rem;border-bottom:1px solid var(--border);
+            font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--text-muted);
+            display:flex;align-items:center;gap:.5rem;
+        }
+        .code-hd .dot{width:8px;height:8px;border-radius:50%}
+        .code-hd .dot:nth-child(1){background:#ff5f56}
+        .code-hd .dot:nth-child(2){background:#ffbd2e}
+        .code-hd .dot:nth-child(3){background:#27c93f}
+        .pre-code{
+            padding:1.2rem 1.5rem;overflow-x:auto;
+            font-family:'JetBrains Mono',monospace;font-size:.82rem;line-height:1.85;
+            color:var(--text-primary);tab-size:4;
+        }
+        .kw{color:#c792ea}.fn{color:#82aaff}.str{color:#c3e88d}.num{color:#f78c6c}
+        .cmt{color:#546e7a;font-style:italic}.op{color:#89ddff}.vr{color:#f0ece4}.dc{color:#ffcb6b}
+
+        .cx-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+        .cx-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:1.2rem 1.5rem}
+        .cx-card h4{font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.6rem}
+        .cx-card .val{font-family:'JetBrains Mono',monospace;font-size:1.4rem;font-weight:700;color:var(--accent)}
+        .cx-card p{font-size:.85rem;color:var(--text-muted);margin-top:.5rem;line-height:1.7}
+        .cmp-tbl{margin-top:1rem}
+        .cmp-tbl table{width:100%;border-collapse:collapse;font-size:.85rem}
+        .cmp-tbl th,.cmp-tbl td{padding:.6rem 1rem;text-align:left;border-bottom:1px solid var(--border)}
+        .cmp-tbl th{font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em}
+        .cmp-tbl td{color:var(--text-primary)}
+        .cmp-tbl td code{font-family:'JetBrains Mono',monospace;font-size:.82em;background:var(--surface-2);padding:.12em .4em;border-radius:3px;color:var(--vowel)}
+
+        .answer-bar{
+            margin-top:1rem;padding:.8rem 1.2rem;background:var(--surface-2);
+            border:1px solid var(--border);border-radius:6px;
+            font-family:'JetBrains Mono',monospace;font-size:.9rem;
+            display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;
+        }
+        .answer-bar .lbl{color:var(--text-muted);font-size:.78rem}
+        .answer-bar .val{color:var(--accent);font-weight:700;font-size:1.1rem}
+        .answer-bar .note{color:var(--fail);font-size:.78rem;margin-left:.5rem}
+
+        @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes fadeScale{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
+        @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(212,168,67,.3)}50%{box-shadow:0 0 0 6px rgba(212,168,67,0)}}
+
+        @media(max-width:640px){
+            .container{padding:2rem 1rem 3rem}
+            .header h1{font-size:1.5rem}
+            .cx-grid{grid-template-columns:1fr}
+            .info-panel{grid-template-columns:1fr 1fr}
+            .params-row{flex-direction:column}
+            .param-group,.param-group.wide{min-width:100%}
+            .btn-run{width:100%;justify-content:center}
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <!-- Header -->
+    <div class="header">
+        <div class="tag">LeetCode 2841 · 滑动窗口 · Medium</div>
+        <h1>几乎唯一子数组的最大和</h1>
+        <p>给定一个整数数组 <code>nums</code> 和两个整数 <code>m</code> 与 <code>k</code>，如果一个长度为 <code>k</code> 的子数组包含<strong>至少 <code>m</code> 个不同元素</strong>，就称它是"几乎唯一"的。请找出所有几乎唯一子数组中的<strong>最大和</strong>，不存在则返回 <code>0</code>。</p>
+    </div>
+
+    <!-- 题意解读 -->
+    <div class="section">
+        <h2 class="section-title"><span class="ico">📋</span>题意解读</h2>
+        <div class="card">
+            <h3>简单来说，这道题在问什么？</h3>
+            <p>给你一排数字：</p>
+            <div class="card-vis">[ 2, 6, 7, 3, 1, 7 ]</div>
+            <p style="margin-top:.8rem">用一个<strong>长度固定为 <code>k</code> 的"框"</strong>从左到右滑动，每次框住 <code>k</code> 个连续数字。</p>
+            <p>但这次不是算平均值，而是要同时满足<strong>两个条件</strong>：</p>
+            <ul>
+                <li>框里的数字<strong>至少有 <code>m</code> 种</strong>（不同元素的个数 ≥ m）</li>
+                <li>在满足条件的框中，找出<strong>元素之和最大</strong>的那个</li>
+            </ul>
+            <p style="margin-top:.6rem">如果框里有重复数字，只算一种。比如 <code>[7, 3, 1, 7]</code> 中 7 出现了两次，但不同元素只有 <span class="hl">3 种</span>（7、3、1）。</p>
+        </div>
+        <div class="card metaphor">
+            <h3>生活类比</h3>
+            <p>想象你在水果摊前挑水果篮：</p>
+            <ul>
+                <li>每个篮子必须装 <code>k</code> 个水果</li>
+                <li>篮子里<strong>至少要有 <code>m</code> 种不同的水果</code>（不能全是苹果）</li>
+                <li>在所有达标的篮子里，选<strong>总价最高</strong>的那个</li>
+            </ul>
+        </div>
+        <div class="card">
+            <h3>示例推演</h3>
+            <p><code>nums = [2, 6, 7, 3, 1, 7]</code>，<code>m = 3</code>，<code>k = 4</code></p>
+            <ul>
+                <li><code>[2, 6, 7, 3]</code> → 4 种 ≥ 3 ✓ → 和 = <span class="ok">18</span></li>
+                <li><code>[6, 7, 3, 1]</code> → 4 种 ≥ 3 ✓ → 和 = <span class="ok">17</span></li>
+                <li><code>[7, 3, 1, 7]</code> → 3 种 ≥ 3 ✓ → 和 = <span class="ok">18</span></li>
+            </ul>
+            <p style="margin-top:.6rem"><strong>答案：<span class="hl">18</span></strong>（最大和为 18）</p>
+        </div>
+    </div>
+
+    <!-- 为什么用滑动窗口 -->
+    <div class="section">
+        <h2 class="section-title"><span class="ico">🔍</span>为什么用滑动窗口？</h2>
+        <div class="card">
+            <h3>暴力做法的问题</h3>
+            <p>最直觉的方法：枚举每个长度为 <code>k</code> 的子数组，用 <code>set</code> 去重算不同元素个数，再求和。每次操作 O(k)，总共 O(n × k)。</p>
+            <p>问题在于：相邻两个窗口<strong>只差一头一尾</strong>，中间的元素完全一样，却要重复遍历。</p>
+        </div>
+        <div class="card metaphor">
+            <h3>滑动窗口 + 频率表的巧妙之处</h3>
+            <p>维护一个<strong>频率表（字典）</strong>，记录窗口内每个数字出现了几次：</p>
+            <ul>
+                <li><strong>移除</strong>左边离开的数字：频率 −1，如果减到 0 就从表里删掉（不同元素数 −1）</li>
+                <li><strong>添加</strong>右边新进的数字：如果之前不在表里（不同元素数 +1），频率 +1</li>
+                <li>同时维护窗口<strong>总和</strong>：减去离开的、加上新来的</li>
+            </ul>
+            <p>每一步只需 O(1) 操作，就能同时更新<strong>不同元素数</strong>和<strong>窗口总和</strong>！</p>
+            <p>核心思想：<span class="hl">用频率表增量维护不同元素数，避免重复遍历</span>。</p>
+        </div>
+    </div>
+
+    <!-- 可视化演示 -->
+    <div class="section">
+        <h2 class="section-title"><span class="ico">🎯</span>数组 · 滑动窗口可视化</h2>
+        <div class="viz-wrap">
+            <div class="viz-head">
+                <span class="viz-head-title">Sliding Window Visualization</span>
+                <span class="viz-head-step" id="stepInd">Step 0 / 0</span>
+            </div>
+            <div class="viz-body">
+
+                <div class="params-editor">
+                    <div class="params-editor-title"><span>⚙</span> 修改入参</div>
+                    <div class="params-row">
+                        <div class="param-group wide">
+                            <label class="param-label">nums（数组，逗号分隔）</label>
+                            <input type="text" class="param-input" id="inputArr" value="2, 6, 7, 3, 1, 7" spellcheck="false">
+                            <span class="param-hint" id="hintArr">输入整数，用逗号或空格分隔</span>
+                        </div>
+                        <div class="param-group">
+                            <label class="param-label">m（最少不同元素数）</label>
+                            <input type="text" class="param-input" id="inputM" value="3" spellcheck="false">
+                            <span class="param-hint" id="hintM">1 ≤ m ≤ k</span>
+                        </div>
+                        <div class="param-group">
+                            <label class="param-label">k（窗口大小）</label>
+                            <input type="text" class="param-input" id="inputK" value="4" spellcheck="false">
+                            <span class="param-hint" id="hintK">1 ≤ k ≤ 数组长度</span>
+                        </div>
+                    </div>
+                    <div class="presets-row">
+                        <button class="btn-preset" onclick="applyPreset([2,6,7,3,1,7],3,4)">LeetCode 示例</button>
+                        <button class="btn-preset" onclick="applyPreset([5,5,5,5,5,5],2,3)">无解情况</button>
+                        <button class="btn-preset" onclick="applyPreset([5,9,9,2,4,5,4],1,3)">m=1 总有解</button>
+                        <button class="btn-preset" onclick="applyPreset([3,1,4,1,5,9,2,6],3,4)">圆周率数组</button>
+                        <button class="btn-preset" onclick="applyPreset([1,2,1,2,1,2,1],3,3)">最多2种</button>
+                    </div>
+                    <div style="margin-top:.8rem">
+                        <button class="btn-run" onclick="applyParams()">▶ 运行可视化</button>
+                    </div>
+                </div>
+
+                <div class="params" id="paramsDisplay">
+                    <div class="prm"><span class="prm-l">nums</span><span class="prm-v" id="dispArr">[2, 6, 7, 3, 1, 7]</span></div>
+                    <div class="prm"><span class="prm-l">m</span><span class="prm-v" id="dispM">3</span></div>
+                    <div class="prm"><span class="prm-l">k</span><span class="prm-v" id="dispK">4</span></div>
+                </div>
+
+                <div class="arr-scroll" id="arrScroll">
+                    <div class="arr-inner" id="arrInner">
+                        <div class="ptr-row" id="ptrRow"></div>
+                        <div class="el-row" id="elRow"></div>
+                        <div class="idx-row" id="idxRow"></div>
+                    </div>
+                </div>
+
+                <div class="freq-area" id="freqArea"></div>
+
+                <div class="win-detail" id="winDetail"></div>
+
+                <div class="info-panel" id="infoPanel"></div>
+
+                <div class="answer-bar" id="answerBar" style="display:none">
+                    <span class="lbl">最终答案 →</span>
+                    <span class="val" id="answerVal"></span>
+                    <span class="note" id="answerNote"></span>
+                </div>
+
+                <div class="ctrls">
+                    <button class="btn" id="btnReset" onclick="doReset()">↺ 重置</button>
+                    <button class="btn" id="btnPrev" onclick="doPrev()">◀ 上一步</button>
+                    <button class="btn" id="btnNext" onclick="doNext()">下一步 ▶</button>
+                    <button class="btn primary" id="btnAuto" onclick="doAuto()">▶ 自动播放</button>
+                    <select class="speed-sel" id="speedSel" onchange="updateSpeed()">
+                        <option value="1600">慢速</option>
+                        <option value="1000" selected>正常</option>
+                        <option value="500">快速</option>
+                        <option value="250">极速</option>
+                    </select>
+                </div>
+
+                <div class="log-sec">
+                    <div class="log-title">操作日志</div>
+                    <div class="log-box" id="logBox">
+                        <div class="log-empty">点击「运行可视化」开始演示</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 算法步骤 -->
+    <div class="section">
+        <h2 class="section-title"><span class="ico">📐</span>算法具体步骤</h2>
+        <div class="card">
+            <ol class="step-list">
+                <li>初始化：用前 <code>k</code> 个元素构建<strong>频率表</strong> <code>freq</code>，计算<strong>不同元素数</strong> <code>distinct</code> 和<strong>窗口总和</strong> <code>win_sum</code>。</li>
+                <li>检查第一个窗口：如果 <code>distinct ≥ m</code>，记录 <code>max_sum = win_sum</code>。</li>
+                <li>开始滑动窗口（左指针从 0 到 n−k）：
+                    <ul style="margin-top:.4rem">
+                        <li><strong>移除</strong>左边元素 <code>nums[left]</code>：频率 −1，若减到 0 则 <code>distinct − 1</code> 并从表中删除</li>
+                        <li><strong>添加</strong>右边元素 <code>nums[left + k]</code>：若不在表中则 <code>distinct + 1</code>，频率 +1</li>
+                        <li>更新 <code>win_sum</code>：减去离开的、加上新来的</li>
+                    </ul>
+                </li>
+                <li>每滑一步，如果 <code>distinct ≥ m</code>，用 <code>win_sum</code> 更新 <code>max_sum</code>。</li>
+                <li>全部滑完后返回 <code>max_sum</code>（若从未达标则返回 <code>0</code>）。</li>
+            </ol>
+        </div>
+    </div>
+
+    <!-- 代码实现 -->
+    <div class="section">
+        <h2 class="section-title"><span class="ico">💻</span>代码实现（Python）</h2>
+        <div class="code-blk">
+            <div class="code-hd">
+                <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                <span style="margin-left:.5rem">solution.py</span>
+            </div>
+            <pre class="pre-code"><span class="kw">from</span> collections <span class="kw">import</span> defaultdict
+
+<span class="kw">class</span> <span class="dc">Solution</span>:
+    <span class="kw">def</span> <span class="fn">maxSum</span>(<span class="vr">self</span>, <span class="vr">nums</span>: <span class="dc">List</span>[<span class="dc">int</span>], <span class="vr">m</span>: <span class="dc">int</span>, <span class="vr">k</span>: <span class="dc">int</span>) <span class="op">-></span> <span class="dc">int</span>:
+        <span class="vr">freq</span> <span class="op">=</span> <span class="fn">defaultdict</span>(<span class="dc">int</span>)
+        <span class="vr">distinct</span> <span class="op">=</span> <span class="num">0</span>
+        <span class="vr">win_sum</span> <span class="op">=</span> <span class="num">0</span>
+        <span class="vr">max_sum</span> <span class="op">=</span> <span class="num">0</span>
+        <span class="vr">n</span> <span class="op">=</span> <span class="fn">len</span>(<span class="vr">nums</span>)
+
+        <span class="cmt"># 第一步：构建初始窗口</span>
+        <span class="kw">for</span> <span class="vr">i</span> <span class="kw">in</span> <span class="fn">range</span>(<span class="vr">k</span>):
+            <span class="vr">v</span> <span class="op">=</span> <span class="vr">nums</span>[<span class="vr">i</span>]
+            <span class="kw">if</span> <span class="vr">freq</span>[<span class="vr">v</span>] <span class="op">==</span> <span class="num">0</span>:
+                <span class="vr">distinct</span> <span class="op">+=</span> <span class="num">1</span>
+            <span class="vr">freq</span>[<span class="vr">v</span>] <span class="op">+=</span> <span class="num">1</span>
+            <span class="vr">win_sum</span> <span class="op">+=</span> <span class="vr">v</span>
+
+        <span class="cmt"># 第二步：检查第一个窗口</span>
+        <span class="kw">if</span> <span class="vr">distinct</span> <span class="op">>=</span> <span class="vr">m</span>:
+            <span class="vr">max_sum</span> <span class="op">=</span> <span class="vr">win_sum</span>
+
+        <span class="cmt"># 第三步：滑动窗口</span>
+        <span class="kw">for</span> <span class="vr">i</span> <span class="kw">in</span> <span class="fn">range</span>(<span class="vr">k</span>, <span class="vr">n</span>):
+            <span class="cmt"># 移除左边元素</span>
+            <span class="vr">leave</span> <span class="op">=</span> <span class="vr">nums</span>[<span class="vr">i</span> <span class="op">-</span> <span class="vr">k</span>]
+            <span class="vr">freq</span>[<span class="vr">leave</span>] <span class="op">-=</span> <span class="num">1</span>
+            <span class="kw">if</span> <span class="vr">freq</span>[<span class="vr">leave</span>] <span class="op">==</span> <span class="num">0</span>:
+                <span class="vr">distinct</span> <span class="op">-=</span> <span class="num">1</span>
+            <span class="vr">win_sum</span> <span class="op">-=</span> <span class="vr">leave</span>
+
+            <span class="cmt"># 添加右边元素</span>
+            <span class="vr">enter</span> <span class="op">=</span> <span class="vr">nums</span>[<span class="vr">i</span>]
+            <span class="kw">if</span> <span class="vr">freq</span>[<span class="vr">enter</span>] <span class="op">==</span> <span class="num">0</span>:
+                <span class="vr">distinct</span> <span class="op">+=</span> <span class="num">1</span>
+            <span class="vr">freq</span>[<span class="vr">enter</span>] <span class="op">+=</span> <span class="num">1</span>
+            <span class="vr">win_sum</span> <span class="op">+=</span> <span class="vr">enter</span>
+
+            <span class="cmt"># 更新最大和</span>
+            <span class="kw">if</span> <span class="vr">distinct</span> <span class="op">>=</span> <span class="vr">m</span>:
+                <span class="vr">max_sum</span> <span class="op">=</span> <span class="fn">max</span>(<span class="vr">max_sum</span>, <span class="vr">win_sum</span>)
+
+        <span class="kw">return</span> <span class="vr">max_sum</span></pre>
+        </div>
+    </div>
+
+    <!-- 复杂度分析 -->
+    <div class="section">
+        <h2 class="section-title"><span class="ico">📊</span>复杂度分析</h2>
+        <div class="cx-grid">
+            <div class="cx-card">
+                <h4>时间复杂度</h4>
+                <div class="val">O(n)</div>
+                <p>构建初始窗口 O(k)，之后每次滑动 O(1)，共滑 n−k 次，总计 O(n)。</p>
+            </div>
+            <div class="cx-card">
+                <h4>空间复杂度</h4>
+                <div class="val">O(k)</div>
+                <p>频率表最多存储 k 个不同元素（窗口大小上限），因此空间为 O(k)。</p>
+            </div>
+        </div>
+        <div class="card" style="margin-top:1rem">
+            <h3>与暴力法对比</h3>
+            <div class="cmp-tbl">
+                <table>
+                    <thead><tr><th>方法</th><th>时间复杂度</th><th>空间复杂度</th></tr></thead>
+                    <tbody>
+                        <tr>
+                            <td>暴力法（每次用 set 去重 + 求和）</td>
+                            <td><code>O(n × k)</code></td>
+                            <td><code>O(k)</code></td>
+                        </tr>
+                        <tr>
+                            <td style="color:var(--accent);font-weight:500">滑动窗口 + 频率表</td>
+                            <td><code>O(n)</code></td>
+                            <td><code>O(k)</code></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <p style="margin-top:.8rem;font-size:.85rem;color:var(--text-muted)">当 n 和 k 都较大时优势非常明显。例如 n=10⁵, k=5×10⁴，暴力法约 50 亿次操作，滑动窗口只需约 10 万次。</p>
+        </div>
+    </div>
+
+</div>
+
+<script>
+/* ============================================================
+   VISUALIZATION ENGINE — LeetCode 2841
+   ============================================================ */
+let nums = [2, 6, 7, 3, 1, 7];
+let m = 3;
+let k = 4;
+let steps = [];
+let cur = 0;
+let playing = false;
+let timer = null;
+let speed = 1000;
+
+function buildSteps() {
+    steps = [];
+    if (k > nums.length || k < 1) return;
+
+    const freq = {};
+    let distinct = 0;
+    let sum = 0;
+    let maxSum = 0;
+
+    for (let i = 0; i < k; i++) {
+        const v = nums[i];
+        sum += v;
+        if (!freq[v]) freq[v] = 0;
+        if (freq[v] === 0) distinct++;
+        freq[v]++;
+    }
+
+    const isAlmost = distinct >= m;
+    if (isAlmost) maxSum = sum;
+
+    steps.push({
+        left: 0, right: k - 1,
+        win: nums.slice(0, k),
+        freq: { ...freq }, distinct, sum, isAlmost, maxSum,
+        leaveVal: null, enterVal: null
+    });
+
+    for (let i = k; i < nums.length; i++) {
+        const leave = nums[i - k];
+        const enter = nums[i];
+
+        freq[leave]--;
+        if (freq[leave] === 0) { delete freq[leave]; distinct--; }
+        sum -= leave;
+
+        if (!freq[enter]) freq[enter] = 0;
+        if (freq[enter] === 0) distinct++;
+        freq[enter]++;
+        sum += enter;
+
+        const isA = distinct >= m;
+        if (isA && sum > maxSum) maxSum = sum;
+
+        steps.push({
+            left: i - k + 1, right: i,
+            win: nums.slice(i - k + 1, i + 1),
+            freq: { ...freq }, distinct, sum,
+            isAlmost: isA, maxSum,
+            leaveVal: leave, enterVal: enter
+        });
+    }
+}
+
+/* ---------- Parse & Validate ---------- */
+function parseArr(str) {
+    const cleaned = str.replace(/[\[\]$$]/g, '').trim();
+    if (!cleaned) return null;
+    const parts = cleaned.split(/[,\s]+/).filter(Boolean);
+    const result = [];
+    for (const p of parts) {
+        const n = Number(p);
+        if (!Number.isFinite(n)) return null;
+        result.push(Math.round(n));
+    }
+    return result.length > 0 ? result : null;
+}
+
+function validateInputs() {
+    let valid = true;
+    const arrEl = document.getElementById('inputArr');
+    const mEl = document.getElementById('inputM');
+    const kEl = document.getElementById('inputK');
+    const hArr = document.getElementById('hintArr');
+    const hM = document.getElementById('hintM');
+    const hK = document.getElementById('hintK');
+
+    [arrEl, mEl, kEl].forEach(e => e.classList.remove('error'));
+    [hArr, hM, hK].forEach(e => e.classList.remove('err'));
+
+    const parsed = parseArr(arrEl.value);
+    if (!parsed) {
+        arrEl.classList.add('error'); hArr.classList.add('err');
+        hArr.textContent = '✗ 请输入有效的整数数组';
+        valid = false;
+    } else {
+        hArr.textContent = '已解析 ' + parsed.length + ' 个元素';
+    }
+
+    const kVal = Number(kEl.value);
+    if (!Number.isFinite(kVal) || kVal < 1 || (parsed && kVal > parsed.length) || !Number.isInteger(kVal)) {
+        kEl.classList.add('error'); hK.classList.add('err');
+        hK.textContent = parsed ? '✗ 请输入 1 ~ ' + parsed.length + ' 的整数' : '✗ 请先输入有效数组';
+        valid = false;
+    } else {
+        hK.textContent = '窗口大小 = ' + kVal;
+    }
+
+    const mVal = Number(mEl.value);
+    if (!Number.isFinite(mVal) || mVal < 1 || !Number.isInteger(mVal)) {
+        mEl.classList.add('error'); hM.classList.add('err');
+        hM.textContent = '✗ 请输入 ≥ 1 的整数';
+        valid = false;
+    } else if (kVal && mVal > kVal) {
+        hM.textContent = '⚠ m=' + mVal + ' > k=' + kVal + '，答案将为 0';
+    } else {
+        hM.textContent = '最少 ' + mVal + ' 种不同元素';
+    }
+
+    return valid ? { nums: parsed, m: mVal, k: kVal } : null;
+}
+
+/* ---------- Apply ---------- */
+function applyParams() {
+    const result = validateInputs();
+    if (!result) return;
+    stopAuto();
+    nums = result.nums; m = result.m; k = result.k; cur = 0;
+    buildSteps();
+
+    document.getElementById('dispArr').textContent = '[' + nums.join(', ') + ']';
+    document.getElementById('dispM').textContent = m;
+    document.getElementById('dispK').textContent = k;
+
+    const ansBar = document.getElementById('answerBar');
+    const note = document.getElementById('answerNote');
+    if (steps.length === 0) {
+        document.getElementById('answerVal').textContent = '—';
+        note.textContent = '(无法构建窗口)';
+        ansBar.style.display = 'flex';
+        document.getElementById('logBox').innerHTML = '<div class="log-empty">无法构建窗口：k 大于数组长度</div>';
+        return;
+    }
+    const finalMax = steps[steps.length - 1].maxSum;
+    document.getElementById('answerVal').textContent = finalMax;
+    const hasValid = steps.some(s => s.isAlmost);
+    note.textContent = hasValid ? '' : '(无满足条件的子数组)';
+    ansBar.style.display = 'flex';
+    render();
+}
+
+function applyPreset(pArr, pM, pK) {
+    document.getElementById('inputArr').value = pArr.join(', ');
+    document.getElementById('inputM').value = pM;
+    document.getElementById('inputK').value = pK;
+    applyParams();
+}
+
+/* ---------- Render Array ---------- */
+function renderArr() {
+    const ptrRow = document.getElementById('ptrRow');
+    const elRow = document.getElementById('elRow');
+    const idxRow = document.getElementById('idxRow');
+    ptrRow.innerHTML = ''; elRow.innerHTML = ''; idxRow.innerHTML = '';
+
+    const s = steps[cur];
+    for (let i = 0; i < nums.length; i++) {
+        const pc = document.createElement('div');
+        pc.className = 'ptr-cell';
+        if (i === s.left) {
+            const lb = document.createElement('span');
+            lb.className = 'ptr-lbl L'; lb.textContent = 'L';
+            pc.appendChild(lb);
+        }
+        if (i === s.right) {
+            const lb = document.createElement('span');
+            lb.className = 'ptr-lbl R'; lb.textContent = 'R';
+            pc.appendChild(lb);
+        }
+        ptrRow.appendChild(pc);
+
+        const el = document.createElement('div');
+        el.className = 'el';
+        el.textContent = nums[i];
+        if (i >= s.left && i <= s.right) {
+            el.classList.add('in-win');
+            el.classList.add(s.isAlmost ? 'pass' : 'fail');
+        }
+        elRow.appendChild(el);
+
+        const ic = document.createElement('div');
+        ic.className = 'idx-c'; ic.textContent = '[' + i + ']';
+        idxRow.appendChild(ic);
+    }
+    scrollToWin(s.left, s.right);
+}
+
+function scrollToWin(li, ri) {
+    const box = document.getElementById('arrScroll');
+    const els = document.querySelectorAll('.el');
+    if (!els[li] || !els[ri]) return;
+    const l = els[li].offsetLeft;
+    const r = els[ri].offsetLeft + els[ri].offsetWidth;
+    box.scrollTo({ left: Math.max(0, (l + r) / 2 - box.clientWidth / 2), behavior: 'smooth' });
+}
+
+/* ---------- Render Frequency ---------- */
+function renderFreq() {
+    const s = steps[cur];
+    const area = document.getElementById('freqArea');
+    const entries = Object.entries(s.freq).map(function(e) { return [Number(e[0]), e[1]]; }).sort(function(a, b) { return a[0] - b[0]; });
+
+    let tagsHtml = '';
+    if (entries.length === 0) {
+        tagsHtml = '<span class="freq-empty">空窗口</span>';
+    } else {
+        for (let j = 0; j < entries.length; j++) {
+            const val = entries[j][0], cnt = entries[j][1];
+            const multi = cnt > 1 ? ' multi' : '';
+            tagsHtml += '<div class="freq-entry' + multi + '"><span class="freq-val">' + val + '</span><span class="freq-cnt">×' + cnt + '</span></div>';
+        }
+    }
+
+    let actionHtml = '';
+    if (s.leaveVal !== null) {
+        actionHtml = '<span class="freq-action"><span class="leave">−' + s.leaveVal + '</span> &nbsp; <span class="enter">+' + s.enterVal + '</span></span>';
+    } else {
+        actionHtml = '<span class="freq-action">初始化窗口</span>';
+    }
+
+    const pc = s.isAlmost ? 'pass' : 'fail';
+    const pt = s.isAlmost ? s.distinct + ' 种 ≥ ' + m + ' ✓' : s.distinct + ' 种 < ' + m + ' ✗';
+
+    area.innerHTML =
+        '<div class="freq-head">' +
+            '<span class="freq-label">频率表</span>' +
+            actionHtml +
+            '<span class="freq-distinct ' + pc + '">' + pt + '</span>' +
+        '</div>' +
+        '<div class="freq-tags">' + tagsHtml + '</div>';
+}
+
+/* ---------- Render Info ---------- */
+function renderInfo() {
+    const s = steps[cur];
+    document.getElementById('stepInd').textContent = 'Step ' + (cur + 1) + ' / ' + steps.length;
+
+    const wd = document.getElementById('winDetail');
+    const elsH = s.win.map(function(v) { return '<span class="win-el">' + v + '</span>'; }).join('<span style="color:var(--text-muted)">+</span>');
+    const rc = s.isAlmost ? 'pass' : 'fail';
+    const rt = s.isAlmost ? '✓ 几乎唯一' : '✗ 不满足';
+    wd.innerHTML =
+        '<div class="win-els">' + elsH + '</div>' +
+        '<span class="win-calc">= ' + s.sum + '</span>' +
+        '<span class="win-res ' + rc + '">' + rt + '</span>';
+
+    const ip = document.getElementById('infoPanel');
+    const ac = s.isAlmost ? 'ok' : 'fail';
+    ip.innerHTML =
+        '<div class="info-it"><span class="info-l">窗口范围</span><span class="info-v">[' + s.left + ' .. ' + s.right + ']</span></div>' +
+        '<div class="info-it"><span class="info-l">窗口总和</span><span class="info-v">' + s.sum + '</span></div>' +
+        '<div class="info-it"><span class="info-l">不同元素</span><span class="info-v ' + ac + '">' + s.distinct + ' 种</span></div>' +
+        '<div class="info-it"><span class="info-l">要求最少</span><span class="info-v accent">' + m + ' 种</span></div>' +
+        '<div class="info-it"><span class="info-l">几乎唯一</span><span class="info-v ' + ac + '">' + (s.isAlmost ? '✓ 是' : '✗ 否') + '</span></div>' +
+        '<div class="info-it"><span class="info-l">当前最大和</span><span class="info-v accent">' + s.maxSum + '</span></div>';
+}
+
+/* ---------- Render Log ---------- */
+function renderLog() {
+    const box = document.getElementById('logBox');
+    box.innerHTML = '';
+    for (let i = 0; i < steps.length; i++) {
+        const s = steps[i];
+        const d = document.createElement('div');
+        d.className = 'log-e';
+        if (i < cur) d.classList.add('visited');
+        if (i === cur) d.classList.add('active');
+
+        const action = s.leaveVal !== null ? '−' + s.leaveVal + ' +' + s.enterVal : '初始化';
+        const rc = s.isAlmost ? 'pass' : 'fail';
+        const rt = s.isAlmost ? '✓' : '✗';
+        d.innerHTML =
+            '<span class="ls">#' + (i + 1) + '</span>' +
+            '<span>' + action + '</span>' +
+            '<span style="color:var(--text-muted)">[' + s.win.join(',') + ']</span>' +
+            '<span style="color:var(--text-muted)">' + s.distinct + '种</span>' +
+            '<span class="lr ' + rc + '">' + rt + ' sum=' + s.sum + ' max=' + s.maxSum + '</span>';
+        box.appendChild(d);
+    }
+    const act = box.querySelector('.active');
+    if (act) act.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
+/* ---------- Buttons ---------- */
+function updateBtn() {
+    document.getElementById('btnPrev').disabled = cur <= 0;
+    document.getElementById('btnNext').disabled = cur >= steps.length - 1;
+}
+
+function render() {
+    if (steps.length === 0) return;
+    renderArr(); renderFreq(); renderInfo(); renderLog(); updateBtn();
+}
+
+function doNext() { if (cur < steps.length - 1) { cur++; render(); } }
+function doPrev() { if (cur > 0) { cur--; render(); } }
+function doReset() {
+    stopAuto(); cur = 0; render();
+    document.getElementById('arrScroll').scrollTo({ left: 0, behavior: 'smooth' });
+}
+function doAuto() {
+    if (playing) { stopAuto(); return; }
+    if (steps.length === 0) return;
+    if (cur >= steps.length - 1) { cur = 0; render(); }
+    playing = true;
+    document.getElementById('btnAuto').textContent = '⏸ 暂停';
+    document.getElementById('btnAuto').classList.remove('primary');
+    timer = setInterval(function() {
+        if (cur < steps.length - 1) { doNext(); } else { stopAuto(); }
+    }, speed);
+}
+function stopAuto() {
+    playing = false;
+    document.getElementById('btnAuto').textContent = '▶ 自动播放';
+    document.getElementById('btnAuto').classList.add('primary');
+    if (timer) { clearInterval(timer); timer = null; }
+}
+function updateSpeed() {
+    speed = Number(document.getElementById('speedSel').value);
+    if (playing) { stopAuto(); doAuto(); }
+}
+
+/* ---------- Keyboard ---------- */
+document.addEventListener('keydown', function(e) {
+    if (e.target.tagName === 'INPUT') return;
+    if (e.key === 'ArrowRight') doNext();
+    if (e.key === 'ArrowLeft') doPrev();
+    if (e.key === ' ') { e.preventDefault(); doAuto(); }
+    if (e.key === 'r' || e.key === 'R') doReset();
+});
+
+document.querySelectorAll('.param-input').forEach(function(el) {
+    el.addEventListener('keydown', function(e) { if (e.key === 'Enter') applyParams(); });
+});
+
+/* ---------- Init ---------- */
+buildSteps();
+(function() {
+    const ansBar = document.getElementById('answerBar');
+    const note = document.getElementById('answerNote');
+    if (steps.length > 0) {
+        const finalMax = steps[steps.length - 1].maxSum;
+        document.getElementById('answerVal').textContent = finalMax;
+        const hasValid = steps.some(function(s) { return s.isAlmost; });
+        note.textContent = hasValid ? '' : '(无满足条件的子数组)';
+        ansBar.style.display = 'flex';
+        render();
+    }
+})();
+</script>
+</body>
+</html>
