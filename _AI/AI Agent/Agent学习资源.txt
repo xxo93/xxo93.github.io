@@ -1,0 +1,6 @@
+# 深入解读当前最成功的 AI 编程 Agent 的源码架构
+https://github.com/Windy3f3f3f3f/how-claude-code-works
+# 从零开始构建智能体
+https://github.com/datawhalechina/hello-agents
+# Learn Claude Code -- 真正的 Agent Harness 工程
+https://github.com/shareAI-lab/learn-claude-code/blob/main/README-zh.md
