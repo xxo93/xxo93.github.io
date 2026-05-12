@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LeetCode 3679 · 使库存平衡的最少丢弃次数</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+        :root{
+            --bg:#08080f;--surface:#111827;--surface-2:#1a2234;--border:#1e293b;
+            --accent:#d4a843;--accent-glow:rgba(212,168,67,.18);
+            --best:#34d399;--best-bg:rgba(52,211,153,.1);
+            --window-bg:rgba(212,168,67,.06);--window-border:rgba(212,168,67,.5);
+            --left-ptr:#a3e635;--right-ptr:#fb923c;
+            --removed:#f87171;--added:#38bdf8;--kept:#38bdf8;
+            --text:#e2e8f0;--text-muted:#64748b;--text-bright:#f8fafc;
+            --cell-sz:54px;--cell-gap:8px;
+        }
+        body{
+            background:var(--bg);color:var(--text);
+            font-family:'Noto Serif SC','Georgia',serif;
+            line-height:1.7;min-height:100vh;overflow-x:hidden;
+        }
+        body::before{
+            content:'';position:fixed;inset:0;
+            background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.025'/%3E%3C/svg%3E");
+            pointer-events:none;z-index:9999;
+        }
+        body::after{
+            content:'';position:fixed;inset:0;
+            background:
+                radial-gradient(ellipse at 15% 20%,rgba(212,168,67,.04) 0%,transparent 50%),
+                radial-gradient(ellipse at 85% 80%,rgba(52,211,153,.03) 0%,transparent 50%),
+                radial-gradient(ellipse at 50% 50%,rgba(30,41,59,.3) 0%,transparent 70%);
+            pointer-events:none;z-index:0;
+        }
+        .container{max-width:920px;margin:0 auto;padding:3rem 2rem;position:relative;z-index:1}
+
+        .header{margin-bottom:2.5rem;animation:fadeUp .8s ease}
+        .tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.72rem;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);background:var(--accent-glow);border:1px solid rgba(212,168,67,.2);padding:.3em .9em;border-radius:2px;margin-bottom:1.2rem}
+        .header h1{font-family:'Noto Serif SC',serif;font-weight:700;font-size:2rem;color:var(--text-bright);line-height:1.3;margin-bottom:.8rem;letter-spacing:-.01em}
+        .header p{font-size:.93rem;color:var(--text-muted);max-width:640px;line-height:1.85}
+        .header code{font-family:'JetBrains Mono',monospace;font-size:.82em;background:var(--surface-2);padding:.12em .35em;border-radius:3px;color:var(--best)}
+
+        .input-section{display:flex;gap:1rem;align-items:flex-end;margin-bottom:1rem;flex-wrap:wrap}
+        .input-group{display:flex;flex-direction:column;gap:.35rem}
+        .input-group label{font-family:'JetBrains Mono',monospace;font-size:.65rem;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted)}
+        .input-group input{font-family:'JetBrains Mono',monospace;font-size:.88rem;padding:.55em .75em;background:var(--surface-2);border:1px solid var(--border);border-radius:4px;color:var(--text);outline:none;transition:border-color .2s}
+        .input-group input:focus{border-color:var(--accent)}
+        .input-group.arr-input{flex:1;min-width:200px}
+        .input-group.arr-input input{width:100%}
+        .input-group.small-input input{width:72px}
+
+        .preset-section{display:flex;align-items:center;gap:.6rem;margin-bottom:2rem;flex-wrap:wrap}
+        .preset-label{font-family:'JetBrains Mono',monospace;font-size:.65rem;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted)}
+
+        .btn{font-family:'JetBrains Mono',monospace;font-size:.76rem;font-weight:500;letter-spacing:.04em;padding:.65em 1.3em;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);cursor:pointer;transition:all .2s ease;display:inline-flex;align-items:center;gap:.45em;white-space:nowrap}
+        .btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-glow)}
+        .btn:active{transform:scale(.97)}
+        .btn:disabled{opacity:.28;cursor:not-allowed}
+        .btn:disabled:hover{border-color:var(--border);color:var(--text);background:var(--surface)}
+        .btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent);font-weight:700}
+        .btn.primary:hover{background:#e0b64e;color:var(--bg)}
+        .btn.sm{font-size:.65rem;padding:.45em .85em}
+
+        .viz-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:2.5rem 1.2rem 2rem;margin-bottom:1.2rem;position:relative;overflow:hidden}
+        .viz-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:.3}
+        .section-label{font-family:'JetBrains Mono',monospace;font-size:.65rem;font-weight:500;letter-spacing:.15em;text-transform:uppercase;color:var(--text-muted);margin-bottom:1.8rem;padding:0 .8rem}
+
+        .viz-scroll-outer{position:relative;overflow:hidden;border-radius:4px}
+        .viz-scroll-wrap{overflow-x:auto;overflow-y:hidden;padding:6px 0 10px;scrollbar-width:thin;scrollbar-color:rgba(212,168,67,.25) transparent}
+        .viz-scroll-wrap::-webkit-scrollbar{height:5px}
+        .viz-scroll-wrap::-webkit-scrollbar-track{background:transparent}
+        .viz-scroll-wrap::-webkit-scrollbar-thumb{background:rgba(212,168,67,.25);border-radius:3px}
+
+        .scroll-fade{position:absolute;top:0;bottom:0;width:52px;pointer-events:none;z-index:5;opacity:0;transition:opacity .35s ease}
+        .scroll-fade.left{left:0;background:linear-gradient(to right,var(--surface) 10%,transparent)}
+        .scroll-fade.right{right:0;background:linear-gradient(to left,var(--surface) 10%,transparent)}
+
+        .string-row,.ptr-row{display:flex;justify-content:center;align-items:flex-end;gap:var(--cell-gap);padding:0 28px;min-width:max-content}
+        .ptr-row{align-items:flex-start;min-height:52px}
+
+        .char-cell{width:var(--cell-sz);height:var(--cell-sz);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:1.2rem;font-weight:700;border-radius:6px;border:2px solid var(--border);background:var(--surface-2);color:rgba(148,163,184,.35);position:relative;opacity:.4;transition:all .38s cubic-bezier(.4,0,.2,1)}
+        .char-cell.in-window{opacity:1;border-color:var(--cell-border,var(--border));background:var(--cell-bg,var(--surface-2));color:var(--cell-fg,var(--text-muted));box-shadow:0 0 18px var(--cell-bg,transparent)}
+        .char-cell.discarded{opacity:.2;border-color:var(--removed)!important;background:rgba(248,113,113,.06)!important;color:var(--removed)!important;transform:scale(.88)}
+        .char-cell.adding{animation:popIn .42s cubic-bezier(.34,1.56,.64,1)}
+        .char-cell .strikethrough{position:absolute;top:50%;left:15%;right:15%;height:2px;background:var(--removed);transform:rotate(-12deg)}
+        .idx{position:absolute;bottom:-17px;font-size:.55rem;color:var(--text-muted);font-weight:400;pointer-events:none}
+
+        .ptr-slot{width:var(--cell-sz);height:52px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start}
+        .ptr-arrow{font-size:.9rem;line-height:1;animation:float 1.6s ease infinite}
+        .ptr-lbl{font-family:'JetBrains Mono',monospace;font-size:.65rem;font-weight:700;margin-top:1px}
+        .ptr-left .ptr-arrow,.ptr-left .ptr-lbl{color:var(--left-ptr)}
+        .ptr-right .ptr-arrow,.ptr-right .ptr-lbl{color:var(--right-ptr)}
+
+        .freq-grid{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;padding:0 16px;min-height:110px;align-items:flex-end}
+        .freq-card{width:90px;min-height:112px;border:2px solid var(--card-border,var(--border));border-radius:8px;padding:16px 8px 12px;text-align:center;position:relative;overflow:hidden;transition:all .38s cubic-bezier(.4,0,.2,1);color:var(--card-fg,var(--text));animation:fadeUp .35s ease}
+        .freq-card.is-max{box-shadow:0 0 22px var(--card-bg,rgba(212,168,67,.12))}
+        .freq-bar-bg{position:absolute;bottom:0;left:0;right:0;opacity:.12;transition:height .5s cubic-bezier(.4,0,.2,1);border-radius:0 0 6px 6px}
+        .freq-val{font-family:'JetBrains Mono',monospace;font-size:2rem;font-weight:700;line-height:1;margin-bottom:6px;position:relative;z-index:1}
+        .freq-count{font-family:'JetBrains Mono',monospace;font-size:.82rem;color:var(--text-muted);position:relative;z-index:1}
+        .freq-badge{position:absolute;top:5px;right:5px;font-family:'JetBrains Mono',monospace;font-size:.48rem;font-weight:700;letter-spacing:.1em;padding:2px 5px;border-radius:2px;background:var(--accent-glow);color:var(--accent);z-index:1}
+        .freq-over{position:absolute;top:5px;left:5px;font-family:'JetBrains Mono',monospace;font-size:.48rem;font-weight:700;letter-spacing:.05em;padding:2px 5px;border-radius:2px;background:rgba(248,113,113,.15);color:var(--removed);z-index:1}
+        .freq-empty{text-align:center;color:var(--text-muted);padding:2rem;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+
+        .step-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1.8rem 2rem;margin-bottom:1.2rem}
+        .step-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.2rem}
+        .step-num{font-family:'JetBrains Mono',monospace;font-size:.82rem;color:var(--accent)}
+        .step-desc{font-size:.9rem;color:var(--text);line-height:1.85;padding:.9rem 1.15rem;background:var(--surface-2);border-radius:6px;border-left:3px solid var(--accent);margin-bottom:1.4rem;min-height:2.8rem}
+        .step-desc code{font-family:'JetBrains Mono',monospace;font-size:.82em;background:rgba(255,255,255,.04);padding:.1em .35em;border-radius:3px;color:var(--accent)}
+        .hl-removed{color:var(--removed);font-family:'JetBrains Mono',monospace;font-weight:600}
+        .hl-kept{color:var(--kept);font-family:'JetBrains Mono',monospace;font-weight:600}
+        .hl-warn{color:#fbbf24;font-family:'JetBrains Mono',monospace;font-weight:600}
+        .hl-newmin{color:var(--accent);font-family:'JetBrains Mono',monospace;font-weight:700}
+
+        .counters{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+        .ctr-card{background:var(--surface-2);border-radius:6px;padding:1.1rem;text-align:center}
+        .ctr-label{font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);margin-bottom:.4rem}
+        .ctr-val{font-family:'JetBrains Mono',monospace;font-size:2rem;font-weight:700;transition:all .3s ease}
+        .ctr-val.cur{color:var(--accent)}
+        .ctr-val.mx{color:var(--best)}
+        .ctr-val.pop{transform:scale(1.18)}
+        .bar-track{margin-top:.6rem;height:4px;background:rgba(255,255,255,.04);border-radius:2px;overflow:hidden}
+        .bar-fill{height:100%;border-radius:2px;transition:width .5s cubic-bezier(.4,0,.2,1)}
+        .bar-fill.cur{background:var(--accent)}
+        .bar-fill.mx{background:var(--best)}
+
+        .answer-banner{margin-top:1.2rem;padding:1rem 1.4rem;border-radius:6px;text-align:center;background:linear-gradient(135deg,rgba(212,168,67,.08),rgba(52,211,153,.06));border:1px solid rgba(212,168,67,.25);animation:fadeUp .5s ease;display:none}
+        .answer-banner.show{display:block}
+        .answer-inner{display:flex;align-items:center;justify-content:center;gap:.8rem}
+        .answer-label{font-family:'JetBrains Mono',monospace;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted)}
+        .answer-num{font-family:'JetBrains Mono',monospace;font-size:2.4rem;font-weight:700;color:var(--accent);line-height:1}
+
+        .controls{display:flex;justify-content:center;gap:.7rem;margin-bottom:1.2rem;flex-wrap:wrap}
+        .progress{display:flex;justify-content:center;gap:6px;margin-bottom:1rem;flex-wrap:wrap}
+        .dot{width:8px;height:8px;border-radius:50%;background:var(--border);transition:all .3s ease;cursor:pointer}
+        .dot.active{background:var(--accent);box-shadow:0 0 8px var(--accent-glow);transform:scale(1.35)}
+        .dot.visited{background:rgba(212,168,67,.28)}
+        .kbd-hint{text-align:center;font-family:'JetBrains Mono',monospace;font-size:.62rem;color:var(--text-muted);margin-bottom:2rem;opacity:.55}
+        .kbd-hint kbd{background:var(--surface-2);border:1px solid var(--border);border-radius:3px;padding:.1em .4em;font-size:.68rem}
+
+        .log-card{background:#0c1222;border:1px solid var(--border);border-radius:8px;padding:1.6rem 1.8rem;margin-bottom:2rem}
+        .log-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
+        .log-container{max-height:240px;overflow-y:auto;font-family:'JetBrains Mono',monospace;font-size:.72rem;line-height:1.75;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+        .log-container::-webkit-scrollbar{width:4px}
+        .log-container::-webkit-scrollbar-track{background:transparent}
+        .log-container::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+        .log-entry{padding:.35rem .7rem;border-left:2px solid var(--border);margin-bottom:.25rem;color:var(--text-muted);transition:background .2s}
+        .log-entry:hover{background:rgba(255,255,255,.015)}
+        .log-entry:last-child{border-left-color:var(--accent);color:var(--text)}
+        .log-entry code{font-family:'JetBrains Mono',monospace;font-size:.95em;color:var(--accent)}
+        .log-entry strong{color:var(--text-bright)}
+        .log-step{display:inline-block;min-width:2.4em;color:var(--accent);font-weight:700;margin-right:.35em}
+        .log-stats{display:inline-block;margin-left:.5em;color:var(--best);font-weight:500}
+        .log-answer{padding:.5rem .7rem;margin-top:.3rem;border-left:2px solid var(--best);color:var(--best);font-weight:700;font-size:.78rem;background:rgba(52,211,153,.04);border-radius:0 4px 4px 0}
+        .log-empty{text-align:center;color:var(--text-muted);padding:1.5rem;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+
+        .algo-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:2.5rem 2rem;margin-top:0}
+        .algo-card h2{font-family:'Noto Serif SC',serif;font-size:1.25rem;font-weight:700;color:var(--text-bright);margin-bottom:1.4rem}
+        .algo-card h3{font-family:'Noto Serif SC',serif;font-size:.95rem;font-weight:600;color:var(--accent);margin-top:1.4rem;margin-bottom:.7rem}
+        .algo-card p{font-size:.88rem;color:var(--text-muted);margin-bottom:.7rem}
+        .algo-card code{font-family:'JetBrains Mono',monospace;font-size:.8em;background:var(--surface-2);padding:.12em .35em;border-radius:3px;color:var(--best)}
+        .algo-card ul,ol{padding-left:1.2rem;margin-bottom:.8rem}
+        .algo-card li{font-size:.88rem;color:var(--text-muted);margin-bottom:.4rem}
+        .code-block{background:var(--surface-2);border:1px solid var(--border);border-radius:6px;padding:1.2rem 1.4rem;margin:1rem 0;overflow-x:auto}
+        .code-block pre{font-family:'JetBrains Mono',monospace;font-size:.76rem;line-height:1.85;color:var(--text);white-space:pre}
+        .ck{color:#c792ea}.cf{color:#82aaff}.cs{color:#c3e88d}.cc{color:#546e7a}.cn{color:#f78c6c}.ct{color:#ffcb6b}
+
+        @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes popIn{0%{transform:scale(.65);opacity:0}100%{transform:scale(1);opacity:1}}
+        @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+
+        @media(max-width:640px){
+            .container{padding:2rem 1rem}
+            .header h1{font-size:1.45rem}
+            .counters{grid-template-columns:1fr}
+            .controls{gap:.4rem}
+            .btn{font-size:.68rem;padding:.55em .9em}
+            .viz-card{padding:2rem .6rem 1.6rem}
+            .freq-card{width:72px;min-height:90px}
+            .freq-val{font-size:1.5rem}
+            .step-card{padding:1.4rem 1.2rem}
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <div class="header">
+        <div class="tag">LeetCode 3679 · 滑动窗口 · Medium</div>
+        <h1>使库存平衡的最少丢弃次数</h1>
+        <p>给定数组 <code>arrivals</code>（每天到达的货品类型）和整数 <code>w</code>（窗口大小）、<code>m</code>（每种类型最多出现次数）。找出需要丢弃的最少天数，使得任意 <code>w</code> 天窗口中，每种类型的货品最多出现 <code>m</code> 次。</p>
+    </div>
+
+    <div class="input-section">
+        <div class="input-group arr-input">
+            <label>到达数组 arrivals</label>
+            <input type="text" id="inpArr" value="1,2,1,1,2,1,1">
+        </div>
+        <div class="input-group small-input">
+            <label>窗口 w</label>
+            <input type="number" id="inpW" value="4" min="1" max="50">
+        </div>
+        <div class="input-group small-input">
+            <label>上限 m</label>
+            <input type="number" id="inpM" value="2" min="1" max="50">
+        </div>
+        <button class="btn primary" onclick="regenerate()">生成演示</button>
+    </div>
+    <div class="preset-section">
+        <span class="preset-label">快速填充：</span>
+        <button class="btn sm" onclick="fillPreset(0)">示例 1</button>
+        <button class="btn sm" onclick="fillPreset(1)">示例 2</button>
+        <button class="btn sm" onclick="fillPreset(2)">示例 3</button>
+        <button class="btn sm" onclick="fillPreset(3)">示例 4</button>
+        <button class="btn sm" onclick="fillPreset(4)">示例 5</button>
+    </div>
+
+    <div class="viz-card">
+        <div class="section-label">数组 · 滑动窗口可视化</div>
+        <div class="viz-scroll-outer">
+            <div class="scroll-fade left" id="fadeLeft"></div>
+            <div class="scroll-fade right" id="fadeRight"></div>
+            <div class="viz-scroll-wrap" id="vizScrollWrap">
+                <div class="string-row" id="stringRow"></div>
+                <div class="ptr-row" id="ptrRow"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="viz-card">
+        <div class="section-label">当前窗口内各类型频次</div>
+        <div class="freq-grid" id="freqGrid">
+            <div class="freq-empty">等待开始...</div>
+        </div>
+    </div>
+
+    <div class="step-card" id="stepCard">
+        <div class="step-head">
+            <span class="section-label" style="margin-bottom:0">步骤详情</span>
+            <span class="step-num" id="stepNum">&mdash; / 0</span>
+        </div>
+        <div class="step-desc" id="stepDesc">点击「下一步」开始演示</div>
+        <div class="counters">
+            <div class="ctr-card">
+                <div class="ctr-label">当前累计丢弃数</div>
+                <div class="ctr-val cur" id="ctrCur">&mdash;</div>
+                <div class="bar-track"><div class="bar-fill cur" id="barCur" style="width:0"></div></div>
+            </div>
+            <div class="ctr-card">
+                <div class="ctr-label">窗口内最大频次</div>
+                <div class="ctr-val mx" id="ctrMaxFreq">&mdash;</div>
+                <div class="bar-track"><div class="bar-fill mx" id="barMaxFreq" style="width:0"></div></div>
+            </div>
+        </div>
+        <div class="answer-banner" id="answerBanner">
+            <div class="answer-inner">
+                <span class="answer-label">最终答案</span>
+                <span class="answer-num" id="answerNum">0</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button class="btn" id="btnPrev" onclick="prevStep()">&#9664; 上一步</button>
+        <button class="btn primary" id="btnNext" onclick="nextStep()">下一步 &#9654;</button>
+        <button class="btn" id="btnPlay" onclick="togglePlay()">&#9193; 自动播放</button>
+        <button class="btn" id="btnReset" onclick="resetDemo()">&#8634; 重置</button>
+    </div>
+    <div class="progress" id="progress"></div>
+    <div class="kbd-hint"><kbd>&larr;</kbd> 上一步 &nbsp; <kbd>&rarr;</kbd> 下一步 &nbsp; <kbd>Space</kbd> 播放 / 暂停</div>
+
+    <div class="log-card">
+        <div class="log-header">
+            <span class="section-label" style="margin-bottom:0">操作日志</span>
+            <button class="btn sm" onclick="clearLog()">清空日志</button>
+        </div>
+        <div class="log-container" id="logContainer">
+            <div class="log-empty">等待开始演示...</div>
+        </div>
+    </div>
+
+    <div class="algo-card">
+        <h2>算法解析</h2>
+
+        <h3>题目理解</h3>
+        <p>想象一个仓库，每天都有新货品运来，货品有不同编号（类型）。我们有一个<strong>滚动窗口</strong>，覆盖最近 <code>w</code> 天。规定：这个窗口内，同一种类型的货品最多只能保留 <code>m</code> 个。如果某天运来的货品会导致某种类型在窗口内超过 <code>m</code> 个，就必须<strong>丢弃</strong>这一天的货品。</p>
+        <p>目标是用<strong>最少的丢弃</strong>来满足这个条件。</p>
+
+        <h3>为什么用滑动窗口？</h3>
+        <p><strong>暴力做法：</strong>枚举所有可能的丢弃组合，检查是否满足条件，时间指数级。</p>
+        <p><strong>关键观察：</strong>当窗口从位置 <code>i</code> 移到 <code>i+1</code> 时，只有<strong>一个旧元素离开</strong>（位置 <code>i-w+1</code>）和<strong>一个新元素进入</strong>（位置 <code>i+1</code>）。频次表只需做"一减一加"，不用重新统计。</p>
+        <p><strong>贪心策略：</strong>从左到右遍历，对于位置 <code>i</code>，如果保留 <code>arrivals[i]</code> 不会导致当前窗口中该类型频次超过 <code>m</code>，就保留；否则丢弃。这个贪心是正确的，因为越靠右的元素，它所在的有效窗口越多（受约束更多），所以优先保留它能最大化保留数量。</p>
+
+        <h3>具体步骤</h3>
+        <ol>
+            <li>用一个<strong>队列</strong>（双端队列）维护当前窗口内被保留的元素 <code>(位置, 类型)</code>。</li>
+            <li>用一个<strong>哈希表</strong>统计窗口内各类型的频次。</li>
+            <li>遍历每个位置 <code>i</code>：
+                <ul>
+                    <li>如果队首元素的位置 &lt; <code>i - w + 1</code>（已滑出窗口），则出队并减少该类型频次。</li>
+                    <li>检查 <code>arrivals[i]</code> 当前在窗口中的频次是否已达 <code>m</code>。</li>
+                    <li>如果已达上限 → <strong>丢弃</strong>（丢弃数 +1，不入队）。</li>
+                    <li>否则 → <strong>保留</strong>（入队，频次 +1）。</li>
+                </ul>
+            </li>
+            <li>遍历结束，累计丢弃数即为答案。</li>
+        </ol>
+
+        <h3>代码（Python）</h3>
+        <div class="code-block"><pre><span class="ck">from</span> collections <span class="ck">import</span> deque
+
+<span class="ck">class</span> <span class="ct">Solution</span>:
+    <span class="ck">def</span> <span class="cf">minDiscards</span>(<span class="ct">self</span>, arrivals: <span class="ct">list</span>[<span class="ct">int</span>], w: <span class="ct">int</span>, m: <span class="ct">int</span>) -> <span class="ct">int</span>:
+        q = deque()          <span class="cc"># 存储 (位置, 类型) 的队列</span>
+        freq = {}            <span class="cc"># 窗口内各类型频次</span>
+        discards = <span class="cn">0</span>
+
+        <span class="ck">for</span> i <span class="ck">in</span> <span class="cf">range</span>(<span class="cf">len</span>(arrivals)):
+            <span class="cc"># 1. 滑出窗口：移除超出范围的元素</span>
+            <span class="ck">while</span> q <span class="ck">and</span> q[<span class="cn">0</span>][<span class="cn">0</span>] < i - w + <span class="cn">1</span>:
+                _, val = q.popleft()
+                freq[val] -= <span class="cn">1</span>
+
+            <span class="cc"># 2. 检查当前类型在窗口中是否已达上限</span>
+            v = arrivals[i]
+            <span class="ck">if</span> freq.get(v, <span class="cn">0</span>) >= m:
+                discards += <span class="cn">1</span>   <span class="cc"># 超限，丢弃</span>
+            <span class="ck">else</span>:
+                q.append((i, v)) <span class="cc"># 保留，入队</span>
+                freq[v] = freq.get(v, <span class="cn">0</span>) + <span class="cn">1</span>
+
+        <span class="ck">return</span> discards</pre></div>
+
+        <h3>复杂度分析</h3>
+        <p><strong>时间复杂度：</strong><code>O(n)</code> — 每个元素最多入队一次、出队一次，总操作为 2n。</p>
+        <p><strong>空间复杂度：</strong><code>O(w)</code> — 队列最多存储 <code>w</code> 个元素，哈希表最多 <code>w</code> 个键。</p>
+    </div>
+</div>
+
+<script>
+/* ======== Global State ======== */
+let arrivals = [1,2,1,1,2,1,1], w = 4, m = 2;
+let steps = [], cur = -1, playing = false, timer = null, visited = new Set();
+
+/* ======== Color Palette ======== */
+const VAL_COLORS = [
+    {fg:'#d4a843',bg:'rgba(212,168,67,.14)',border:'rgba(212,168,67,.45)'},
+    {fg:'#34d399',bg:'rgba(52,211,153,.14)',border:'rgba(52,211,153,.45)'},
+    {fg:'#60a5fa',bg:'rgba(96,165,250,.14)',border:'rgba(96,165,250,.45)'},
+    {fg:'#f472b6',bg:'rgba(244,114,182,.14)',border:'rgba(244,114,182,.45)'},
+    {fg:'#a78bfa',bg:'rgba(167,139,250,.14)',border:'rgba(167,139,250,.45)'},
+    {fg:'#fb923c',bg:'rgba(251,146,60,.14)',border:'rgba(251,146,60,.45)'},
+    {fg:'#38bdf8',bg:'rgba(56,189,248,.14)',border:'rgba(56,189,248,.45)'},
+    {fg:'#e879f9',bg:'rgba(232,121,249,.14)',border:'rgba(232,121,249,.45)'},
+];
+let valColorMap = {};
+
+const PRESETS = [
+    {arr:[1,2,1,1,2,1,1],w:4,m:2,label:'窗口内超限'},
+    {arr:[3,1,3,1,3,1,3,1],w:4,m:1,label:'交替重复'},
+    {arr:[1,2,3,4,5,1,2,3],w:5,m:1,label:'不需丢弃'},
+    {arr:[2,2,2,2,2,3,3,2,2],w:4,m:2,label:'连续超标'},
+    {arr:[1,1,1,2,2,2,1,1,2,2],w:3,m:2,label:'混合场景'},
+];
+
+/* ======== Utilities ======== */
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function buildColorMap(){const u=[...new Set(arrivals)].sort((a,b)=>a-b);valColorMap={};u.forEach((v,i)=>{valColorMap[v]=i%VAL_COLORS.length;});}
+function getValColor(v){return VAL_COLORS[valColorMap[v]??0];}
+function getCellSize(){const n=arrivals.length;if(n<=10)return 56;if(n<=16)return 48;if(n<=22)return 40;if(n<=30)return 34;return 28;}
+function applyCellSize(){const sz=getCellSize();document.documentElement.style.setProperty('--cell-sz',sz+'px');document.documentElement.style.setProperty('--cell-gap',Math.max(4,Math.round(sz*0.15))+'px');}
+
+/* ======== Step Generation ======== */
+function genSteps(){
+    steps=[];
+    const q=[]; // queue of (pos, val) for kept elements
+    const freq={};
+    let discards=0;
+
+    for(let i=0;i<arrivals.length;i++){
+        const st={
+            pos:i,
+            queueBefore:q.map(x=>({...x})),
+            freqBefore:{...freq},
+            discardsBefore:discards,
+            action:null,
+            winL:Math.max(0,i-w+1),
+            winR:i,
+            removedFromQueue:null,
+        };
+
+        // Slide out expired elements
+        const expired=[];
+        while(q.length>0 && q[0].pos < i-w+1){
+            const old=q.shift();
+            freq[old.val]--;
+            if(freq[old.val]===0)delete freq[old.val];
+            expired.push(old);
+        }
+        st.expired=expired;
+
+        const v=arrivals[i];
+        const curCount=freq[v]||0;
+
+        if(curCount>=m){
+            // Discard
+            st.action='discard';
+            discards++;
+        }else{
+            // Keep
+            st.action='keep';
+            q.push({pos:i,val:v});
+            freq[v]=curCount+1;
+        }
+
+        st.queueAfter=q.map(x=>({...x}));
+        st.freqAfter={...freq};
+        st.discardsAfter=discards;
+        st.val=v;
+        st.valCount=freq[v]||curCount; // count AFTER action
+
+        steps.push(st);
+    }
+}
+
+/* ======== Rendering ======== */
+function renderArray(){
+    const row=document.getElementById('stringRow');
+    row.innerHTML='';
+    for(let i=0;i<arrivals.length;i++){
+        const d=document.createElement('div');
+        d.className='char-cell';d.id='c'+i;
+        const vc=getValColor(arrivals[i]);
+        d.style.setProperty('--cell-fg',vc.fg);
+        d.style.setProperty('--cell-bg',vc.bg);
+        d.style.setProperty('--cell-border',vc.border);
+        d.innerHTML=arrivals[i]+'<span class="idx">'+i+'</span>';
+        row.appendChild(d);
+    }
+}
+
+function renderPtrs(){
+    const row=document.getElementById('ptrRow');
+    row.innerHTML='';
+    for(let i=0;i<arrivals.length;i++){
+        const d=document.createElement('div');
+        d.className='ptr-slot';d.id='p'+i;
+        row.appendChild(d);
+    }
+}
+
+function renderDots(){
+    const el=document.getElementById('progress');
+    el.innerHTML='';
+    for(let i=0;i<steps.length;i++){
+        const d=document.createElement('div');
+        d.className='dot';d.id='d'+i;
+        d.onclick=()=>goTo(i);
+        el.appendChild(d);
+    }
+}
+
+function renderFreq(freq,maxF){
+    const grid=document.getElementById('freqGrid');
+    grid.innerHTML='';
+    const entries=Object.entries(freq).map(([v,c])=>({val:Number(v),count:c})).sort((a,b)=>b.count-a.count||a.val-b.val);
+    if(!entries.length){grid.innerHTML='<div class="freq-empty">窗口为空</div>';return;}
+    entries.forEach((e,idx)=>{
+        const vc=getValColor(e.val);
+        const isMax=maxF!==undefined && e.count===maxF;
+        const over=e.count>m;
+        const barH=Math.round(e.count/Math.max(m,1)*100);
+        const card=document.createElement('div');
+        card.className='freq-card'+(isMax?' is-max':'');
+        card.style.setProperty('--card-fg',vc.fg);
+        card.style.setProperty('--card-bg',vc.bg);
+        card.style.setProperty('--card-border',isMax?vc.fg:vc.border);
+        card.style.animationDelay=(idx*60)+'ms';
+        card.innerHTML=
+            '<div class="freq-bar-bg" style="height:'+Math.min(barH,100)+'%;background:'+vc.fg+'"></div>'+
+            '<div class="freq-val">'+e.val+'</div>'+
+            '<div class="freq-count">&times;'+e.count+' / '+m+'</div>'+
+            (isMax?'<div class="freq-badge">MAX</div>':'')+
+            (over?'<div class="freq-over">超限!</div>':'');
+        grid.appendChild(card);
+    });
+}
+
+/* ======== Scroll ======== */
+function scrollToWindow(){
+    if(cur<0)return;
+    const st=steps[cur];
+    const wrap=document.getElementById('vizScrollWrap');
+    const lC=document.getElementById('c'+st.winL);
+    const rC=document.getElementById('c'+st.winR);
+    if(!wrap||!lC||!rC)return;
+    if(wrap.scrollWidth<=wrap.clientWidth+2)return;
+    const wR=wrap.getBoundingClientRect(),lR=lC.getBoundingClientRect(),rR=rC.getBoundingClientRect();
+    wrap.scrollBy({left:(lR.left+rR.right)/2-(wR.left+wR.width/2),behavior:'smooth'});
+}
+
+function updateFades(){
+    const wrap=document.getElementById('vizScrollWrap');
+    const fl=document.getElementById('fadeLeft'),fr=document.getElementById('fadeRight');
+    if(!wrap||!fl||!fr)return;
+    const sl=wrap.scrollLeft,maxSl=wrap.scrollWidth-wrap.clientWidth;
+    fl.style.opacity=sl>6?'1':'0';
+    fr.style.opacity=sl<maxSl-6?'1':'0';
+}
+
+/* ======== Step Description ======== */
+function buildDesc(idx){
+    const st=steps[idx];
+    const wL=st.winL,wR=st.winR;
+
+    if(st.action==='discard'){
+        let d='位置 <code>'+st.pos+'</code>：类型 <code>'+st.val+'</code> 在当前窗口 <code>['+wL+', '+wR+']</code> 中已有 <strong>'+st.valCount+'</strong> 个，达到上限 <code>m='+m+'</code> → <span class="hl-removed">丢弃！</span>（累计丢弃 '+st.discardsAfter+'）';
+        return d;
+    }else{
+        let d='位置 <code>'+st.pos+'</code>：类型 <code>'+st.val+'</code> 在窗口 <code>['+wL+', '+wR+']</code> 中有 <strong>'+st.valCount+'</strong> 个，未超限 → <span class="hl-kept">保留</span>';
+        if(st.expired.length>0){
+            d+=' &nbsp;<span class="hl-warn">（窗口滑出 '+st.expired.length+' 个旧元素）</span>';
+        }
+        return d;
+    }
+}
+
+/* ======== Main Update ======== */
+function update(idx){
+    // Reset all cells
+    for(let i=0;i<arrivals.length;i++){
+        const c=document.getElementById('c'+i);
+        if(c){
+            c.classList.remove('in-window','discarded','adding');
+            c.style.opacity='';
+            const oldStrike=c.querySelector('.strikethrough');
+            if(oldStrike)oldStrike.remove();
+        }
+    }
+    for(let i=0;i<arrivals.length;i++){
+        const p=document.getElementById('p'+i);
+        if(p)p.innerHTML='';
+    }
+    document.getElementById('answerBanner').classList.remove('show');
+
+    if(idx<0){
+        document.getElementById('stepNum').textContent='\u2014 / '+steps.length;
+        document.getElementById('stepDesc').innerHTML='点击「下一步」开始演示';
+        document.getElementById('ctrCur').textContent='\u2014';
+        document.getElementById('ctrMaxFreq').textContent='\u2014';
+        document.getElementById('barCur').style.width='0';
+        document.getElementById('barMaxFreq').style.width='0';
+        document.getElementById('freqGrid').innerHTML='<div class="freq-empty">等待开始...</div>';
+        updBtns();updDots(-1);rebuildLog();
+        return;
+    }
+
+    const st=steps[idx];
+
+    // Mark window cells
+    for(let i=st.winL;i<=st.winR;i++){
+        const c=document.getElementById('c'+i);
+        if(c&&!c.classList.contains('discarded')){
+            c.classList.add('in-window');
+        }
+    }
+
+    // Mark all previously discarded cells
+    for(let j=0;j<=idx;j++){
+        if(steps[j].action==='discard'){
+            const c=document.getElementById('c'+steps[j].pos);
+            if(c){
+                c.classList.add('discarded');
+                if(!c.querySelector('.strikethrough')){
+                    const strike=document.createElement('div');
+                    strike.className='strikethrough';
+                    c.appendChild(strike);
+                }
+            }
+        }
+    }
+
+    // Current cell animation
+    const curCell=document.getElementById('c'+st.pos);
+    if(st.action==='discard'){
+        curCell.classList.add('discarded');
+        if(!curCell.querySelector('.strikethrough')){
+            const strike=document.createElement('div');
+            strike.className='strikethrough';
+            curCell.appendChild(strike);
+        }
+    }else{
+        curCell.classList.add('adding');
+        setTimeout(()=>curCell.classList.remove('adding'),500);
+    }
+
+    // Pointers
+    document.getElementById('p'+st.winL).innerHTML='<div class="ptr-arrow ptr-left">\u25B2</div><div class="ptr-lbl ptr-left">L</div>';
+    document.getElementById('p'+st.winR).innerHTML='<div class="ptr-arrow ptr-right">\u25B2</div><div class="ptr-lbl ptr-right">R</div>';
+
+    // Step info
+    document.getElementById('stepNum').textContent=(idx+1)+' / '+steps.length;
+    document.getElementById('stepDesc').innerHTML=buildDesc(idx);
+
+    // Counters
+    const maxFreqVal=Math.max(0,...Object.values(st.freqAfter));
+    const cEl=document.getElementById('ctrCur');
+    const mEl=document.getElementById('ctrMaxFreq');
+    cEl.textContent=st.discardsAfter;
+    mEl.textContent=maxFreqVal||'—';
+    cEl.classList.add('pop');mEl.classList.add('pop');
+    setTimeout(()=>{cEl.classList.remove('pop');mEl.classList.remove('pop');},320);
+
+    const maxPossible=Math.max(m,maxFreqVal);
+    document.getElementById('barCur').style.width=(st.discardsAfter/Math.max(arrivals.length,1)*100)+'%';
+    document.getElementById('barMaxFreq').style.width=(maxFreqVal/maxPossible*100)+'%';
+
+    // Frequency grid
+    renderFreq(st.freqAfter,maxFreqVal);
+
+    // Answer
+    if(idx===steps.length-1){
+        document.getElementById('answerNum').textContent=st.discardsAfter;
+        document.getElementById('answerBanner').classList.add('show');
+    }
+
+    updBtns();updDots(idx);rebuildLog();
+    setTimeout(()=>{scrollToWindow();updateFades();},60);
+}
+
+function updBtns(){
+    document.getElementById('btnPrev').disabled=cur<0;
+    document.getElementById('btnNext').disabled=cur>=steps.length-1;
+}
+function updDots(active){
+    for(let i=0;i<steps.length;i++){
+        const d=document.getElementById('d'+i);
+        if(!d)continue;
+        d.classList.remove('active','visited');
+        if(i===active)d.classList.add('active');
+        else if(visited.has(i))d.classList.add('visited');
+    }
+}
+
+/* ======== Operation Log ======== */
+function rebuildLog(){
+    const lc=document.getElementById('logContainer');
+    if(!lc)return;
+    if(cur<0){lc.innerHTML='<div class="log-empty">等待开始演示...</div>';return;}
+    lc.innerHTML='';
+    for(let i=0;i<=cur;i++)appendLogEntry(i);
+    if(cur===steps.length-1){
+        const ans=document.createElement('div');
+        ans.className='log-answer';
+        ans.innerHTML='\u2705 最终答案：最少丢弃 <strong>'+steps[cur].discardsAfter+'</strong> 个元素';
+        lc.appendChild(ans);
+    }
+    lc.scrollTop=lc.scrollHeight;
+}
+
+function appendLogEntry(idx){
+    const lc=document.getElementById('logContainer');
+    const st=steps[idx];
+    const entry=document.createElement('div');
+    entry.className='log-entry';
+    let msg;
+    if(st.action==='discard'){
+        msg='pos=<code>'+st.pos+'</code> val=<code>'+st.val+'</code> &rarr; <span class="hl-removed">丢弃</span>（窗口已有 '+st.valCount+' 个，≥ m='+m+'）';
+    }else{
+        let extra=st.expired.length?' 滑出'+st.expired.length:'';
+        msg='pos=<code>'+st.pos+'</code> val=<code>'+st.val+'</code> &rarr; <span class="hl-kept">保留</span>（窗口计数='+(st.freqAfter[st.val]||0)+extra+'）';
+    }
+    entry.innerHTML='<span class="log-step">#'+idx+'</span>'+msg+'<span class="log-stats">丢弃累计='+st.discardsAfter+'</span>';
+    lc.appendChild(entry);
+}
+
+function clearLog(){
+    document.getElementById('logContainer').innerHTML='<div class="log-empty">日志已清空</div>';
+}
+
+/* ======== Navigation ======== */
+function nextStep(){if(cur<steps.length-1){cur++;visited.add(cur);update(cur);}}
+function prevStep(){if(cur>0){cur--;update(cur);}else if(cur===0){cur=-1;update(-1);}}
+function goTo(i){cur=i;for(let j=0;j<=i;j++)visited.add(j);update(i);}
+function resetDemo(){
+    stopPlay();cur=-1;visited.clear();update(-1);
+    const wrap=document.getElementById('vizScrollWrap');
+    if(wrap)wrap.scrollTo({left:0,behavior:'smooth'});
+    setTimeout(updateFades,80);
+}
+function togglePlay(){playing?stopPlay():startPlay();}
+function startPlay(){
+    playing=true;
+    document.getElementById('btnPlay').textContent='\u23F8 暂停';
+    if(cur>=steps.length-1){cur=-1;visited.clear();}
+    timer=setInterval(()=>{if(cur<steps.length-1)nextStep();else stopPlay();},1200);
+}
+function stopPlay(){
+    playing=false;
+    document.getElementById('btnPlay').textContent='\u23E9 自动播放';
+    if(timer){clearInterval(timer);timer=null;}
+}
+
+/* ======== Input & Presets ======== */
+function fillPreset(idx){
+    const p=PRESETS[idx];
+    document.getElementById('inpArr').value=p.arr.join(',');
+    document.getElementById('inpW').value=p.w;
+    document.getElementById('inpM').value=p.m;
+    regenerate();
+}
+
+function regenerate(){
+    stopPlay();
+    const sv=document.getElementById('inpArr').value.trim();
+    const wv=parseInt(document.getElementById('inpW').value);
+    const mv=parseInt(document.getElementById('inpM').value);
+    const arr=sv.split(',').map(s=>parseInt(s.trim())).filter(n=>!isNaN(n));
+    if(!arr.length){alert('请输入有效的整数数组');return;}
+    if(isNaN(wv)||wv<1){alert('窗口 w 必须 ≥ 1');return;}
+    if(isNaN(mv)||mv<1){alert('上限 m 必须 ≥ 1');return;}
+
+    arrivals=arr;w=wv;m=mv;cur=-1;visited.clear();
+    buildColorMap();applyCellSize();genSteps();renderArray();renderPtrs();renderDots();update(-1);
+    const wrap=document.getElementById('vizScrollWrap');
+    if(wrap)wrap.scrollTo({left:0});
+    setTimeout(updateFades,80);
+}
+
+/* ======== Keyboard ======== */
+document.addEventListener('keydown',e=>{
+    if(e.target.tagName==='INPUT')return;
+    if(e.key==='ArrowRight'){e.preventDefault();nextStep();}
+    else if(e.key==='ArrowLeft'){e.preventDefault();prevStep();}
+    else if(e.key===' '){e.preventDefault();togglePlay();}
+});
+
+const scrollWrap=document.getElementById('vizScrollWrap');
+if(scrollWrap)scrollWrap.addEventListener('scroll',updateFades,{passive:true});
+
+/* ======== Init ======== */
+buildColorMap();applyCellSize();genSteps();renderArray();renderPtrs();renderDots();update(-1);
+setTimeout(updateFades,100);
+</script>
+</body>
+</html>
