@@ -1,0 +1,148 @@
+# ============================================================================
+#  CI/CD Pipeline — xxo93.github.io
+#  ---------------------------------------------------------------------------
+#  构建 : Jekyll 4 + Bundler 缓存，产出静态站点 _site/
+#  测试 : ① HTML / 死链检查（html-proofer）  ② Python 语法 + Ruff 静态检查
+#  部署 : 官方 GitHub Pages Actions，仅 main 分支推送时触发
+#
+#  ⚠️ 首次启用前需在 GitHub 仓库设置：
+#     Settings → Pages → Build and deployment → Source 选择 "GitHub Actions"
+# ============================================================================
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# 默认最小权限；部署任务单独提权
+permissions:
+  contents: read
+
+# 同一分支串行执行，避免并发部署互相覆盖
+concurrency:
+  group: ci-cd-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  RUBY_VERSION: "3.3"
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  # --------------------------------------------------------------------------
+  # 1. 构建
+  # --------------------------------------------------------------------------
+  build:
+    name: Build (Jekyll)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Ruby + Bundler cache
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          bundler-cache: true
+
+      - name: Build site
+        env:
+          JEKYLL_ENV: production
+        run: bundle exec jekyll build --trace
+
+      - name: Upload built site
+        uses: actions/upload-artifact@v4
+        with:
+          name: jekyll-site
+          path: _site
+          retention-days: 7
+
+  # --------------------------------------------------------------------------
+  # 2. 测试 — 站点 HTML / 死链
+  # --------------------------------------------------------------------------
+  test-site:
+    name: Test (site)
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Ruby + Bundler cache
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          bundler-cache: true
+
+      - name: Download built site
+        uses: actions/download-artifact@v4
+        with:
+          name: jekyll-site
+          path: _site
+
+      # 站内仍有历史遗留的失效导航（如 /pages/it.html、/tags 页面尚未创建），
+      # 因此这一步先设为“提示不阻塞”，修复后可将 continue-on-error 改为 false。
+      - name: HTML / broken-link check
+        continue-on-error: true
+        run: bundle exec htmlproofer ./_site --disable-external
+
+  # --------------------------------------------------------------------------
+  # 3. 测试 — Python 解法脚本
+  # --------------------------------------------------------------------------
+  test-python:
+    name: Test (python)
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Syntax check (compileall)
+        run: python -m compileall -q _AI _LeetCode
+
+      # Ruff 仅检查真实错误（语法错误、未定义名等），不考虑风格问题，避免误报阻塞
+      - name: Lint (ruff)
+        continue-on-error: true
+        run: |
+          python -m pip install --upgrade pip ruff
+          ruff check _AI _LeetCode
+
+  # --------------------------------------------------------------------------
+  # 4. 部署 — GitHub Pages（仅 main 分支 push）
+  # --------------------------------------------------------------------------
+  deploy:
+    name: Deploy (GitHub Pages)
+    needs: [build, test-site, test-python]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write      # 发布到 Pages
+      id-token: write   # OIDC 校验
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Download built site
+        uses: actions/download-artifact@v4
+        with:
+          name: jekyll-site
+          path: _site
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

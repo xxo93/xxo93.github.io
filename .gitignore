@@ -1,0 +1,27 @@
+# ---- Jekyll ----
+_site/
+.sass-cache/
+.jekyll-cache/
+.jekyll-metadata
+
+# ---- Ruby / Bundler ----
+.bundle/
+vendor/bundle/
+Gemfile.lock.bak
+
+# ---- Python ----
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# ---- IDE / OS ----
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# ---- AI 工具工作目录（仅保留本地，不纳入版本管理）----
+.workbuddy/

@@ -43,16 +43,26 @@ class Solution:
     """
 
     def increasingTriplet(self, nums: List[int]) -> bool:
+        # 边界条件：如果数组长度小于 3，不可能存在三元组
         if len(nums) < 3:
             return False
+
+        # 维护两个变量：first 为当前最小候选值（三元组第一个数），second 为比 first 大的最小候选值（三元组第二个数）
         first = second = float('inf')
+
+        # 遍历数组中的每个元素
         for n in nums:
+            # 如果当前元素 <= first，更新 first，尝试寻找更小的起点
             if n <= first:
                 first = n
+            # 否则，如果当前元素 <= second，更新 second，尝试寻找合适的第二个数
             elif n <= second:
                 second = n
+            # 如果当前元素 > second，说明找到了 first < second < n，满足三元组条件
             else:
                 return True
+
+        # 遍历结束仍没找到，返回 False
         return False
 
 
