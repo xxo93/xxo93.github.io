@@ -45,6 +45,13 @@ from typing import List
 
 
 class Solution:
+    """
+    nums[7, 4, 3, 9, 1, 8, 5, 2, 6] , k=3, 窗口大小=7
+    数组长度：9
+    索引移动范围是 3->5, range(3, 9-3) ,range(左闭, 右开)
+
+
+    """
     def getAverages(self, nums: List[int], k: int) -> List[int]:
         n = len(nums)
         if n < 2 * k + 1:

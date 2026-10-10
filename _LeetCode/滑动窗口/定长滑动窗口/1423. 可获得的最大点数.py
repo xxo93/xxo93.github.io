@@ -45,7 +45,8 @@ class Solution:
         n = len(cardPoints)
         _sum = sum(cardPoints[n - k:])
         ans = _sum
-        for i in range(k):
+        for i in range(k):  # 循环次数
+            # -（移出位置 + 偏移量）  +  移入位置也是偏移量
             _sum += - cardPoints[n - k + i] + cardPoints[i]
             ans = max(ans, _sum)
         print(ans)

@@ -22,6 +22,8 @@ from typing import List
 
 
 class Solution:
+    """ 注：【最大平均值】可以转换成【最大总和】，即总和最大则平均值最大 """
+
     def findMaxAverage(self, nums: List[int], k: int) -> float:
         res = sum(nums[:k])  # 初始最大值
 
