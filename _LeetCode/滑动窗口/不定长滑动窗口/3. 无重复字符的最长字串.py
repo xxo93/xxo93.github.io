@@ -29,6 +29,23 @@ from collections import Counter
 
 class Solution:
 
+    def lengthOfLongestSubstring(self, s: str) -> int:
+        ans = left = 0
+        cnt = Counter()  # 统计数量
+
+        # 通过遍历方式扩展右边界
+        for right, c in enumerate(s):
+            cnt[right] += 1
+
+            # 收缩左边，直至满足条件
+            while cnt[right] > 1:
+                cnt[s[left]] -= 1
+                left += 1
+            # 满足条件后，计算最大值
+            ans = max(ans, right - left + 1)
+
+        return ans
+
     def lengthOfLongestSubstring2(self, s: str) -> int:
         """标准解法：不定长滑动窗口 + 哈希集合，左指针只前进不回退，O(n)。
 
@@ -48,24 +65,6 @@ class Solution:
             window.add(c)
 
             # 3. 更新答案：必须先收缩到合法，再用窗口长度更新
-            ans = max(ans, right - left + 1)
-
-        return ans
-
-
-    def lengthOfLongestSubstring(self, s: str) -> int:
-        ans = left = 0
-        cnt = Counter()  # 统计数量
-
-        # 通过遍历方式扩展右边界
-        for right, c in enumerate(s):
-            cnt[right] += 1
-
-            # 收缩左边，直至满足条件
-            while cnt[right] > 1:
-                cnt[s[left]] -= 1
-                left += 1
-            # 满足条件后，计算最大值
             ans = max(ans, right - left + 1)
 
         return ans
