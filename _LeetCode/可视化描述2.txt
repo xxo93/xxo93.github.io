@@ -1,4 +1,3 @@
-https://leetcode.cn/discuss/post/3578981/ti-dan-hua-dong-chuang-kou-ding-chang-bu-rzz7/
 我有以下需求：
 1.通俗直白地讲解LeetCode算法题
 1.1 题目：`3679. 使库存平衡的最少丢弃次数`
