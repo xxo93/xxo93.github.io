@@ -34,15 +34,22 @@ from typing import List
 
 
 class Solution:
+    """
+    使数组平衡的最少移除数目，转换成平衡数组窗口最大
+    """
+
     def minRemoval(self, nums: List[int], k: int) -> int:
         nums.sort()
         wind = left = 0
 
         for right, c in enumerate(nums):
             # 数组的 最大 元素的值 至多 是其 最小 元素的 k 倍 : nums[right] > nums[left] * k 或 c > nums[left] * k
+            # 当不满足条件的时候，左指针右移
+            # while not condition:
+            #      pass
             while c > nums[left] * k:  # 不满足条件，则循环处理，左边界缩小，即 left 右移
                 left += 1
-
+            # 窗口大小：right - left + 1
             wind = max(wind, right - left + 1)
         res = len(nums) - wind
         print(res)
