@@ -4,7 +4,7 @@
 
 请你将 list1 中下标从 a 到 b 的全部节点都删除，并将list2 接在被删除节点的位置。
 """
-from python.LeetCode.common.LinkList import list_to_linklist, ListNode, linklist_to_list
+from _LeetCode.common.LinkList import list_to_linklist, ListNode, linklist_to_list
 
 
 class Solution:

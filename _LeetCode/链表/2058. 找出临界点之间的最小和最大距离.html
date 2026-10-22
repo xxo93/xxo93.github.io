@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2058. 找出临界点之间的最小和最大距离 · 详解版</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#08080f; --surface:#111827; --surface-2:#1a2234; --border:#1e293b;
+  --accent:#d4a843; --accent-glow:rgba(212,168,67,.18);
+  --ok:#34d399; --bad:#f87171;
+  --left-ptr:#a3e635; --right-ptr:#fb923c;
+  --max-color:#f87171; --min-color:#60a5fa;
+  --text:#e2e8f0; --text-muted:#64748b; --text-bright:#f8fafc;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+body{
+  background:var(--bg); color:var(--text);
+  font-family:'Noto Serif SC', serif;
+  font-size:1rem; line-height:1.75;
+  padding:2rem 1rem 4rem;
+}
+.container{max-width:1200px; margin:0 auto;}
+
+.tag{
+  display:inline-block; font-family:'JetBrains Mono',monospace;
+  font-size:.72rem; letter-spacing:.15em; color:var(--accent);
+  border:1px solid var(--accent); padding:.25em .8em; border-radius:2px;
+  margin-bottom:1rem; text-transform:uppercase;
+}
+h1{font-size:2.2rem; color:var(--text-bright); margin-bottom:.5rem; line-height:1.3;}
+.problem-desc{color:var(--text-muted); margin-bottom:1.8rem; max-width:900px;}
+.problem-desc code{
+  font-family:'JetBrains Mono',monospace; font-size:.85em;
+  background:var(--surface-2); padding:.1em .4em; border-radius:3px; color:var(--accent);
+}
+
+/* 概念图解 */
+.concept-grid{
+  display:grid; grid-template-columns:1fr 1fr; gap:1rem;
+  margin:1rem 0 1.5rem;
+}
+.concept-card{
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:8px; padding:1rem 1.2rem;
+}
+.concept-card h4{
+  font-family:'JetBrains Mono',monospace; font-size:.85rem;
+  margin-bottom:.6rem;
+}
+.concept-card.max h4{color:var(--max-color);}
+.concept-card.min h4{color:var(--min-color);}
+.concept-card p{font-size:.9rem; color:var(--text-muted);}
+.concept-card .mini-list{
+  display:flex; align-items:center; gap:.3rem; margin:.6rem 0;
+  font-family:'JetBrains Mono',monospace; font-size:.85rem;
+}
+.mini-node{
+  width:38px; height:38px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--surface-2); border:2px solid var(--border); color:var(--text-bright);
+}
+.mini-node.cur{border-color:var(--accent); color:var(--accent);}
+.concept-card.max .mini-node.cur{border-color:var(--max-color); color:var(--max-color);}
+.concept-card.min .mini-node.cur{border-color:var(--min-color); color:var(--min-color);}
+.mini-arrow{color:var(--text-muted);}
+
+.input-section{
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:8px; padding:1.2rem 1.4rem; margin-bottom:1rem;
+  display:flex; gap:.8rem; align-items:center; flex-wrap:wrap;
+}
+.input-section label{font-family:'JetBrains Mono',monospace; font-size:.82rem; color:var(--text-muted);}
+.input-section input{
+  background:var(--surface-2); border:1px solid var(--border); color:var(--text-bright);
+  font-family:'JetBrains Mono',monospace; font-size:.95rem;
+  padding:.5em .8em; border-radius:4px; flex:1; min-width:280px;
+}
+.input-section input:focus{outline:none; border-color:var(--accent);}
+
+.btn{
+  font-family:'JetBrains Mono',monospace; font-size:.82rem;
+  background:var(--surface-2); color:var(--text);
+  border:1px solid var(--border); padding:.55em 1.2em; border-radius:4px;
+  cursor:pointer; transition:all .15s;
+}
+.btn:hover{border-color:var(--accent); color:var(--accent);}
+.btn.primary{background:var(--accent); color:#000; border-color:var(--accent); font-weight:600;}
+.btn.primary:hover{background:var(--accent-glow); color:var(--accent);}
+.btn.sm{font-size:.72rem; padding:.4em .8em;}
+
+.example-btns{
+  display:flex; align-items:center; gap:.6rem;
+  margin-bottom:1.5rem; flex-wrap:wrap;
+}
+.example-label{
+  font-family:'JetBrains Mono',monospace; font-size:.72rem;
+  color:var(--text-muted); letter-spacing:.05em; white-space:nowrap;
+}
+.example-btn{
+  font-size:.72rem; padding:.4em .8em;
+  border-color:var(--surface-2); background:var(--surface-2); color:var(--text-muted);
+}
+.example-btn:hover{border-color:var(--accent); color:var(--accent); background:var(--accent-glow);}
+
+.viz-card{
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:8px; padding:2rem 1.5rem 1.5rem; margin-bottom:1.2rem;
+  position:relative; overflow:hidden;
+}
+.viz-wrap{overflow-x:auto; padding:1rem .5rem;}
+.viz-wrap::-webkit-scrollbar{height:8px;}
+.viz-wrap::-webkit-scrollbar-thumb{background:var(--surface-2); border-radius:4px;}
+
+.list-row{
+  display:flex; align-items:flex-start; gap:0;
+  min-width:max-content; margin:0 auto; width:max-content;
+}
+.node-col{
+  display:flex; flex-direction:column; align-items:center;
+  margin:0 .15rem; position:relative;
+}
+.badge-slot{height:28px; display:flex; align-items:flex-end; justify-content:center;}
+.badge{
+  font-family:'JetBrains Mono',monospace; font-size:.7rem; font-weight:700;
+  padding:.1em .5em; border-radius:3px;
+  animation:popIn .3s;
+}
+.badge.max{background:rgba(248,113,113,.2); color:var(--max-color); border:1px solid var(--max-color);}
+.badge.min{background:rgba(96,165,250,.2); color:var(--min-color); border:1px solid var(--min-color);}
+
+.node{
+  width:64px; height:64px; border-radius:50%;
+  background:var(--surface-2); border:2px solid var(--border);
+  display:flex; align-items:center; justify-content:center;
+  font-family:'JetBrains Mono',monospace; font-size:1.35rem; font-weight:600;
+  color:var(--text-bright); position:relative;
+  transition:all .25s;
+}
+.node.crit-max{border-color:var(--max-color); box-shadow:0 0 18px rgba(248,113,113,.35);}
+.node.crit-min{border-color:var(--min-color); box-shadow:0 0 18px rgba(96,165,250,.35);}
+.node.eval-triple{border-color:var(--accent); box-shadow:0 0 18px var(--accent-glow);}
+.node.adj-gap{border-color:var(--ok); box-shadow:0 0 18px rgba(52,211,153,.4);}
+.node-arrow{
+  position:absolute; right:-18px; top:50%; transform:translateY(-50%);
+  color:var(--text-muted); font-size:1.1rem; z-index:1;
+}
+.idx-label{
+  margin-top:.5rem; font-family:'JetBrains Mono',monospace;
+  font-size:.68rem; color:var(--text-muted);
+}
+
+.ptr-row{display:flex; justify-content:center; margin-top:1.2rem; min-width:max-content;}
+.ptr-inner{display:flex; gap:0;}
+.ptr-slot{
+  width:64px; margin:0 .15rem; text-align:center;
+  font-family:'JetBrains Mono',monospace; font-size:.68rem;
+  height:42px; display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
+}
+.ptr-arrow{font-size:1rem; line-height:1;}
+.ptr-lbl{margin-top:2px; font-weight:700;}
+.ptr-slot.pre .ptr-lbl{color:var(--left-ptr);}
+.ptr-slot.cur .ptr-lbl{color:var(--right-ptr);}
+.ptr-slot.nxt .ptr-lbl{color:var(--text-muted);}
+
+.crit-panel{
+  margin-top:1.5rem; padding-top:1.2rem; border-top:1px dashed var(--border);
+  display:flex; gap:1.5rem; flex-wrap:wrap; align-items:center;
+}
+.crit-list-label{font-family:'JetBrains Mono',monospace; font-size:.78rem; color:var(--text-muted);}
+.crit-chips{display:flex; gap:.4rem; flex-wrap:wrap;}
+.chip{
+  font-family:'JetBrains Mono',monospace; font-size:.78rem; font-weight:600;
+  padding:.25em .7em; border-radius:12px;
+  background:var(--surface-2); border:1px solid var(--border); color:var(--text);
+}
+.chip.max{border-color:var(--max-color); color:var(--max-color);}
+.chip.min{border-color:var(--min-color); color:var(--min-color);}
+
+.step-card{
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:8px; padding:1.3rem 1.5rem; margin-bottom:1rem;
+}
+.step-desc{font-size:1.05rem; margin-bottom:1rem; color:var(--text);}
+.step-desc code{
+  font-family:'JetBrains Mono',monospace; font-size:.88em;
+  background:var(--surface-2); padding:.1em .4em; border-radius:3px; color:var(--accent);
+}
+.step-desc .hl-max{color:var(--max-color); font-weight:600;}
+.step-desc .hl-min{color:var(--min-color); font-weight:600;}
+.step-desc .hl-ok{color:var(--ok); font-weight:600;}
+.step-desc strong{color:var(--text-bright);}
+
+.ctr-row{display:flex; gap:1rem; flex-wrap:wrap;}
+.ctr-card{
+  flex:1; min-width:140px; background:var(--surface-2);
+  border:1px solid var(--border); border-radius:6px; padding:.8rem 1rem;
+}
+.ctr-label{font-family:'JetBrains Mono',monospace; font-size:.72rem; color:var(--text-muted); letter-spacing:.05em;}
+.ctr-val{
+  font-family:'JetBrains Mono',monospace; font-size:1.65rem; font-weight:700;
+  color:var(--text-bright); margin-top:.2rem;
+}
+.ctr-val.pop{animation:pop .3s;}
+.ctr-val.accent{color:var(--accent);}
+
+.answer-banner{
+  margin-top:1rem; padding:.9rem 1.2rem; border-radius:6px;
+  background:var(--accent-glow); border:1px solid var(--accent);
+  font-family:'JetBrains Mono',monospace; font-size:1rem; color:var(--accent);
+  display:none;
+}
+.answer-banner.show{display:block; animation:fadeUp .4s;}
+
+.controls{display:flex; gap:.6rem; justify-content:center; margin:1.2rem 0 .8rem; flex-wrap:wrap;}
+.progress{display:flex; gap:.35rem; justify-content:center; flex-wrap:wrap; margin-bottom:.8rem;}
+.dot{
+  width:9px; height:9px; border-radius:50%; background:var(--surface-2);
+  cursor:pointer; transition:all .2s; border:none; padding:0;
+}
+.dot.visited{background:rgba(212,168,67,.4);}
+.dot.current{background:var(--accent); transform:scale(1.5); box-shadow:0 0 8px var(--accent-glow);}
+
+.kbd-hint{
+  text-align:center; font-family:'JetBrains Mono',monospace;
+  font-size:.72rem; color:var(--text-muted); margin-bottom:1.5rem;
+}
+.kbd-hint kbd{
+  background:var(--surface-2); border:1px solid var(--border);
+  padding:.1em .4em; border-radius:3px; margin:0 .15em;
+}
+
+.log-card{
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:8px; padding:1.2rem 1.4rem; margin-bottom:1.2rem;
+  max-height:280px; overflow-y:auto;
+}
+.log-card h3, .algo-card h3{
+  font-family:'JetBrains Mono',monospace; font-size:.9rem;
+  color:var(--accent); letter-spacing:.08em; margin-bottom:.8rem;
+}
+.log-entry{
+  font-family:'JetBrains Mono',monospace; font-size:.78rem;
+  padding:.35rem 0; border-bottom:1px dashed var(--border);
+  color:var(--text-muted);
+}
+.log-entry:last-child{border-bottom:none;}
+.log-step{color:var(--accent); margin-right:.5em;}
+.log-stats{color:var(--text);}
+
+.algo-card{
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:8px; padding:1.5rem 1.8rem;
+}
+.algo-card h2{font-size:1.35rem; color:var(--text-bright); margin:1.4rem 0 .7rem;}
+.algo-card h2:first-child{margin-top:0;}
+.algo-card h3{font-family:'Noto Serif SC',serif; font-size:1.1rem; color:var(--accent); margin:1.2rem 0 .5rem; letter-spacing:0;}
+.algo-card p{margin-bottom:.8rem; color:var(--text);}
+.algo-card ul, .algo-card ol{margin-left:1.5rem; margin-bottom:.8rem;}
+.algo-card li{margin-bottom:.35rem;}
+.algo-card strong{color:var(--text-bright);}
+.algo-card code{
+  font-family:'JetBrains Mono',monospace; font-size:.88em;
+  background:var(--surface-2); padding:.1em .4em; border-radius:3px; color:var(--accent);
+}
+
+.truth-table{
+  width:100%; border-collapse:collapse; margin:.8rem 1rem;
+  font-family:'JetBrains Mono',monospace; font-size:.82rem;
+}
+.truth-table th, .truth-table td{
+  border:1px solid var(--border); padding:.5em .8em; text-align:center;
+}
+.truth-table th{background:var(--surface-2); color:var(--accent);}
+.truth-table td.yes{color:var(--ok);}
+.truth-table td.no{color:var(--bad);}
+
+.key-insight{
+  background:rgba(212,168,67,.07); border-left:3px solid var(--accent);
+  padding:.9rem 1.2rem; border-radius:0 6px 6px 0; margin:1rem 0;
+}
+.key-insight strong{color:var(--accent);}
+
+.code-block{
+  background:#0d1117; border:1px solid var(--border); border-radius:6px;
+  padding:1.1rem 1.3rem; overflow-x:auto; margin:.8rem 0;
+  font-family:'JetBrains Mono',monospace; font-size:.82rem; line-height:1.7;
+  white-space:pre;
+}
+.code-block .ck{color:#ff7b72;}
+.code-block .cf{color:#d2a8ff;}
+.code-block .cs{color:#7ee787;}
+.code-block .cc{color:#8b949e; font-style:italic;}
+.code-block .cn{color:#79c0ff;}
+.code-block .ct{color:#ffa657;}
+
+.complexity{
+  font-family:'JetBrains Mono',monospace; font-size:.85rem;
+  background:var(--surface-2); padding:.9rem 1.1rem; border-radius:6px;
+  color:var(--text); border-left:3px solid var(--accent); margin-top:1rem;
+}
+
+@keyframes fadeUp{from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);}}
+@keyframes popIn{from{opacity:0; transform:scale(.5);} to{opacity:1; transform:scale(1);}}
+@keyframes pop{0%{transform:scale(1);} 50%{transform:scale(1.25);} 100%{transform:scale(1);}}
+
+@media(max-width:640px){
+  h1{font-size:1.5rem;}
+  .node{width:52px; height:52px; font-size:1.1rem;}
+  .ptr-slot{width:52px;}
+  .node-arrow{right:-15px;}
+  .ctr-card{min-width:120px;}
+  .concept-grid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="tag">LeetCode · 2058 · 链表 · 详解版</div>
+  <h1>找出临界点之间的最小和最大距离</h1>
+  <p class="problem-desc">
+    给定一个链表，返回 <code>[minDistance, maxDistance]</code>，分别表示任意两个<strong>临界点</strong>之间的最小和最大距离。
+    若临界点少于两个，返回 <code>[-1, -1]</code>。
+  </p>
+
+  <!-- 概念图解 -->
+  <div class="concept-grid">
+    <div class="concept-card max">
+      <h4>▲ 局部极大值点</h4>
+      <p>当前节点值<strong>严格大于</strong>左右两个邻居节点值：</p>
+      <div class="mini-list">
+        <div class="mini-node">2</div>
+        <span class="mini-arrow">&lt;</span>
+        <div class="mini-node cur">5</div>
+        <span class="mini-arrow">&gt;</span>
+        <div class="mini-node">1</div>
+      </div>
+      <p style="font-size:.82rem;color:var(--text-muted)">即 <code>cur.val &gt; pre.val</code> 且 <code>cur.val &gt; next.val</code></p>
+    </div>
+    <div class="concept-card min">
+      <h4>▼ 局部极小值点</h4>
+      <p>当前节点值<strong>严格小于</strong>左右两个邻居节点值：</p>
+      <div class="mini-list">
+        <div class="mini-node">3</div>
+        <span class="mini-arrow">&gt;</span>
+        <div class="mini-node cur">1</div>
+        <span class="mini-arrow">&lt;</span>
+        <div class="mini-node">2</div>
+      </div>
+      <p style="font-size:.82rem;color:var(--text-muted)">即 <code>cur.val &lt; pre.val</code> 且 <code>cur.val &lt; next.val</code></p>
+    </div>
+  </div>
+
+  <div class="input-section">
+    <label>head =</label>
+    <input id="inpArr" type="text" value="5,3,1,2,5,1,2" placeholder="例如：5,3,1,2,5,1,2">
+    <button class="btn primary" onclick="regenerate()">生成演示</button>
+  </div>
+
+  <div class="example-btns">
+    <span class="example-label">示例用例：</span>
+    <button class="btn sm example-btn" onclick="loadExample(1)">head=[5,3,1,2,5,1,2] → [1,3]</button>
+    <button class="btn sm example-btn" onclick="loadExample(2)">head=[1,3,2,2,3,2,2,2,7] → [3,3]</button>
+    <button class="btn sm example-btn" onclick="loadExample(3)">head=[3,1] → [-1,-1]</button>
+    <button class="btn sm example-btn" onclick="loadExample(4)">head=[2,3,3,2] → [-1,-1]</button>
+  </div>
+
+  <div class="viz-card">
+    <div class="viz-wrap" id="vizWrap">
+      <div class="list-row" id="listRow"></div>
+      <div class="ptr-row"><div class="ptr-inner" id="ptrInner"></div></div>
+    </div>
+    <div class="crit-panel">
+      <span class="crit-list-label">临界点下标 s_list（1-based）：</span>
+      <div class="crit-chips" id="critChips"></div>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-desc" id="stepDesc">点击「下一步」开始演示。</div>
+    <div class="ctr-row">
+      <div class="ctr-card"><div class="ctr-label">当前位置 min_p</div><div class="ctr-val" id="ctrPos">—</div></div>
+      <div class="ctr-card"><div class="ctr-label">临界点数量</div><div class="ctr-val" id="ctrCount">0</div></div>
+      <div class="ctr-card"><div class="ctr-label">minDistance</div><div class="ctr-val accent" id="ctrMin">—</div></div>
+      <div class="ctr-card"><div class="ctr-label">maxDistance</div><div class="ctr-val accent" id="ctrMax">—</div></div>
+    </div>
+    <div class="answer-banner" id="answerBanner"></div>
+  </div>
+
+  <div class="controls">
+    <button class="btn" onclick="prevStep()">← 上一步</button>
+    <button class="btn primary" id="playBtn" onclick="togglePlay()">▶ 自动播放</button>
+    <button class="btn" onclick="nextStep()">下一步 →</button>
+    <button class="btn" onclick="resetDemo()">重置</button>
+  </div>
+  <div class="progress" id="progress"></div>
+  <div class="kbd-hint">
+    <kbd>←</kbd> 上一步 <kbd>→</kbd> 下一步 <kbd>Space</kbd> 播放/暂停 <kbd>F8</kbd> 自动播放
+  </div>
+
+  <div class="log-card">
+    <h3>操作日志</h3>
+    <div id="logBox"></div>
+  </div>
+
+  <!-- 详细算法解析 -->
+  <div class="algo-card">
+    <h2>一、题目本质</h2>
+    <p>这道题其实是<strong>两步走</strong>：</p>
+    <ol>
+      <li><strong>找位置</strong>：遍历链表，把所有临界点的下标收集到一个数组 <code>s_list</code> 里。</li>
+      <li><strong>算距离</strong>：在 <code>s_list</code> 这个递增数组上，求「相邻元素差值的最小值」和「首尾元素差值」。</li>
+    </ol>
+    <p>链表本身不需要反转、不需要额外结构，只需要一次快慢式遍历（实际是 <code>pre</code> 和 <code>cur</code> 两个指针同步前移）。</p>
+
+    <h2>二、为什么「首尾差」就是最大距离？</h2>
+    <div class="key-insight">
+      <strong>关键观察：</strong>临界点下标是<strong>严格递增</strong>的。假设临界点下标为 <code>[c₁, c₂, ..., cₖ]</code>，
+      那么任意两个临界点 <code>cᵢ, cⱼ (i&lt;j)</code> 的距离是 <code>cⱼ − cᵢ</code>。
+      要让这个值最大，显然要让 <code>cⱼ</code> 尽可能大、<code>cᵢ</code> 尽可能小 —— 也就是 <code>cₖ − c₁</code>。
+      <strong>所以最大距离 = 最后一个临界点 − 第一个临界点</strong>，不需要枚举所有配对。
+    </div>
+
+    <h2>三、为什么「相邻差的最小值」就是最小距离？</h2>
+    <div class="key-insight">
+      <strong>关键观察：</strong>对递增数组 <code>[c₁, c₂, ..., cₖ]</code>，任意不相邻两点 <code>cⱼ − cᵢ (j&gt;i+1)</code>
+      一定 <strong>大于等于</strong>它们之间某一段相邻差（因为 <code>cⱼ − cᵢ = (cᵢ₊₁−cᵢ) + (cᵢ₊₂−cᵢ₊₁) + ... + (cⱼ−cⱼ₋₁)</code>，
+      每段都是正数）。因此<strong>最小距离一定出现在两个相邻临界点之间</strong>，只需遍历 <code>s_list[p+1] − s_list[p]</code> 取最小即可。
+    </div>
+
+    <h2>四、判定逻辑真值表</h2>
+    <p>对于中间节点 <code>cur</code>（即有 <code>pre</code> 和 <code>next</code>），四种情况：</p>
+    <table class="truth-table">
+      <thead><tr><th>cur 与 pre</th><th>cur 与 next</th><th>是否临界点</th><th>类型</th></tr></thead>
+      <tbody>
+        <tr><td>cur &gt; pre</td><td>cur &gt; next</td><td class="yes">是</td><td style="color:var(--max-color)">▲ 极大</td></tr>
+        <tr><td>cur &lt; pre</td><td>cur &lt; next</td><td class="yes">是</td><td style="color:var(--min-color)">▼ 极小</td></tr>
+        <tr><td>cur &gt; pre</td><td>cur &lt; next</td><td class="no">否</td><td>上升沿</td></tr>
+        <tr><td>cur &lt; pre</td><td>cur &gt; next</td><td class="no">否</td><td>下降沿</td></tr>
+        <tr><td>任意相等</td><td>—</td><td class="no">否</td><td>要求严格不等</td></tr>
+      </tbody>
+    </table>
+    <p>注意：题目要求<strong>严格大于/严格小于</strong>，相等不算。这就是为什么示例 4 <code>[2,3,3,2]</code> 没有临界点 —— 中间两个 3 相等。</p>
+
+    <h2>五、边界条件</h2>
+    <ul>
+      <li><strong>节点数 &lt; 3</strong>：连一个"同时有前驱和后继"的节点都没有，直接返回 <code>[-1,-1]</code>。</li>
+      <li><strong>临界点只有 1 个或 0 个</strong>：凑不出两个不同临界点，距离无意义，返回 <code>[-1,-1]</code>。</li>
+      <li><strong>首尾节点</strong>：不可能成为临界点，因为缺少一边的邻居。遍历时 <code>cur</code> 从第 2 个节点走到倒数第 2 个节点。</li>
+    </ul>
+
+    <h2>六、带详细注释的 Python 代码</h2>
+    <div class="code-block"><span class="ck">class</span> <span class="cf">Solution</span>:
+    <span class="ck">def</span> <span class="ct">nodesBetweenCriticalPoints</span>(self, head: Optional[ListNode]) -> List[<span class="cn">int</span>]:
+        <span class="cc"># ---------- 1. 初始化结果 ----------</span>
+        min_res = -<span class="cn">1</span>   <span class="cc"># 任意两点最小距离；不足两点时保持 -1</span>
+        max_res = -<span class="cn">1</span>   <span class="cc"># 任意两点最大距离；不足两点时保持 -1</span>
+
+        <span class="cc"># ---------- 2. 边界：节点数 < 3，不可能有临界点 ----------</span>
+        <span class="cc"># head.next.next 为空意味着最多两个节点</span>
+        <span class="ck">if not</span> head.next.next:
+            <span class="ck">return</span> [min_res, max_res]   <span class="cc"># [-1, -1]</span>
+
+        <span class="cc"># ---------- 3. 一次遍历收集临界点下标 ----------</span>
+        <span class="cc"># min_p 记录当前 cur 节点的 1-based 下标；</span>
+        <span class="cc">#   head=1, head.next=2, ... 所以初始为 2</span>
+        min_p = <span class="cn">2</span>
+        s_list = []            <span class="cc"># 收集所有临界点的 1-based 下标</span>
+        pre = head             <span class="cc"># 前驱指针</span>
+        cur = head.next        <span class="cc"># 当前指针（从第二个节点开始检查）</span>
+
+        <span class="cc"># 循环条件：cur 必须有后继，才能形成 (pre, cur, next) 三元组</span>
+        <span class="ck">while</span> cur.next:
+            <span class="cc"># 判定临界点：严格大于两端 OR 严格小于两端</span>
+            is_max = (cur.val > pre.val) <span class="ck">and</span> (cur.val > cur.next.val)
+            is_min = (cur.val < pre.val) <span class="ck">and</span> (cur.val < cur.next.val)
+            <span class="ck">if</span> is_max <span class="ck">or</span> is_min:
+                s_list.append(min_p)     <span class="cc"># 记录临界点的 1-based 下标</span>
+
+            <span class="cc"># 指针前移：下标 +1，pre 走到 cur，cur 走到 cur.next</span>
+            min_p += <span class="cn">1</span>
+            pre = cur
+            cur = cur.next
+
+        <span class="cc"># ---------- 4. 临界点少于两个，返回 [-1, -1] ----------</span>
+        <span class="ck">if</span> len(s_list) < <span class="cn">2</span>:
+            <span class="ck">return</span> [min_res, max_res]
+
+        <span class="cc"># ---------- 5. 计算最大距离 = 尾下标 - 首下标 ----------</span>
+        <span class="cc"># 先把 min_res 也初始化为这个值，再在相邻差里找更小的</span>
+        p = <span class="cn">0</span>
+        min_res = max_res = s_list[-<span class="cn">1</span>] - s_list[<span class="cn">0</span>]
+
+        <span class="cc"># ---------- 6. 遍历相邻差值，更新最小距离 ----------</span>
+        <span class="cc"># s_list[p+1] - s_list[p] 是每一段相邻临界点的距离</span>
+        <span class="ck">while</span> p < len(s_list) - <span class="cn">1</span>:
+            min_res = min(min_res, s_list[p+<span class="cn">1</span>] - s_list[p])
+            p += <span class="cn">1</span>
+
+        <span class="ck">return</span> [min_res, max_res]</div>
+
+    <h2>七、复杂度分析</h2>
+    <div class="complexity">
+      <strong>时间复杂度 O(n)</strong>：链表节点共 n 个，主循环每个节点访问一次，s_list 再扫描一次，均为线性。<br>
+      <strong>空间复杂度 O(k)</strong>：k 是临界点个数，最坏情况（交替高低）k ≈ n/2。
+      若想把空间压到 O(1)，可以在遍历时只记录"第一个临界点 first"、"上一个临界点 last"和"当前最小距离 minD"，
+      不保存整个 s_list —— 但代码可读性会下降。
+    </div>
+
+    <h2>八、O(1) 空间的进阶写法（可选）</h2>
+    <div class="code-block"><span class="ck">def</span> <span class="ct">nodesBetweenCriticalPoints</span>(self, head):
+    <span class="ck">if not</span> head.next.next: <span class="ck">return</span> [-<span class="cn">1</span>, -<span class="cn">1</span>]
+    first = -<span class="cn">1</span>       <span class="cc"># 第一个临界点下标</span>
+    last = -<span class="cn">1</span>        <span class="cc"># 上一个临界点下标</span>
+    minD = <span class="cn">10</span>**<span class="cn">5</span>   <span class="cc"># 当前相邻最小距离，初始化为大数</span>
+    idx = <span class="cn">2</span>
+    pre, cur = head, head.next
+    <span class="ck">while</span> cur.next:
+        <span class="ck">if</span> (cur.val > pre.val <span class="ck">and</span> cur.val > cur.next.val) <span class="ck">or</span> \
+           (cur.val < pre.val <span class="ck">and</span> cur.val < cur.next.val):
+            <span class="ck">if</span> first == -<span class="cn">1</span>: first = idx
+            <span class="ck">else</span>: minD = min(minD, idx - last)   <span class="cc"># 和上一个临界点的差</span>
+            last = idx
+        idx += <span class="cn">1</span>
+        pre, cur = cur, cur.next
+    <span class="ck">if</span> first == last: <span class="ck">return</span> [-<span class="cn">1</span>, -<span class="cn">1</span>]
+    <span class="ck">return</span> [minD, last - first]</div>
+    <p style="font-size:.9rem;color:var(--text-muted);margin-top:.5rem">
+      这种写法边遍历边算，不需要 s_list，空间 O(1)。但本题 n 上限 10⁵，两种写法都能 AC，教学上用 s_list 更直观。
+    </p>
+  </div>
+</div>
+
+<script>
+const EXAMPLES = [
+  { arr: [5,3,1,2,5,1,2] },
+  { arr: [1,3,2,2,3,2,2,2,7] },
+  { arr: [3,1] },
+  { arr: [2,3,3,2] },
+];
+
+let arr = [];
+let steps = [];
+let curStep = -1;
+let timer = null;
+
+function loadExample(n){
+  const ex = EXAMPLES[n-1];
+  document.getElementById('inpArr').value = ex.arr.join(',');
+  regenerate();
+}
+
+function parseArr(){
+  const s = document.getElementById('inpArr').value.trim();
+  return s.split(/[,，\s]+/).filter(x=>x!=='').map(Number).filter(x=>!isNaN(x));
+}
+
+function genSteps(a){
+  const st = [];
+  const n = a.length;
+  st.push({
+    type:'init',
+    desc:`初始状态：链表共 <strong>${n}</strong> 个节点。pre 指向头节点，cur 指向第二个节点，从下标 <code>min_p=2</code> 开始检查。`,
+    pos:null, preIdx:null, curIdx:null, nextIdx:null,
+    crit:[], critTypes:{},
+    minD:'—', maxD:'—', answer:null
+  });
+  if(n < 3){
+    st.push({
+      type:'early',
+      desc:`链表节点数 <strong>${n} &lt; 3</strong>，不存在同时有前驱和后继的节点，<span class="hl-max">不可能有临界点</span>，直接返回 <code>[-1, -1]</code>。`,
+      pos:null, preIdx:null, curIdx:null, nextIdx:null,
+      crit:[], critTypes:{},
+      minD:-1, maxD:-1, answer:[-1,-1]
+    });
+    return st;
+  }
+  const crit = []; const critTypes = {};
+  for(let i=1; i<=n-2; i++){
+    const v=a[i], pv=a[i-1], nv=a[i+1];
+    const isMax = v>pv && v>nv;
+    const isMin = v<pv && v<nv;
+    const isCrit = isMax||isMin;
+    let desc = `检查三元组 <code>(pre=${pv}, cur=${v}, next=${nv})</code>：`;
+    if(isMax){
+      desc += `<code>${v} &gt; ${pv}</code> 且 <code>${v} &gt; ${nv}</code> → <span class="hl-max">局部极大值 ▲</span>，下标 <code>${i+1}</code> 加入 s_list。`;
+    } else if(isMin){
+      desc += `<code>${v} &lt; ${pv}</code> 且 <code>${v} &lt; ${nv}</code> → <span class="hl-min">局部极小值 ▼</span>，下标 <code>${i+1}</code> 加入 s_list。`;
+    } else {
+      desc += `不满足严格大于或严格小于两侧 → 不是临界点。`;
+    }
+    st.push({
+      type:'eval',
+      desc,
+      pos:i+1, preIdx:i-1, curIdx:i, nextIdx:i+1,
+      crit:[...crit], critTypes:{...critTypes},
+      minD:'—', maxD:'—', answer:null
+    });
+    if(isCrit){ crit.push(i+1); critTypes[i+1] = isMax ? 'max':'min'; }
+  }
+
+  if(crit.length < 2){
+    st.push({
+      type:'early',
+      desc:`遍历结束，s_list = <code>[${crit.join(',')||''}]</code>，临界点数量 <strong>${crit.length} &lt; 2</strong>，返回 <code>[-1, -1]</code>。`,
+      pos:null, preIdx:null, curIdx:null, nextIdx:null,
+      crit:[...crit], critTypes:{...critTypes},
+      minD:-1, maxD:-1, answer:[-1,-1]
+    });
+    return st;
+  }
+
+  const maxD = crit[crit.length-1] - crit[0];
+  st.push({
+    type:'max',
+    desc:`遍历结束，s_list = <code>[${crit.join(',')}]</code>。<strong>最大距离</strong> = 最后一个临界点 <code>${crit[crit.length-1]}</code> − 第一个临界点 <code>${crit[0]}</code> = <span class="hl-ok">${maxD}</span>。接下来遍历相邻临界点差值求最小距离。`,
+    pos:null, preIdx:null, curIdx:null, nextIdx:null,
+    crit:[...crit], critTypes:{...critTypes},
+    minD:maxD, maxD, answer:null, pair:[0, crit.length-1]
+  });
+
+  let minD = maxD;
+  for(let j=0; j<crit.length-1; j++){
+    const gap = crit[j+1] - crit[j];
+    const newMin = gap < minD;
+    if(newMin) minD = gap;
+    st.push({
+      type:'min',
+      desc:`相邻临界点 <code>${crit[j]}</code> 与 <code>${crit[j+1]}</code> 的距离 = <span class="${newMin?'hl-ok':''}">${gap}</span>${newMin?` → 更新 minDistance = <strong>${minD}</strong>`:`（不小于当前 minDistance=${minD}）`}`,
+      pos:null, preIdx:null, curIdx:null, nextIdx:null,
+      crit:[...crit], critTypes:{...critTypes},
+      minD, maxD, answer:null, pair:[j, j+1]
+    });
+  }
+
+  st.push({
+    type:'done',
+    desc:`全部相邻差值检查完毕。最终结果：minDistance = <span class="hl-ok">${minD}</span>，maxDistance = <span class="hl-ok">${maxD}</span>。`,
+    pos:null, preIdx:null, curIdx:null, nextIdx:null,
+    crit:[...crit], critTypes:{...critTypes},
+    minD, maxD, answer:[minD, maxD]
+  });
+  return st;
+}
+
+function render(){
+  const row = document.getElementById('listRow');
+  row.innerHTML = '';
+  const n = arr.length;
+  arr.forEach((v,i)=>{
+    const col = document.createElement('div');
+    col.className = 'node-col';
+    col.dataset.idx = i;
+    col.innerHTML = `
+      <div class="badge-slot" data-badge="${i}"></div>
+      <div class="node" data-node="${i}">${v}${i<n-1?'<span class="node-arrow">→</span>':''}</div>
+      <div class="idx-label">#${i+1}</div>
+    `;
+    row.appendChild(col);
+  });
+
+  const ptr = document.getElementById('ptrInner');
+  ptr.innerHTML = '';
+  for(let i=0;i<n;i++){
+    const slot = document.createElement('div');
+    slot.className = 'ptr-slot';
+    slot.dataset.slot = i;
+    slot.innerHTML = '<div class="ptr-arrow"> </div><div class="ptr-lbl"> </div>';
+    ptr.appendChild(slot);
+  }
+
+  const dots = document.getElementById('progress');
+  dots.innerHTML = '';
+  steps.forEach((_,i)=>{
+    const d = document.createElement('button');
+    d.className = 'dot';
+    d.onclick = ()=>goTo(i);
+    dots.appendChild(d);
+  });
+}
+
+function setCtr(id, val, pop){
+  const el = document.getElementById(id);
+  if(el.textContent !== String(val)){
+    el.textContent = val;
+    if(pop){ el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
+  }
+}
+
+function update(idx){
+  curStep = idx;
+  const s = steps[idx];
+  document.getElementById('stepDesc').innerHTML = s.desc;
+
+  document.querySelectorAll('.node').forEach(nd=>{
+    nd.classList.remove('eval-triple','crit-max','crit-min','adj-gap');
+  });
+  document.querySelectorAll('[data-badge]').forEach(b=> b.innerHTML='');
+
+  s.crit.forEach(p=>{
+    const i = p-1;
+    const node = document.querySelector(`[data-node="${i}"]`);
+    if(node){
+      node.classList.add(s.critTypes[p]==='max' ? 'crit-max':'crit-min');
+    }
+    const badge = document.querySelector(`[data-badge="${i}"]`);
+    if(badge){
+      badge.innerHTML = s.critTypes[p]==='max'
+        ? '<span class="badge max">▲ 极大</span>'
+        : '<span class="badge min">▼ 极小</span>';
+    }
+  });
+
+  if(s.preIdx!==null){
+    [s.preIdx, s.curIdx, s.nextIdx].forEach(i=>{
+      const nd = document.querySelector(`[data-node="${i}"]`);
+      if(nd && !nd.classList.contains('crit-max') && !nd.classList.contains('crit-min')){
+        nd.classList.add('eval-triple');
+      }
+    });
+  }
+
+  if(s.type==='min' && s.pair){
+    const [a,b] = s.pair;
+    [s.crit[a]-1, s.crit[b]-1].forEach(i=>{
+      const nd = document.querySelector(`[data-node="${i}"]`);
+      if(nd) nd.classList.add('adj-gap');
+    });
+  }
+
+  document.querySelectorAll('.ptr-slot').forEach(sl=>{
+    sl.className = 'ptr-slot';
+    sl.innerHTML = '<div class="ptr-arrow"> </div><div class="ptr-lbl"> </div>';
+  });
+  if(s.preIdx!==null){
+    const p = document.querySelector(`[data-slot="${s.preIdx}"]`);
+    p.classList.add('pre');
+    p.innerHTML = '<div class="ptr-arrow">▲</div><div class="ptr-lbl">pre</div>';
+  }
+  if(s.curIdx!==null){
+    const c = document.querySelector(`[data-slot="${s.curIdx}"]`);
+    c.classList.add('cur');
+    c.innerHTML = '<div class="ptr-arrow">▲</div><div class="ptr-lbl">cur</div>';
+  }
+  if(s.nextIdx!==null){
+    const nx = document.querySelector(`[data-slot="${s.nextIdx}"]`);
+    if(!nx.classList.contains('pre') && !nx.classList.contains('cur')){
+      nx.classList.add('nxt');
+      nx.innerHTML = '<div class="ptr-arrow">▲</div><div class="ptr-lbl">next</div>';
+    }
+  }
+
+  const chips = document.getElementById('critChips');
+  chips.innerHTML = '';
+  if(s.crit.length===0){
+    chips.innerHTML = '<span style="font-family:JetBrains Mono;font-size:.78rem;color:var(--text-muted);">（空）</span>';
+  } else {
+    s.crit.forEach(p=>{
+      const c = document.createElement('span');
+      c.className = 'chip ' + (s.critTypes[p]==='max'?'max':'min');
+      c.textContent = p + (s.critTypes[p]==='max'?' ▲':' ▼');
+      chips.appendChild(c);
+    });
+  }
+
+  setCtr('ctrPos', s.pos===null?'—':s.pos, true);
+  setCtr('ctrCount', s.crit.length, true);
+  setCtr('ctrMin', s.minD==='—'?'—':s.minD, s.type==='min');
+  setCtr('ctrMax', s.maxD==='—'?'—':s.maxD, s.type==='max');
+
+  const banner = document.getElementById('answerBanner');
+  if(s.answer){
+    banner.textContent = `✅ 最终结果 = [${s.answer[0]}, ${s.answer[1]}]`;
+    banner.classList.add('show');
+  } else {
+    banner.classList.remove('show');
+  }
+
+  document.querySelectorAll('.dot').forEach((d,i)=>{
+    d.classList.remove('visited','current');
+    if(i < idx) d.classList.add('visited');
+    if(i === idx) d.classList.add('current');
+  });
+
+  const logBox = document.getElementById('logBox');
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+  const shortDesc = s.desc.replace(/<[^>]+>/g,'').slice(0,120);
+  entry.innerHTML = `<span class="log-step">[步骤 ${idx+1}]</span><span class="log-stats">${shortDesc}</span>`;
+  logBox.appendChild(entry);
+  logBox.scrollTop = logBox.scrollHeight;
+
+  const focusIdx = s.curIdx!==null ? s.curIdx : (s.type==='min' && s.pair ? s.crit[s.pair[1]]-1 : Math.floor(arr.length/2));
+  const target = document.querySelector(`[data-node="${focusIdx}"]`);
+  if(target){
+    const wrap = document.getElementById('vizWrap');
+    const wrapRect = wrap.getBoundingClientRect();
+    const tRect = target.getBoundingClientRect();
+    wrap.scrollLeft += (tRect.left - wrapRect.left) - wrapRect.width/2 + tRect.width/2;
+  }
+}
+
+function nextStep(){
+  if(curStep < steps.length-1) update(curStep+1);
+  else stopPlay();
+}
+function prevStep(){
+  if(curStep > 0) update(curStep-1);
+}
+function goTo(i){ if(i>=0 && i<steps.length) update(i); }
+function togglePlay(){ timer ? stopPlay() : startPlay(); }
+function startPlay(){
+  const btn = document.getElementById('playBtn');
+  btn.textContent = '⏸ 暂停';
+  timer = setInterval(()=>{
+    if(curStep >= steps.length-1){ stopPlay(); return; }
+    nextStep();
+  }, 1100);
+}
+function stopPlay(){
+  clearInterval(timer); timer = null;
+  document.getElementById('playBtn').textContent = '▶ 自动播放';
+}
+function resetDemo(){
+  stopPlay();
+  document.getElementById('logBox').innerHTML = '';
+  if(steps.length>0) update(0);
+}
+function regenerate(){
+  stopPlay();
+  arr = parseArr();
+  if(arr.length===0){ alert('请输入至少一个节点值，例如：5,3,1,2,5,1,2'); return; }
+  steps = genSteps(arr);
+  render();
+  document.getElementById('logBox').innerHTML = '';
+  update(0);
+}
+
+document.addEventListener('keydown', e=>{
+  if(document.activeElement.tagName==='INPUT') return;
+  if(e.key==='ArrowLeft'){ prevStep(); }
+  else if(e.key==='ArrowRight'){ nextStep(); }
+  else if(e.key===' '){ e.preventDefault(); togglePlay(); }
+  else if(e.key==='F8'){ e.preventDefault(); togglePlay(); }
+});
+
+regenerate();
+</script>
+</body>
+</html>

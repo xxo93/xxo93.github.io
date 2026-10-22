@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2181. 合并零之间的节点 · 详解版</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#08080f; --surface:#111827; --surface-2:#1a2234; --border:#1e293b;
+  --accent:#d4a843; --accent-glow:rgba(212,168,67,.18);
+  --ok:#34d399; --bad:#f87171;
+  --right-ptr:#fb923c; --zero:#64748b;
+  --seg1:#34d399; --seg2:#f87171; --seg3:#60a5fa; --seg4:#a78bfa; --seg5:#fbbf24;
+  --text:#e2e8f0; --text-muted:#64748b; --text-bright:#f8fafc;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+body{background:var(--bg); color:var(--text); font-family:'Noto Serif SC',serif; font-size:1rem; line-height:1.75; padding:2rem 1rem 4rem;}
+.container{max-width:1200px; margin:0 auto;}
+
+.tag{display:inline-block; font-family:'JetBrains Mono',monospace; font-size:.72rem; letter-spacing:.15em; color:var(--accent); border:1px solid var(--accent); padding:.25em .8em; border-radius:2px; margin-bottom:1rem; text-transform:uppercase;}
+h1{font-size:2.2rem; color:var(--text-bright); margin-bottom:.5rem; line-height:1.3;}
+.problem-desc{color:var(--text-muted); margin-bottom:1.5rem; max-width:900px;}
+.problem-desc code{font-family:'JetBrains Mono',monospace; font-size:.85em; background:var(--surface-2); padding:.1em .4em; border-radius:3px; color:var(--accent);}
+
+.formula-card{background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:0 8px 8px 0; padding:1rem 1.3rem; margin-bottom:1.5rem; font-family:'JetBrains Mono',monospace;}
+.formula-card .formula{font-size:1.15rem; color:var(--accent); margin-bottom:.3rem;}
+.formula-card .explain{font-size:.85rem; color:var(--text-muted); font-family:'Noto Serif SC',serif;}
+
+.input-section{background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:1.2rem 1.4rem; margin-bottom:1rem; display:flex; gap:.8rem; align-items:center; flex-wrap:wrap;}
+.input-section label{font-family:'JetBrains Mono',monospace; font-size:.82rem; color:var(--text-muted);}
+.input-section input{background:var(--surface-2); border:1px solid var(--border); color:var(--text-bright); font-family:'JetBrains Mono',monospace; font-size:.95rem; padding:.5em .8em; border-radius:4px; flex:1; min-width:280px;}
+.input-section input:focus{outline:none; border-color:var(--accent);}
+
+.btn{font-family:'JetBrains Mono',monospace; font-size:.82rem; background:var(--surface-2); color:var(--text); border:1px solid var(--border); padding:.55em 1.2em; border-radius:4px; cursor:pointer; transition:all .15s;}
+.btn:hover{border-color:var(--accent); color:var(--accent);}
+.btn.primary{background:var(--accent); color:#000; border-color:var(--accent); font-weight:600;}
+.btn.primary:hover{background:var(--accent-glow); color:var(--accent);}
+.btn.sm{font-size:.72rem; padding:.4em .8em;}
+
+.example-btns{display:flex; align-items:center; gap:.6rem; margin-bottom:1.5rem; flex-wrap:wrap;}
+.example-label{font-family:'JetBrains Mono',monospace; font-size:.72rem; color:var(--text-muted); letter-spacing:.05em; white-space:nowrap;}
+.example-btn{font-size:.72rem; padding:.4em .8em; border-color:var(--surface-2); background:var(--surface-2); color:var(--text-muted);}
+.example-btn:hover{border-color:var(--accent); color:var(--accent); background:var(--accent-glow);}
+
+.viz-card{background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:2rem 1.5rem 1.5rem; margin-bottom:1.2rem;}
+.viz-wrap{overflow-x:auto; padding:1rem .5rem;}
+.viz-wrap::-webkit-scrollbar{height:8px;}
+.viz-wrap::-webkit-scrollbar-thumb{background:var(--surface-2); border-radius:4px;}
+
+.list-row{display:flex; align-items:flex-start; min-width:max-content; margin:0 auto; width:max-content; margin-bottom:.5rem;}
+.row-label{font-family:'JetBrains Mono',monospace; font-size:.72rem; color:var(--text-muted); margin-bottom:.5rem; letter-spacing:.08em;}
+.node-col{display:flex; flex-direction:column; align-items:center; margin:0 .2rem;}
+.node{
+  width:58px; height:58px; border-radius:50%;
+  background:var(--surface-2); border:2px solid var(--border);
+  display:flex; align-items:center; justify-content:center;
+  font-family:'JetBrains Mono',monospace; font-size:1.3rem; font-weight:700;
+  color:var(--text-bright); position:relative; transition:all .25s;
+}
+.node.zero{border-color:var(--zero); color:var(--zero); background:rgba(100,116,139,.1);}
+.node.current{border-color:var(--accent); box-shadow:0 0 20px var(--accent-glow); transform:scale(1.1);}
+.node.seg1{border-color:var(--seg1); color:var(--seg1);}
+.node.seg2{border-color:var(--seg2); color:var(--seg2);}
+.node.seg3{border-color:var(--seg3); color:var(--seg3);}
+.node.seg4{border-color:var(--seg4); color:var(--seg4);}
+.node.seg5{border-color:var(--seg5); color:var(--seg5);}
+.node.done{opacity:.35;}
+.node-arrow{position:absolute; right:-16px; top:50%; transform:translateY(-50%); color:var(--text-muted); font-size:1rem;}
+.idx-label{margin-top:.4rem; font-family:'JetBrains Mono',monospace; font-size:.62rem; color:var(--text-muted);}
+
+.ptr-row{display:flex; justify-content:center; min-width:max-content; margin-top:.3rem;}
+.ptr-inner{display:flex;}
+.ptr-slot{width:58px; margin:0 .2rem; text-align:center; font-family:'JetBrains Mono',monospace; font-size:.68rem; height:32px;}
+.ptr-arrow{font-size:.9rem; line-height:1;}
+.ptr-lbl{font-weight:700; color:var(--right-ptr); margin-top:1px;}
+
+/* 结果链表 */
+.result-row{display:flex; align-items:center; min-height:58px; gap:.5rem; flex-wrap:wrap;}
+.result-node{
+  min-width:58px; height:58px; padding:0 .8rem; border-radius:8px;
+  display:flex; align-items:center; justify-content:center;
+  font-family:'JetBrains Mono',monospace; font-size:1.2rem; font-weight:700;
+  animation:popIn .35s;
+}
+.result-node.seg1{background:rgba(52,211,153,.15); border:2px solid var(--seg1); color:var(--seg1);}
+.result-node.seg2{background:rgba(248,113,113,.15); border:2px solid var(--seg2); color:var(--seg2);}
+.result-node.seg3{background:rgba(96,165,250,.15); border:2px solid var(--seg3); color:var(--seg3);}
+.result-node.seg4{background:rgba(167,139,250,.15); border:2px solid var(--seg4); color:var(--seg4);}
+.result-node.seg5{background:rgba(251,191,36,.15); border:2px solid var(--seg5); color:var(--seg5);}
+.result-empty{color:var(--text-muted); font-family:'JetBrains Mono',monospace; font-size:.85rem;}
+
+.acc-panel{margin-top:1.5rem; padding-top:1.2rem; border-top:1px dashed var(--border); display:grid; grid-template-columns:1fr 1fr 1fr; gap:1rem;}
+.acc-block{background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:.9rem 1.1rem;}
+.acc-label{font-family:'JetBrains Mono',monospace; font-size:.72rem; color:var(--text-muted); letter-spacing:.08em; margin-bottom:.4rem;}
+.acc-val{font-family:'JetBrains Mono',monospace; font-size:1.5rem; font-weight:700; color:var(--text-bright); min-height:2rem;}
+.acc-val.pop{animation:pop .3s;}
+.acc-val.accent{color:var(--accent);}
+
+.step-card{background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:1.3rem 1.5rem; margin-bottom:1rem;}
+.step-desc{font-size:1.05rem; margin-bottom:1rem; color:var(--text);}
+.step-desc code{font-family:'JetBrains Mono',monospace; font-size:.88em; background:var(--surface-2); padding:.1em .4em; border-radius:3px; color:var(--accent);}
+.step-desc .hl-ok{color:var(--ok); font-weight:600;}
+.step-desc .hl-bad{color:var(--bad); font-weight:600;}
+.step-desc strong{color:var(--text-bright);}
+
+.ctr-row{display:flex; gap:1rem; flex-wrap:wrap;}
+.ctr-card{flex:1; min-width:130px; background:var(--surface-2); border:1px solid var(--border); border-radius:6px; padding:.8rem 1rem;}
+.ctr-label{font-family:'JetBrains Mono',monospace; font-size:.72rem; color:var(--text-muted); letter-spacing:.05em;}
+.ctr-val{font-family:'JetBrains Mono',monospace; font-size:1.5rem; font-weight:700; color:var(--text-bright); margin-top:.2rem;}
+.ctr-val.pop{animation:pop .3s;}
+.ctr-val.accent{color:var(--accent);}
+
+.answer-banner{margin-top:1rem; padding:.9rem 1.2rem; border-radius:6px; background:var(--accent-glow); border:1px solid var(--accent); font-family:'JetBrains Mono',monospace; font-size:1rem; color:var(--accent); display:none;}
+.answer-banner.show{display:block; animation:fadeUp .4s;}
+
+.controls{display:flex; gap:.6rem; justify-content:center; margin:1.2rem 0 .8rem; flex-wrap:wrap;}
+.progress{display:flex; gap:.35rem; justify-content:center; flex-wrap:wrap; margin-bottom:.8rem;}
+.dot{width:9px; height:9px; border-radius:50%; background:var(--surface-2); cursor:pointer; transition:all .2s; border:none; padding:0;}
+.dot.visited{background:rgba(212,168,67,.4);}
+.dot.current{background:var(--accent); transform:scale(1.5); box-shadow:0 0 8px var(--accent-glow);}
+
+.kbd-hint{text-align:center; font-family:'JetBrains Mono',monospace; font-size:.72rem; color:var(--text-muted); margin-bottom:1.5rem;}
+.kbd-hint kbd{background:var(--surface-2); border:1px solid var(--border); padding:.1em .4em; border-radius:3px; margin:0 .15em;}
+
+.log-card{background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:1.2rem 1.4rem; margin-bottom:1.2rem; max-height:280px; overflow-y:auto;}
+.log-card h3{font-family:'JetBrains Mono',monospace; font-size:.9rem; color:var(--accent); letter-spacing:.08em; margin-bottom:.8rem;}
+.log-entry{font-family:'JetBrains Mono',monospace; font-size:.78rem; padding:.35rem 0; border-bottom:1px dashed var(--border); color:var(--text-muted);}
+.log-entry:last-child{border-bottom:none;}
+.log-step{color:var(--accent); margin-right:.5em;}
+.log-stats{color:var(--text);}
+
+.algo-card{background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:1.5rem 1.8rem;}
+.algo-card h2{font-size:1.35rem; color:var(--text-bright); margin:1.4rem 0 .7rem;}
+.algo-card h2:first-child{margin-top:0;}
+.algo-card h3{font-family:'Noto Serif SC',serif; font-size:1.1rem; color:var(--accent); margin:1.2rem 0 .5rem;}
+.algo-card p{margin-bottom:.8rem; color:var(--text);}
+.algo-card ul, .algo-card ol{margin-left:1.5rem; margin-bottom:.8rem;}
+.algo-card li{margin-bottom:.35rem;}
+.algo-card strong{color:var(--text-bright);}
+.algo-card code{font-family:'JetBrains Mono',monospace; font-size:.88em; background:var(--surface-2); padding:.1em .4em; border-radius:3px; color:var(--accent);}
+
+.key-insight{background:rgba(212,168,67,.07); border-left:3px solid var(--accent); padding:.9rem 1.2rem; border-radius:0 6px 6px 0; margin:1rem 0;}
+.key-insight strong{color:var(--accent);}
+
+.example-table{width:100%; border-collapse:collapse; margin:.8rem 0; font-family:'JetBrains Mono',monospace; font-size:.82rem;}
+.example-table th, .example-table td{border:1px solid var(--border); padding:.5em .8em; text-align:center;}
+.example-table th{background:var(--surface-2); color:var(--accent);}
+
+.code-block{background:#0d1117; border:1px solid var(--border); border-radius:6px; padding:1.1rem 1.3rem; overflow-x:auto; margin:.8rem 0; font-family:'JetBrains Mono',monospace; font-size:.82rem; line-height:1.7; white-space:pre;}
+.code-block .ck{color:#ff7b72;} .code-block .cf{color:#d2a8ff;}
+.code-block .cs{color:#7ee787;} .code-block .cc{color:#8b949e; font-style:italic;}
+.code-block .cn{color:#79c0ff;} .code-block .ct{color:#ffa657;}
+
+.complexity{font-family:'JetBrains Mono',monospace; font-size:.85rem; background:var(--surface-2); padding:.9rem 1.1rem; border-radius:6px; color:var(--text); border-left:3px solid var(--accent); margin-top:1rem;}
+
+@keyframes fadeUp{from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);}}
+@keyframes popIn{from{opacity:0; transform:scale(.5);} to{opacity:1; transform:scale(1);}}
+@keyframes pop{0%{transform:scale(1);} 50%{transform:scale(1.25);} 100%{transform:scale(1);}}
+
+@media(max-width:640px){
+  h1{font-size:1.5rem;}
+  .node{width:48px; height:48px; font-size:1.1rem;}
+  .ptr-slot{width:48px;}
+  .node-arrow{right:-13px;}
+  .acc-panel{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="tag">LeetCode · 2181 · 链表 · 中等</div>
+  <h1>合并零之间的节点</h1>
+  <p class="problem-desc">
+    给定一个链表 <code>head</code>，首尾都是 <code>0</code>，中间由若干个 <code>0</code> 分隔出多段整数。
+    把每两个相邻 <code>0</code> 之间的所有节点合并成一个节点（值为这段所有节点之和），然后删掉所有 <code>0</code>，返回新链表。
+  </p>
+
+  <div class="formula-card">
+    <div class="formula">cur 遍历，cnt 累加；遇到 0 → 把 cnt 打包成新节点，cnt 清零</div>
+    <div class="explain">本质是一次扫描的"分段求和"：0 是段分隔符，非 0 是段内累加值。</div>
+  </div>
+
+  <div class="input-section">
+    <label>head =</label>
+    <input id="inpArr" type="text" value="0,3,1,0,4,5,2,0" placeholder="例如：0,3,1,0,4,5,2,0">
+    <button class="btn primary" onclick="regenerate()">生成演示</button>
+  </div>
+
+  <div class="example-btns">
+    <span class="example-label">示例用例：</span>
+    <button class="btn sm example-btn" onclick="loadExample(1)">[0,3,1,0,4,5,2,0] → [4,11]</button>
+    <button class="btn sm example-btn" onclick="loadExample(2)">[0,1,0,3,0,2,2,0] → [1,3,4]</button>
+    <button class="btn sm example-btn" onclick="loadExample(3)">[0,2,0] → [2]</button>
+    <button class="btn sm example-btn" onclick="loadExample(4)">[0,1,2,3,0,4,0,5,6,0] → [6,4,11]</button>
+  </div>
+
+  <div class="viz-card">
+    <div class="row-label">原始链表（灰色=0 分隔符，彩色=段内节点）</div>
+    <div class="viz-wrap" id="vizWrap">
+      <div class="list-row" id="listRow"></div>
+      <div class="ptr-row"><div class="ptr-inner" id="ptrInner"></div></div>
+    </div>
+    <div class="row-label" style="margin-top:1.2rem">结果链表（已合并出的节点）</div>
+    <div class="result-row" id="resultRow"><span class="result-empty">（空）</span></div>
+    <div class="acc-panel">
+      <div class="acc-block"><div class="acc-label">当前累加 cnt</div><div class="acc-val" id="accCnt">0</div></div>
+      <div class="acc-block"><div class="acc-label">当前段号</div><div class="acc-val" id="accSeg">—</div></div>
+      <div class="acc-block"><div class="acc-label">已生成结果节点数</div><div class="acc-val" id="accCount">0</div></div>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-desc" id="stepDesc">点击「下一步」开始演示。</div>
+    <div class="ctr-row">
+      <div class="ctr-card"><div class="ctr-label">cur 位置</div><div class="ctr-val" id="ctrPos">—</div></div>
+      <div class="ctr-card"><div class="ctr-label">cur.val</div><div class="ctr-val" id="ctrVal">—</div></div>
+      <div class="ctr-card"><div class="ctr-label">cnt += val</div><div class="ctr-val accent" id="ctrCnt">0</div></div>
+      <div class="ctr-card"><div class="ctr-label">操作</div><div class="ctr-val" id="ctrOp">—</div></div>
+    </div>
+    <div class="answer-banner" id="answerBanner"></div>
+  </div>
+
+  <div class="controls">
+    <button class="btn" onclick="prevStep()">← 上一步</button>
+    <button class="btn primary" id="playBtn" onclick="togglePlay()">▶ 自动播放</button>
+    <button class="btn" onclick="nextStep()">下一步 →</button>
+    <button class="btn" onclick="resetDemo()">重置</button>
+  </div>
+  <div class="progress" id="progress"></div>
+  <div class="kbd-hint">
+    <kbd>←</kbd> 上一步 <kbd>→</kbd> 下一步 <kbd>Space</kbd> 播放/暂停 <kbd>F8</kbd> 自动播放
+  </div>
+
+  <div class="log-card">
+    <h3>操作日志</h3>
+    <div id="logBox"></div>
+  </div>
+
+  <div class="algo-card">
+    <h2>一、题目本质</h2>
+    <p>链表首尾都是 <code>0</code>，中间被 <code>0</code> 切成若干段。要做的事：</p>
+    <ol>
+      <li>把每一段内的所有非 0 节点值<strong>求和</strong>；</li>
+      <li>把这个和作为一个新节点，串成结果链表；</li>
+      <li>丢弃原始所有节点（包括分隔符 0）。</li>
+    </ol>
+    <p>本质上是<strong>一次扫描的分段求和</strong>，和"用 0 作分隔符 split 字符串再求和"是同一个思路。</p>
+
+    <h2>二、手动推导示例 [0,3,1,0,4,5,2,0]</h2>
+    <table class="example-table">
+      <thead><tr><th>cur 走到</th><th>操作</th><th>cnt</th><th>结果链表</th></tr></thead>
+      <tbody>
+        <tr><td>0（头）</td><td>遇到 0，cnt=0 不打包；cnt+=0</td><td>0</td><td>[]</td></tr>
+        <tr><td>3</td><td>cnt += 3</td><td>3</td><td>[]</td></tr>
+        <tr><td>1</td><td>cnt += 1</td><td>4</td><td>[]</td></tr>
+        <tr><td>0</td><td>遇到段尾 0：打包节点(4)，cnt 清零</td><td>0</td><td>[4]</td></tr>
+        <tr><td>4</td><td>cnt += 4</td><td>4</td><td>[4]</td></tr>
+        <tr><td>5</td><td>cnt += 5</td><td>9</td><td>[4]</td></tr>
+        <tr><td>2</td><td>cnt += 2</td><td>11</td><td>[4]</td></tr>
+        <tr><td>0（尾）</td><td>遇到段尾 0：打包节点(11)，cnt 清零</td><td>0</td><td>[4,11]</td></tr>
+      </tbody>
+    </table>
+
+    <h2>三、为什么遇到 0 时 cnt 不会把 0 也算进去？</h2>
+    <div class="key-insight">
+      <strong>关键：</strong>代码里 <code>cnt += cur.val</code> 在 if 判断<strong>之后</strong>。
+      遇到段尾 0 时，先用"旧 cnt"（也就是这一段非 0 节点的和）打包新节点，然后 <code>cnt=0</code>，再把当前 0 加进去（等于加 0，无影响）。
+      <br>首节点 0 也是同理：cnt 初始就是 0，if 判断时 <code>cnt!=0</code> 不成立，不会误打包一个值为 0 的空节点。
+    </div>
+
+    <h2>四、带详细注释的 Python 代码</h2>
+    <div class="code-block"><span class="ck">class</span> <span class="cf">Solution</span>:
+    <span class="ck">def</span> <span class="ct">mergeNodes</span>(self, head: ListNode | None) -> ListNode | None:
+        <span class="cc"># 哑节点，简化结果链表头的处理</span>
+        pre_head = ListNode()
+        p_head = pre_head     <span class="cc"># p_head 永远指向结果链表的尾节点</span>
+
+        cur = head           <span class="cc"># cur 遍历原始链表</span>
+        cnt = <span class="cn">0</span>           <span class="cc"># 当前段的累加和</span>
+
+        <span class="ck">while</span> cur:
+            <span class="cc"># 遇到 0 = 一段结束（首节点 0 除外，那时 cnt 还是 0）</span>
+            <span class="ck">if</span> cur.val == <span class="cn">0</span>:
+                <span class="cc"># cnt != 0 说明刚结束一段非 0 区间，打包成新节点</span>
+                <span class="ck">if</span> cnt != <span class="cn">0</span>:
+                    new_node = ListNode(cnt)
+                    p_head.next = new_node
+                    p_head = p_head.next   <span class="cc"># 尾指针后移</span>
+                cnt = <span class="cn">0</span>            <span class="cc"># 无论是否打包，都清零，准备下一段</span>
+
+            <span class="cc"># 把当前节点值累加到 cnt（遇到 0 时加 0，不影响结果）</span>
+            cnt += cur.val
+            cur = cur.next
+
+        <span class="ck">return</span> pre_head.next</div>
+
+    <h2>五、空间复杂度的小优化：原地修改</h2>
+    <p>上面的写法新建了所有结果节点。实际上题目保证原链表不再被使用，可以直接在原链表上"原地压缩"：</p>
+    <div class="code-block"><span class="ck">def</span> <span class="ct">mergeNodes</span>(self, head):
+    cur = head.next   <span class="cc"># 跳过首 0</span>
+    dummy = ListNode()
+    tail = dummy
+    <span class="ck">while</span> cur:
+        s = <span class="cn">0</span>
+        <span class="ck">while</span> cur.val != <span class="cn">0</span>:   <span class="cc"># 内层循环累加一段</span>
+            s += cur.val
+            cur = cur.next
+        tail.next = ListNode(s)     <span class="cc"># 或直接复用 cur 所在节点改值</span>
+        tail = tail.next
+        cur = cur.next              <span class="cc"># 跳过段尾 0</span>
+    <span class="ck">return</span> dummy.next</div>
+    <p style="font-size:.9rem;color:var(--text-muted);margin-top:.5rem">
+      两种写法时间都是 O(n)；新建节点空间 O(k)（k 为段数），原地修改可做到 O(1) 额外空间。
+    </p>
+
+    <h2>六、复杂度分析</h2>
+    <div class="complexity">
+      <strong>时间复杂度 O(n)</strong>：每个节点被 cur 访问一次。<br>
+      <strong>空间复杂度 O(k)</strong>：k 是合并后节点数（即段数），用于存结果链表本身；若不算结果空间，辅助变量只有 cnt / cur / p_head，O(1)。
+    </div>
+  </div>
+</div>
+
+<script>
+const EXAMPLES = [
+  { arr: [0,3,1,0,4,5,2,0] },
+  { arr: [0,1,0,3,0,2,2,0] },
+  { arr: [0,2,0] },
+  { arr: [0,1,2,3,0,4,0,5,6,0] },
+];
+
+let arr = [];
+let steps = [];
+let curStep = -1;
+let timer = null;
+
+function loadExample(n){
+  const ex = EXAMPLES[n-1];
+  document.getElementById('inpArr').value = ex.arr.join(',');
+  regenerate();
+}
+
+function parseArr(){
+  const s = document.getElementById('inpArr').value.trim();
+  return s.split(/[,，\s]+/).filter(x=>x!=='').map(Number).filter(x=>!isNaN(x));
+}
+
+// 给每个非 0 节点分配段号（0 分隔符不算段）
+function assignSegments(a){
+  const segs = new Array(a.length).fill(0);
+  let seg = 0;
+  for(let i=0;i<a.length;i++){
+    if(a[i]===0){ seg++; continue; }
+    segs[i] = seg; // 第 seg 段（seg 从 1 开始数段，0 是首分隔符之前）
+  }
+  return segs;
+}
+
+function genSteps(a){
+  const st = [];
+  const n = a.length;
+  const segOf = assignSegments(a);
+  const result = []; // [{val, seg}]
+
+  st.push({
+    type:'init',
+    desc:`初始状态：链表共 <strong>${n}</strong> 个节点，cur 指向头节点。<code>cnt = 0</code>，结果链表为空。`,
+    pos:null, curIdx:null,
+    val:null, cnt:0, op:'—',
+    result:[],
+    answer:null
+  });
+
+  let cnt = 0;
+  for(let i=0;i<n;i++){
+    const v = a[i];
+    const oldCnt = cnt;
+    let op = '累加';
+    let packed = false;
+    let packedVal = null;
+    let packedSeg = null;
+
+    if(v === 0){
+      if(cnt !== 0){
+        // 打包
+        packed = true;
+        packedVal = cnt;
+        packedSeg = segOf[i-1] || 1;
+        result.push({val:cnt, seg:packedSeg});
+        op = `段尾 0：打包新节点(${cnt})，cnt 清零`;
+      } else {
+        op = '段首 0：cnt=0 不打包';
+      }
+      cnt = 0;
+    }
+    cnt += v; // 0 加进去无影响
+
+    let desc = `cur 走到第 <strong>${i+1}</strong> 个节点 <code>val = ${v}</code>。`;
+    if(packed){
+      desc += ` <span class="hl-ok">遇到段尾 0，把当前段和 <strong>${packedVal}</strong> 打包成新节点，加入结果链表。</span>`;
+    } else if(v===0){
+      desc += ` 这是段首 0（或首节点），cnt 仍为 0，不打包。`;
+    } else {
+      desc += ` cnt <code>${oldCnt} + ${v} = ${cnt}</code>。`;
+    }
+
+    st.push({
+      type:'step',
+      desc,
+      pos:i+1, curIdx:i,
+      val:v, cnt, op,
+      result: result.map(r=>({...r})),
+      packedSeg,
+      answer: (i===n-1) ? result.map(r=>r.val) : null
+    });
+  }
+  return st;
+}
+
+function render(){
+  const row = document.getElementById('listRow');
+  row.innerHTML = '';
+  const n = arr.length;
+  const segOf = assignSegments(arr);
+  for(let i=0;i<n;i++){
+    const v = arr[i];
+    const col = document.createElement('div');
+    col.className = 'node-col';
+    col.dataset.idx = i;
+    const isZero = v===0;
+    let cls = 'node';
+    if(isZero) cls += ' zero';
+    else {
+      const s = segOf[i];
+      if(s>=1 && s<=5) cls += ` seg${s}`;
+    }
+    col.innerHTML = `
+      <div class="${cls}" data-node="${i}">${v}${i<n-1?'<span class="node-arrow">→</span>':''}</div>
+      <div class="idx-label">#${i+1}${isZero?' (0)':''}</div>
+    `;
+    row.appendChild(col);
+  }
+
+  const ptr = document.getElementById('ptrInner');
+  ptr.innerHTML = '';
+  for(let i=0;i<n;i++){
+    const slot = document.createElement('div');
+    slot.className = 'ptr-slot';
+    slot.dataset.slot = i;
+    slot.innerHTML = '<div class="ptr-arrow"> </div><div class="ptr-lbl"> </div>';
+    ptr.appendChild(slot);
+  }
+
+  const dots = document.getElementById('progress');
+  dots.innerHTML = '';
+  steps.forEach((_,i)=>{
+    const d = document.createElement('button');
+    d.className = 'dot';
+    d.onclick = ()=>goTo(i);
+    dots.appendChild(d);
+  });
+}
+
+function setCtr(id, val, pop){
+  const el = document.getElementById(id);
+  if(el.textContent !== String(val)){
+    el.textContent = val;
+    if(pop){ el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
+  }
+}
+
+function update(idx){
+  curStep = idx;
+  const s = steps[idx];
+  document.getElementById('stepDesc').innerHTML = s.desc;
+
+  // node states
+  document.querySelectorAll('.node').forEach(nd=>{
+    nd.classList.remove('current','done');
+    const i = Number(nd.dataset.node);
+    if(s.curIdx!==null && i < s.curIdx) nd.classList.add('done');
+    if(i === s.curIdx) nd.classList.add('current');
+  });
+
+  // pointers
+  document.querySelectorAll('.ptr-slot').forEach(sl=>{
+    sl.className = 'ptr-slot';
+    sl.innerHTML = '<div class="ptr-arrow"> </div><div class="ptr-lbl"> </div>';
+  });
+  if(s.curIdx!==null){
+    const c = document.querySelector(`[data-slot="${s.curIdx}"]`);
+    c.innerHTML = '<div class="ptr-arrow">▼</div><div class="ptr-lbl">cur</div>';
+  }
+
+  // result row
+  const rr = document.getElementById('resultRow');
+  rr.innerHTML = '';
+  if(s.result.length===0){
+    rr.innerHTML = '<span class="result-empty">（空）</span>';
+  } else {
+    s.result.forEach((r,i)=>{
+      if(i>0){
+        const sep = document.createElement('span');
+        sep.style.color = 'var(--text-muted)';
+        sep.style.fontFamily = 'JetBrains Mono,monospace';
+        sep.textContent = '→';
+        rr.appendChild(sep);
+      }
+      const nd = document.createElement('div');
+      nd.className = `result-node seg${Math.min(r.seg,5)}`;
+      nd.textContent = r.val;
+      rr.appendChild(nd);
+    });
+  }
+
+  // accumulators
+  const segNum = s.packedSeg || (s.curIdx!==null ? assignSegments(arr)[s.curIdx] : '—');
+  setCtr('accCnt', s.cnt, true);
+  setCtr('accSeg', segNum===0 ? '—' : segNum, true);
+  setCtr('accCount', s.result.length, true);
+
+  // counters
+  setCtr('ctrPos', s.pos===null?'—':'#'+s.pos, true);
+  setCtr('ctrVal', s.val===null?'—':s.val, true);
+  setCtr('ctrCnt', s.cnt, true);
+  setCtr('ctrOp', s.op, true);
+
+  // answer
+  const banner = document.getElementById('answerBanner');
+  if(s.answer!==null){
+    banner.textContent = `✅ 最终结果 = [${s.answer.join(', ')}]`;
+    banner.classList.add('show');
+  } else {
+    banner.classList.remove('show');
+  }
+
+  // dots
+  document.querySelectorAll('.dot').forEach((d,i)=>{
+    d.classList.remove('visited','current');
+    if(i < idx) d.classList.add('visited');
+    if(i === idx) d.classList.add('current');
+  });
+
+  // log
+  const logBox = document.getElementById('logBox');
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+  const shortDesc = s.desc.replace(/<[^>]+>/g,'').slice(0,120);
+  entry.innerHTML = `<span class="log-step">[步骤 ${idx+1}]</span><span class="log-stats">${shortDesc}</span>`;
+  logBox.appendChild(entry);
+  logBox.scrollTop = logBox.scrollHeight;
+
+  // scroll
+  const target = s.curIdx!==null ? document.querySelector(`[data-node="${s.curIdx}"]`) : null;
+  if(target){
+    const wrap = document.getElementById('vizWrap');
+    const wrapRect = wrap.getBoundingClientRect();
+    const tRect = target.getBoundingClientRect();
+    wrap.scrollLeft += (tRect.left - wrapRect.left) - wrapRect.width/2 + tRect.width/2;
+  }
+}
+
+function nextStep(){ if(curStep < steps.length-1) update(curStep+1); else stopPlay(); }
+function prevStep(){ if(curStep > 0) update(curStep-1); }
+function goTo(i){ if(i>=0 && i<steps.length) update(i); }
+function togglePlay(){ timer ? stopPlay() : startPlay(); }
+function startPlay(){
+  document.getElementById('playBtn').textContent = '⏸ 暂停';
+  timer = setInterval(()=>{
+    if(curStep >= steps.length-1){ stopPlay(); return; }
+    nextStep();
+  }, 1000);
+}
+function stopPlay(){
+  clearInterval(timer); timer = null;
+  document.getElementById('playBtn').textContent = '▶ 自动播放';
+}
+function resetDemo(){
+  stopPlay();
+  document.getElementById('logBox').innerHTML = '';
+  if(steps.length>0) update(0);
+}
+function regenerate(){
+  stopPlay();
+  arr = parseArr();
+  if(arr.length===0){ alert('请输入链表节点值，例如：0,3,1,0,4,5,2,0'); return; }
+  steps = genSteps(arr);
+  render();
+  document.getElementById('logBox').innerHTML = '';
+  update(0);
+}
+
+document.addEventListener('keydown', e=>{
+  if(document.activeElement.tagName==='INPUT') return;
+  if(e.key==='ArrowLeft'){ prevStep(); }
+  else if(e.key==='ArrowRight'){ nextStep(); }
+  else if(e.key===' '){ e.preventDefault(); togglePlay(); }
+  else if(e.key==='F8'){ e.preventDefault(); togglePlay(); }
+});
+
+regenerate();
+</script>
+</body>
+</html>

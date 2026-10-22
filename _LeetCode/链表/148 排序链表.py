@@ -18,10 +18,19 @@
 """
 from typing import Optional
 
-from python.LeetCode.common.LinkList import ListNode, list_to_linklist, linklist_to_list
+from _LeetCode.common.LinkList import ListNode, list_to_linklist, linklist_to_list
 
 
 class Solution:
+
+    def sortList_merge(self, head: Optional[ListNode]) -> Optional[ListNode]:
+        """ 归并排序，涉及链表排序 leetcode21
+        时间复杂度：O(n log n)
+        空间复杂度：
+        """
+
+        return head
+
     def sortList_bubbling(self, head: Optional[ListNode]) -> Optional[ListNode]:
         """ 冒泡: 超时
         时间复杂度：O(n^2)
@@ -39,14 +48,6 @@ class Solution:
                 p = p.next
             tail = p
             p = head
-        return head
-
-    def sortList_merge(self, head: Optional[ListNode]) -> Optional[ListNode]:
-        """ 归并排序，涉及链表排序 leetcode21
-        时间复杂度：O(n log n)
-        空间复杂度：
-        """
-
         return head
 
 

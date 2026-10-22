@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-@auth: 30017121
-@date: 2023/2/6 12:09
-@desc: 简单
+""" 简单
 将两个升序链表合并为一个新的 升序 链表并返回。新链表是通过拼接给定的两个链表的所有节点组成的。
 
 示例1：
@@ -18,8 +15,7 @@
 输出：[0]
 """
 from typing import Optional
-
-from python.LeetCode.common.LinkList import ListNode, list_to_linklist, linklist_to_list
+from _LeetCode.common.LinkList import ListNode, list_to_linklist, linklist_to_list
 
 
 class Solution:

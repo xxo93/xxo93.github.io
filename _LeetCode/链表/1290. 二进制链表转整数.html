@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1290. 二进制链表转整数 · 详解版</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#08080f; --surface:#111827; --surface-2:#1a2234; --border:#1e293b;
+  --accent:#d4a843; --accent-glow:rgba(212,168,67,.18);
+  --ok:#34d399; --bad:#f87171;
+  --right-ptr:#fb923c;
+  --text:#e2e8f0; --text-muted:#64748b; --text-bright:#f8fafc;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+body{
+  background:var(--bg); color:var(--text);
+  font-family:'Noto Serif SC', serif;
+  font-size:1rem; line-height:1.75;
+  padding:2rem 1rem 4rem;
+}
+.container{max-width:1200px; margin:0 auto;}
+
+.tag{
+  display:inline-block; font-family:'JetBrains Mono',monospace;
+  font-size:.72rem; letter-spacing:.15em; color:var(--accent);
+  border:1px solid var(--accent); padding:.25em .8em; border-radius:2px;
+  margin-bottom:1rem; text-transform:uppercase;
+}
+h1{font-size:2.2rem; color:var(--text-bright); margin-bottom:.5rem; line-height:1.3;}
+.problem-desc{color:var(--text-muted); margin-bottom:1.5rem; max-width:900px;}
+.problem-desc code{
+  font-family:'JetBrains Mono',monospace; font-size:.85em;
+  background:var(--surface-2); padding:.1em .4em; border-radius:3px; color:var(--accent);
+}
+
+.formula-card{
+  background:var(--surface); border:1px solid var(--border);
+  border-left:3px solid var(--accent);
+  border-radius:0 8px 8px 0; padding:1rem 1.3rem; margin-bottom:1.5rem;
+  font-family:'JetBrains Mono',monospace;
+}
+.formula-card .formula{font-size:1.2rem; color:var(--accent); margin-bottom:.3rem;}
+.formula-card .explain{font-size:.85rem; color:var(--text-muted); font-family:'Noto Serif SC',serif;}
+
+.input-section{
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:8px; padding:1.2rem 1.4rem; margin-bottom:1rem;
+  display:flex; gap:.8rem; align-items:center; flex-wrap:wrap;
+}
+.input-section label{font-family:'JetBrains Mono',monospace; font-size:.82rem; color:var(--text-muted);}
+.input-section input{
+  background:var(--surface-2); border:1px solid var(--border); color:var(--text-bright);
+  font-family:'JetBrains Mono',monospace; font-size:.95rem;
+  padding:.5em .8em; border-radius:4px; flex:1; min-width:280px;
+}
+.input-section input:focus{outline:none; border-color:var(--accent);}
+
+.btn{
+  font-family:'JetBrains Mono',monospace; font-size:.82rem;
+  background:var(--surface-2); color:var(--text);
+  border:1px solid var(--border); padding:.55em 1.2em; border-radius:4px;
+  cursor:pointer; transition:all .15s;
+}
+.btn:hover{border-color:var(--accent); color:var(--accent);}
+.btn.primary{background:var(--accent); color:#000; border-color:var(--accent); font-weight:600;}
+.btn.primary:hover{background:var(--accent-glow); color:var(--accent);}
+.btn.sm{font-size:.72rem; padding:.4em .8em;}
+
+.example-btns{display:flex; align-items:center; gap:.6rem; margin-bottom:1.5rem; flex-wrap:wrap;}
+.example-label{font-family:'JetBrains Mono',monospace; font-size:.72rem; color:var(--text-muted); letter-spacing:.05em; white-space:nowrap;}
+.example-btn{font-size:.72rem; padding:.4em .8em; border-color:var(--surface-2); background:var(--surface-2); color:var(--text-muted);}
+.example-btn:hover{border-color:var(--accent); color:var(--accent); background:var(--accent-glow);}
+
+.viz-card{
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:8px; padding:2rem 1.5rem 1.5rem; margin-bottom:1.2rem;
+}
+.viz-wrap{overflow-x:auto; padding:1rem .5rem;}
+.viz-wrap::-webkit-scrollbar{height:8px;}
+.viz-wrap::-webkit-scrollbar-thumb{background:var(--surface-2); border-radius:4px;}
+
+.list-row{display:flex; align-items:flex-start; min-width:max-content; margin:0 auto; width:max-content;}
+.node-col{display:flex; flex-direction:column; align-items:center; margin:0 .2rem;}
+.node{
+  width:68px; height:68px; border-radius:50%;
+  background:var(--surface-2); border:2px solid var(--border);
+  display:flex; align-items:center; justify-content:center;
+  font-family:'JetBrains Mono',monospace; font-size:1.8rem; font-weight:700;
+  color:var(--text-bright); position:relative;
+  transition:all .25s;
+}
+.node.current{border-color:var(--accent); box-shadow:0 0 20px var(--accent-glow); transform:scale(1.08);}
+.node.done{opacity:.45;}
+.node-arrow{
+  position:absolute; right:-18px; top:50%; transform:translateY(-50%);
+  color:var(--text-muted); font-size:1.1rem;
+}
+.idx-label{margin-top:.5rem; font-family:'JetBrains Mono',monospace; font-size:.68rem; color:var(--text-muted);}
+.bit-label{margin-top:.2rem; font-family:'JetBrains Mono',monospace; font-size:.62rem; color:var(--text-muted);}
+
+.ptr-row{display:flex; justify-content:center; margin-top:1.2rem; min-width:max-content;}
+.ptr-inner{display:flex;}
+.ptr-slot{
+  width:68px; margin:0 .2rem; text-align:center;
+  font-family:'JetBrains Mono',monospace; font-size:.68rem;
+  height:42px; display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
+}
+.ptr-arrow{font-size:1rem; line-height:1;}
+.ptr-lbl{margin-top:2px; font-weight:700; color:var(--right-ptr);}
+
+/* 累加器面板 */
+.acc-panel{
+  margin-top:1.8rem; padding-top:1.3rem; border-top:1px dashed var(--border);
+  display:grid; grid-template-columns:1fr 1fr; gap:1.2rem;
+}
+.acc-block{
+  background:var(--surface-2); border:1px solid var(--border);
+  border-radius:8px; padding:1rem 1.2rem;
+}
+.acc-label{font-family:'JetBrains Mono',monospace; font-size:.72rem; color:var(--text-muted); letter-spacing:.08em; margin-bottom:.5rem;}
+.acc-binary{
+  font-family:'JetBrains Mono',monospace; font-size:1.6rem; font-weight:700;
+  color:var(--accent); letter-spacing:.15em; min-height:2.2rem;
+}
+.acc-binary .new-bit{color:var(--ok); animation:popIn .3s;}
+.acc-decimal{
+  font-family:'JetBrains Mono',monospace; font-size:1.6rem; font-weight:700;
+  color:var(--text-bright); min-height:2.2rem;
+}
+.acc-decimal.pop{animation:pop .3s;}
+
+.step-card{
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:8px; padding:1.3rem 1.5rem; margin-bottom:1rem;
+}
+.step-desc{font-size:1.05rem; margin-bottom:1rem; color:var(--text);}
+.step-desc code{
+  font-family:'JetBrains Mono',monospace; font-size:.88em;
+  background:var(--surface-2); padding:.1em .4em; border-radius:3px; color:var(--accent);
+}
+.step-desc .hl-ok{color:var(--ok); font-weight:600;}
+.step-desc strong{color:var(--text-bright);}
+
+.ctr-row{display:flex; gap:1rem; flex-wrap:wrap;}
+.ctr-card{
+  flex:1; min-width:130px; background:var(--surface-2);
+  border:1px solid var(--border); border-radius:6px; padding:.8rem 1rem;
+}
+.ctr-label{font-family:'JetBrains Mono',monospace; font-size:.72rem; color:var(--text-muted); letter-spacing:.05em;}
+.ctr-val{
+  font-family:'JetBrains Mono',monospace; font-size:1.65rem; font-weight:700;
+  color:var(--text-bright); margin-top:.2rem;
+}
+.ctr-val.pop{animation:pop .3s;}
+.ctr-val.accent{color:var(--accent);}
+
+.answer-banner{
+  margin-top:1rem; padding:.9rem 1.2rem; border-radius:6px;
+  background:var(--accent-glow); border:1px solid var(--accent);
+  font-family:'JetBrains Mono',monospace; font-size:1rem; color:var(--accent);
+  display:none;
+}
+.answer-banner.show{display:block; animation:fadeUp .4s;}
+
+.controls{display:flex; gap:.6rem; justify-content:center; margin:1.2rem 0 .8rem; flex-wrap:wrap;}
+.progress{display:flex; gap:.35rem; justify-content:center; flex-wrap:wrap; margin-bottom:.8rem;}
+.dot{width:9px; height:9px; border-radius:50%; background:var(--surface-2); cursor:pointer; transition:all .2s; border:none; padding:0;}
+.dot.visited{background:rgba(212,168,67,.4);}
+.dot.current{background:var(--accent); transform:scale(1.5); box-shadow:0 0 8px var(--accent-glow);}
+
+.kbd-hint{text-align:center; font-family:'JetBrains Mono',monospace; font-size:.72rem; color:var(--text-muted); margin-bottom:1.5rem;}
+.kbd-hint kbd{background:var(--surface-2); border:1px solid var(--border); padding:.1em .4em; border-radius:3px; margin:0 .15em;}
+
+.log-card{
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:8px; padding:1.2rem 1.4rem; margin-bottom:1.2rem;
+  max-height:280px; overflow-y:auto;
+}
+.log-card h3{font-family:'JetBrains Mono',monospace; font-size:.9rem; color:var(--accent); letter-spacing:.08em; margin-bottom:.8rem;}
+.log-entry{
+  font-family:'JetBrains Mono',monospace; font-size:.78rem;
+  padding:.35rem 0; border-bottom:1px dashed var(--border); color:var(--text-muted);
+}
+.log-entry:last-child{border-bottom:none;}
+.log-step{color:var(--accent); margin-right:.5em;}
+.log-stats{color:var(--text);}
+
+.algo-card{
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:8px; padding:1.5rem 1.8rem;
+}
+.algo-card h2{font-size:1.35rem; color:var(--text-bright); margin:1.4rem 0 .7rem;}
+.algo-card h2:first-child{margin-top:0;}
+.algo-card h3{font-family:'Noto Serif SC',serif; font-size:1.1rem; color:var(--accent); margin:1.2rem 0 .5rem;}
+.algo-card p{margin-bottom:.8rem; color:var(--text);}
+.algo-card ul, .algo-card ol{margin-left:1.5rem; margin-bottom:.8rem;}
+.algo-card li{margin-bottom:.35rem;}
+.algo-card strong{color:var(--text-bright);}
+.algo-card code{font-family:'JetBrains Mono',monospace; font-size:.88em; background:var(--surface-2); padding:.1em .4em; border-radius:3px; color:var(--accent);}
+
+.key-insight{
+  background:rgba(212,168,67,.07); border-left:3px solid var(--accent);
+  padding:.9rem 1.2rem; border-radius:0 6px 6px 0; margin:1rem 0;
+}
+.key-insight strong{color:var(--accent);}
+
+.example-table{
+  width:100%; border-collapse:collapse; margin:.8rem 0;
+  font-family:'JetBrains Mono',monospace; font-size:.82rem;
+}
+.example-table th, .example-table td{
+  border:1px solid var(--border); padding:.5em .8em; text-align:center;
+}
+.example-table th{background:var(--surface-2); color:var(--accent);}
+
+.code-block{
+  background:#0d1117; border:1px solid var(--border); border-radius:6px;
+  padding:1.1rem 1.3rem; overflow-x:auto; margin:.8rem 0;
+  font-family:'JetBrains Mono',monospace; font-size:.82rem; line-height:1.7;
+  white-space:pre;
+}
+.code-block .ck{color:#ff7b72;}
+.code-block .cf{color:#d2a8ff;}
+.code-block .cs{color:#7ee787;}
+.code-block .cc{color:#8b949e; font-style:italic;}
+.code-block .cn{color:#79c0ff;}
+.code-block .ct{color:#ffa657;}
+
+.complexity{
+  font-family:'JetBrains Mono',monospace; font-size:.85rem;
+  background:var(--surface-2); padding:.9rem 1.1rem; border-radius:6px;
+  color:var(--text); border-left:3px solid var(--accent); margin-top:1rem;
+}
+
+@keyframes fadeUp{from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);}}
+@keyframes popIn{from{opacity:0; transform:scale(.5);} to{opacity:1; transform:scale(1);}}
+@keyframes pop{0%{transform:scale(1);} 50%{transform:scale(1.25);} 100%{transform:scale(1);}}
+
+@media(max-width:640px){
+  h1{font-size:1.5rem;}
+  .node{width:54px; height:54px; font-size:1.3rem;}
+  .ptr-slot{width:54px;}
+  .node-arrow{right:-15px;}
+  .acc-panel{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="tag">LeetCode · 1290 · 链表 · 简单</div>
+  <h1>二进制链表转整数</h1>
+  <p class="problem-desc">
+    给你一个单链表 <code>head</code>，每个节点的值是 <code>0</code> 或 <code>1</code>，
+    表示一个二进制数，<strong>最高位在链表头部</strong>。返回它对应的十进制值。
+  </p>
+
+  <div class="formula-card">
+    <div class="formula">ans = ans × 2 + head.val</div>
+    <div class="explain">从左到右扫一遍：每读入一位，就把当前结果左移一位（×2），再加上新位的值。</div>
+  </div>
+
+  <div class="input-section">
+    <label>head =</label>
+    <input id="inpArr" type="text" value="1,0,1" placeholder="例如：1,0,1">
+    <button class="btn primary" onclick="regenerate()">生成演示</button>
+  </div>
+
+  <div class="example-btns">
+    <span class="example-label">示例用例：</span>
+    <button class="btn sm example-btn" onclick="loadExample(1)">[1,0,1] → 5</button>
+    <button class="btn sm example-btn" onclick="loadExample(2)">[1,1,0] → 6</button>
+    <button class="btn sm example-btn" onclick="loadExample(3)">[0] → 0</button>
+    <button class="btn sm example-btn" onclick="loadExample(4)">[1,0,0,1,0] → 18</button>
+  </div>
+
+  <div class="viz-card">
+    <div class="viz-wrap" id="vizWrap">
+      <div class="list-row" id="listRow"></div>
+      <div class="ptr-row"><div class="ptr-inner" id="ptrInner"></div></div>
+    </div>
+    <div class="acc-panel">
+      <div class="acc-block">
+        <div class="acc-label">当前 ans（二进制）</div>
+        <div class="acc-binary" id="accBinary">0</div>
+      </div>
+      <div class="acc-block">
+        <div class="acc-label">当前 ans（十进制）</div>
+        <div class="acc-decimal" id="accDecimal">0</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-desc" id="stepDesc">点击「下一步」开始演示。</div>
+    <div class="ctr-row">
+      <div class="ctr-card"><div class="ctr-label">已处理位数</div><div class="ctr-val" id="ctrPos">0 / —</div></div>
+      <div class="ctr-card"><div class="ctr-label">当前节点值</div><div class="ctr-val" id="ctrBit">—</div></div>
+      <div class="ctr-card"><div class="ctr-label">ans × 2</div><div class="ctr-val" id="ctrDouble">—</div></div>
+      <div class="ctr-card"><div class="ctr-label">新 ans</div><div class="ctr-val accent" id="ctrAns">0</div></div>
+    </div>
+    <div class="answer-banner" id="answerBanner"></div>
+  </div>
+
+  <div class="controls">
+    <button class="btn" onclick="prevStep()">← 上一步</button>
+    <button class="btn primary" id="playBtn" onclick="togglePlay()">▶ 自动播放</button>
+    <button class="btn" onclick="nextStep()">下一步 →</button>
+    <button class="btn" onclick="resetDemo()">重置</button>
+  </div>
+  <div class="progress" id="progress"></div>
+  <div class="kbd-hint">
+    <kbd>←</kbd> 上一步 <kbd>→</kbd> 下一步 <kbd>Space</kbd> 播放/暂停 <kbd>F8</kbd> 自动播放
+  </div>
+
+  <div class="log-card">
+    <h3>操作日志</h3>
+    <div id="logBox"></div>
+  </div>
+
+  <div class="algo-card">
+    <h2>一、题目本质</h2>
+    <p>这道题就是把一个<strong>按位存储在链表中的二进制数</strong>读出来。链表顺序和二进制书写顺序一致：最左边是最高位（MSB），最右边是最低位（LSB）。</p>
+    <p>例如 <code>[1,0,1]</code> 就是二进制 <code>101</code>，等于十进制 <code>5</code>。</p>
+
+    <h2>二、核心公式：为什么是 ans = ans × 2 + bit？</h2>
+    <div class="key-insight">
+      <strong>类比：</strong>把十进制数 <code>123</code> 按位存成链表 <code>[1,2,3]</code>，怎么还原？
+      <br>第 1 位读到 <code>1</code>：ans = 1
+      <br>第 2 位读到 <code>2</code>：把已有结果左移一位（×10）再加新位 → <code>1×10+2 = 12</code>
+      <br>第 3 位读到 <code>3</code>：<code>12×10+3 = 123</code>
+      <br><strong>二进制完全同理，只是把 ×10 换成 ×2。</strong>
+    </div>
+
+    <h2>三、手动推导示例 [1,0,1]</h2>
+    <table class="example-table">
+      <thead><tr><th>步骤</th><th>读入 bit</th><th>计算</th><th>ans（十进制）</th><th>ans（二进制）</th></tr></thead>
+      <tbody>
+        <tr><td>初始</td><td>—</td><td>—</td><td>0</td><td>0</td></tr>
+        <tr><td>1</td><td>1</td><td>0×2 + 1</td><td>1</td><td>1</td></tr>
+        <tr><td>2</td><td>0</td><td>1×2 + 0</td><td>2</td><td>10</td></tr>
+        <tr><td>3</td><td>1</td><td>2×2 + 1</td><td>5</td><td>101</td></tr>
+      </tbody>
+    </table>
+
+    <h2>四、带注释的 Python 代码</h2>
+    <div class="code-block"><span class="ck">class</span> <span class="cf">Solution</span>:
+    <span class="ck">def</span> <span class="ct">getDecimalValue</span>(self, head: ListNode | None) -> <span class="cn">int</span>:
+        <span class="cc"># ans 累积十进制值，从 0 开始</span>
+        ans = <span class="cn">0</span>
+
+        <span class="cc"># 遍历链表，直到 None</span>
+        <span class="ck">while</span> head:
+            <span class="cc"># 核心公式：把当前 ans 左移一位（×2），再加上当前位的值</span>
+            <span class="cc"># 等价于位运算 ans = (ans &lt;&lt; 1) | head.val</span>
+            ans = ans * <span class="cn">2</span> + head.val
+
+            <span class="cc"># 指针后移</span>
+            head = head.next
+
+        <span class="ck">return</span> ans</div>
+
+    <h2>五、位运算写法（可选）</h2>
+    <p>因为每一位都是 0 或 1，<code>ans×2 + bit</code> 等价于先把 ans 左移一位（腾出最低位），再用按位或写入新位：</p>
+    <div class="code-block"><span class="ck">while</span> head:
+    ans = (ans &lt;&lt; <span class="cn">1</span>) | head.val
+    head = head.next</div>
+    <p style="font-size:.9rem;color:var(--text-muted)">两种写法完全等价，<code>×2</code> 更直观，<code>&lt;&lt;1</code> 更贴近位运算语义。</p>
+
+    <h2>六、复杂度分析</h2>
+    <div class="complexity">
+      <strong>时间复杂度 O(n)</strong>：n 是链表长度，每个节点访问一次。<br>
+      <strong>空间复杂度 O(1)</strong>：只用一个变量 ans，不额外开数组。
+    </div>
+
+    <h2>七、边界与注意点</h2>
+    <ul>
+      <li><strong>空链表</strong>：题目说链表不为空，但如果是 <code>[0]</code>，结果就是 0。</li>
+      <li><strong>前导零</strong>：例如 <code>[0,0,1,1]</code> 表示二进制 <code>0011 = 3</code>，算法自然处理，不需要特殊判断。</li>
+      <li><strong>最大长度 30 位</strong>：二进制 30 位约等于 10⁹，Python 的 int 没有溢出问题；C++/Java 用 int（32 位）刚好够，用 long long 更保险。</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+const EXAMPLES = [
+  { arr: [1,0,1] },
+  { arr: [1,1,0] },
+  { arr: [0] },
+  { arr: [1,0,0,1,0] },
+];
+
+let arr = [];
+let steps = [];
+let curStep = -1;
+let timer = null;
+
+function loadExample(n){
+  const ex = EXAMPLES[n-1];
+  document.getElementById('inpArr').value = ex.arr.join(',');
+  regenerate();
+}
+
+function parseArr(){
+  const s = document.getElementById('inpArr').value.trim();
+  return s.split(/[,，\s]+/).filter(x=>x!=='').map(Number).filter(x=>!isNaN(x));
+}
+
+function genSteps(a){
+  const st = [];
+  const n = a.length;
+  let ans = 0;
+  st.push({
+    type:'init',
+    desc:`初始状态：链表共 <strong>${n}</strong> 位二进制数。cur 指向头节点，<code>ans = 0</code>。`,
+    pos:null, curIdx:null,
+    bit:null, double:null, newAns:0,
+    ansBin:'0', answer:null
+  });
+  for(let i=0; i<n; i++){
+    const bit = a[i];
+    const oldAns = ans;
+    ans = ans * 2 + bit;
+    const bin = ans.toString(2);
+    st.push({
+      type:'step',
+      desc:`读入第 <strong>${i+1}</strong> 位 <code>bit = ${bit}</code>：<code>ans = ${oldAns} × 2 + ${bit} = ${ans}</code>，对应二进制 <span class="hl-ok">${bin}</span>。`,
+      pos:i+1, curIdx:i,
+      bit, double: oldAns*2, newAns:ans,
+      ansBin:bin, newBitIdx: i,
+      answer: null
+    });
+  }
+  st.push({
+    type:'done',
+    desc:`遍历结束。链表表示的二进制数 <code>${ans.toString(2)}</code> 对应的十进制值 = <span class="hl-ok"><strong>${ans}</strong></span>。`,
+    pos:null, curIdx:null,
+    bit:null, double:null, newAns:ans,
+    ansBin:ans.toString(2),
+    answer:ans
+  });
+  return st;
+}
+
+function render(){
+  const row = document.getElementById('listRow');
+  row.innerHTML = '';
+  const n = arr.length;
+  arr.forEach((v,i)=>{
+    const col = document.createElement('div');
+    col.className = 'node-col';
+    col.dataset.idx = i;
+    col.innerHTML = `
+      <div class="node" data-node="${i}">${v}${i<n-1?'<span class="node-arrow">→</span>':''}</div>
+      <div class="idx-label">第${i+1}位</div>
+      <div class="bit-label">${i===0?'MSB':'LSB'}</div>
+    `;
+    row.appendChild(col);
+  });
+
+  const ptr = document.getElementById('ptrInner');
+  ptr.innerHTML = '';
+  for(let i=0;i<n;i++){
+    const slot = document.createElement('div');
+    slot.className = 'ptr-slot';
+    slot.dataset.slot = i;
+    slot.innerHTML = '<div class="ptr-arrow"> </div><div class="ptr-lbl"> </div>';
+    ptr.appendChild(slot);
+  }
+
+  const dots = document.getElementById('progress');
+  dots.innerHTML = '';
+  steps.forEach((_,i)=>{
+    const d = document.createElement('button');
+    d.className = 'dot';
+    d.onclick = ()=>goTo(i);
+    dots.appendChild(d);
+  });
+}
+
+function setCtr(id, val, pop){
+  const el = document.getElementById(id);
+  if(el.textContent !== String(val)){
+    el.textContent = val;
+    if(pop){ el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
+  }
+}
+
+function update(idx){
+  curStep = idx;
+  const s = steps[idx];
+  document.getElementById('stepDesc').innerHTML = s.desc;
+
+  // node states
+  document.querySelectorAll('.node').forEach(nd=>{
+    nd.classList.remove('current','done');
+    const i = Number(nd.dataset.node);
+    if(s.curIdx!==null && i < s.curIdx) nd.classList.add('done');
+    if(i === s.curIdx) nd.classList.add('current');
+  });
+
+  // pointers
+  document.querySelectorAll('.ptr-slot').forEach(sl=>{
+    sl.className = 'ptr-slot';
+    sl.innerHTML = '<div class="ptr-arrow"> </div><div class="ptr-lbl"> </div>';
+  });
+  if(s.curIdx!==null){
+    const c = document.querySelector(`[data-slot="${s.curIdx}"]`);
+    c.innerHTML = '<div class="ptr-arrow">▼</div><div class="ptr-lbl">cur</div>';
+  }
+
+  // accumulator panels
+  const binEl = document.getElementById('accBinary');
+  binEl.innerHTML = '';
+  const binStr = s.ansBin;
+  for(let i=0;i<binStr.length;i++){
+    const span = document.createElement('span');
+    span.textContent = binStr[i];
+    if(s.newBitIdx!==null && i === binStr.length-1 && s.type==='step'){
+      span.className = 'new-bit';
+    }
+    binEl.appendChild(span);
+  }
+  const decEl = document.getElementById('accDecimal');
+  if(decEl.textContent !== String(s.newAns)){
+    decEl.textContent = s.newAns;
+    decEl.classList.remove('pop'); void decEl.offsetWidth; decEl.classList.add('pop');
+  }
+
+  // counters
+  setCtr('ctrPos', s.pos===null? `${arr.length} / ${arr.length}` : `${s.pos} / ${arr.length}`, true);
+  setCtr('ctrBit', s.bit===null?'—':s.bit, s.type==='step');
+  setCtr('ctrDouble', s.double===null?'—':s.double, s.type==='step');
+  setCtr('ctrAns', s.newAns, s.type==='step'||s.type==='done');
+
+  // answer
+  const banner = document.getElementById('answerBanner');
+  if(s.answer!==null){
+    banner.textContent = `✅ 十进制结果 = ${s.answer}（二进制 ${s.ansBin}）`;
+    banner.classList.add('show');
+  } else {
+    banner.classList.remove('show');
+  }
+
+  // dots
+  document.querySelectorAll('.dot').forEach((d,i)=>{
+    d.classList.remove('visited','current');
+    if(i < idx) d.classList.add('visited');
+    if(i === idx) d.classList.add('current');
+  });
+
+  // log
+  const logBox = document.getElementById('logBox');
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+  const shortDesc = s.desc.replace(/<[^>]+>/g,'').slice(0,120);
+  entry.innerHTML = `<span class="log-step">[步骤 ${idx+1}]</span><span class="log-stats">${shortDesc}</span>`;
+  logBox.appendChild(entry);
+  logBox.scrollTop = logBox.scrollHeight;
+
+  // scroll
+  const target = s.curIdx!==null ? document.querySelector(`[data-node="${s.curIdx}"]`) : null;
+  if(target){
+    const wrap = document.getElementById('vizWrap');
+    const wrapRect = wrap.getBoundingClientRect();
+    const tRect = target.getBoundingClientRect();
+    wrap.scrollLeft += (tRect.left - wrapRect.left) - wrapRect.width/2 + tRect.width/2;
+  }
+}
+
+function nextStep(){
+  if(curStep < steps.length-1) update(curStep+1);
+  else stopPlay();
+}
+function prevStep(){ if(curStep > 0) update(curStep-1); }
+function goTo(i){ if(i>=0 && i<steps.length) update(i); }
+function togglePlay(){ timer ? stopPlay() : startPlay(); }
+function startPlay(){
+  document.getElementById('playBtn').textContent = '⏸ 暂停';
+  timer = setInterval(()=>{
+    if(curStep >= steps.length-1){ stopPlay(); return; }
+    nextStep();
+  }, 1100);
+}
+function stopPlay(){
+  clearInterval(timer); timer = null;
+  document.getElementById('playBtn').textContent = '▶ 自动播放';
+}
+function resetDemo(){
+  stopPlay();
+  document.getElementById('logBox').innerHTML = '';
+  if(steps.length>0) update(0);
+}
+function regenerate(){
+  stopPlay();
+  arr = parseArr();
+  if(arr.length===0){ alert('请输入至少一个 0/1，例如：1,0,1'); return; }
+  steps = genSteps(arr);
+  render();
+  document.getElementById('logBox').innerHTML = '';
+  update(0);
+}
+
+document.addEventListener('keydown', e=>{
+  if(document.activeElement.tagName==='INPUT') return;
+  if(e.key==='ArrowLeft'){ prevStep(); }
+  else if(e.key==='ArrowRight'){ nextStep(); }
+  else if(e.key===' '){ e.preventDefault(); togglePlay(); }
+  else if(e.key==='F8'){ e.preventDefault(); togglePlay(); }
+});
+
+regenerate();
+</script>
+</body>
+</html>

@@ -20,7 +20,7 @@ ans.val = 3, ans.next.val = 4, ans.next.next.val = 5, 以及 ans.next.next.next 
 给定链表的结点数介于 1 和 100 之间
 """
 
-from python.LeetCode.common.LinkList import ListNode, list_to_linklist, linklist_to_list
+from _LeetCode.common.LinkList import ListNode, list_to_linklist, linklist_to_list
 
 
 class Solution:
@@ -47,9 +47,7 @@ class Solution:
     def middleNode2(self, head: ListNode) -> ListNode:
         """ 快慢指针：p1 只走1步，p2 只走2步，得到最终 p1 的位置即为中点位置 """
         p1, p2 = head, head
-        while p2:
-            if not p2.next:
-                break
+        while p2 and p2.next:
             p1 = p1.next
             p2 = p2.next.next
         return p1
@@ -59,7 +57,7 @@ if __name__ == '__main__':
     obj = Solution()
 
     head = list_to_linklist([1])
-    mid_node = obj.middleNode2(head)
+    mid_node = obj.middleNode(head)
     print(linklist_to_list(mid_node))
 
     head = list_to_linklist([1, 2, 3, 4, 5, 6])

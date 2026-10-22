@@ -1,0 +1,2557 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MySQL 索引原理 · 可视化教学 v4</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  +
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Mono:wght@400;500&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#080a10;--surface:#0e1018;--surface2:#151722;--surface3:#1c1f2e;
+  --border:#282b3d;--border-light:#353850;
+  --accent:#e8b931;--accent-dim:rgba(232,185,49,.12);--accent-glow:rgba(232,185,49,.25);
+  --blue:#4a9eff;--blue-bg:rgba(74,158,255,.1);--blue-dark:#1a3050;
+  --green:#34d399;--green-bg:rgba(52,211,153,.1);--green-dark:#133028;
+  --red:#f87171;--red-bg:rgba(248,113,113,.1);--red-dark:#3a1515;
+  --orange:#fbbf24;--orange-bg:rgba(251,191,36,.1);
+  --purple:#a78bfa;--purple-bg:rgba(167,139,250,.1);
+  --text:#e2dfd8;--text-dim:#9a97a8;--text-muted:#5a586a;
+  +
+  --font-display:'Cormorant Garamond','Noto Serif SC',serif;
+  --font-body:'Noto Serif SC',Georgia,serif;
+  --font-mono:'DM Mono','Courier New',monospace;
+  --radius:8px;--radius-sm:5px;
+}
+html{font-size:15px;scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.03'/%3E%3C/svg%3E");pointer-events:none;z-index:9999}
+
+.top-nav{position:sticky;top:0;z-index:100;background:rgba(8,10,16,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 1.2rem;gap:1.2rem;height:56px}
+.nav-brand{display:flex;align-items:baseline;gap:.5rem;flex-shrink:0}
+.brand-icon{color:var(--accent);font-size:1.1rem}
+.brand-text{font-family:var(--font-display);font-size:1.25rem;font-weight:700;color:var(--text);letter-spacing:.02em}
+.brand-sub{font-size:.72rem;color:var(--text-muted);font-family:var(--font-mono)}
+.nav-tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;flex:1;justify-content:center}
+.nav-tabs::-webkit-scrollbar{display:none}
+.nav-tab{background:none;border:none;color:var(--text-dim);font-family:var(--font-body);font-size:.8rem;padding:.45rem .75rem;border-radius:var(--radius-sm);cursor:pointer;white-space:nowrap;transition:all .2s;position:relative}
+.nav-tab:hover{color:var(--text);background:var(--surface2)}
+.nav-tab.active{color:var(--accent);background:var(--accent-dim);font-weight:600}
+.nav-tab.active::after{content:'';position:absolute;bottom:-1px;left:20%;right:20%;height:2px;background:var(--accent);border-radius:1px}
+
+.main-content{max-width:1400px;margin:0 auto;padding:1.5rem}
+.tab-panel{display:none;animation:fadeUp .35s ease}
+.tab-panel.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+.section-header{margin-bottom:1.5rem}
+.section-title{font-family:var(--font-display);font-size:1.8rem;font-weight:700;color:var(--text);margin-bottom:.3rem}
+.section-desc{color:var(--text-dim);font-size:.88rem;line-height:1.6;max-width:760px}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;margin-bottom:1.25rem}
+.card-title{font-family:var(--font-display);font-size:1.15rem;font-weight:600;margin-bottom:.75rem;color:var(--text)}
+
+.table-wrapper{overflow-x:auto;border-radius:var(--radius);border:1px solid var(--border)}
+.data-table{width:100%;border-collapse:collapse;font-family:var(--font-mono);font-size:.8rem}
+.data-table th{background:var(--surface2);color:var(--accent);font-weight:500;text-align:left;padding:.6rem .8rem;border-bottom:2px solid var(--border);position:sticky;top:0;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em}
+.data-table td{padding:.5rem .8rem;border-bottom:1px solid var(--border);color:var(--text);transition:background .15s}
+.data-table tr:hover td{background:var(--surface2)}
+.data-table td[contenteditable="true"]{cursor:text;outline:none;border-radius:3px}
+.data-table td[contenteditable="true"]:focus{background:var(--accent-dim);box-shadow:inset 0 0 0 1px var(--accent)}
+.idx-badge{display:inline-block;font-size:.6rem;padding:1px 5px;border-radius:3px;margin-left:4px;font-weight:500;vertical-align:middle}
+.idx-badge.pk{background:var(--accent-dim);color:var(--accent)}
+.idx-badge.idx{background:var(--blue-bg);color:var(--blue)}
+.del-btn{background:none;border:1px solid var(--border);color:var(--text-muted);width:24px;height:24px;border-radius:4px;cursor:pointer;font-size:.75rem;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.del-btn:hover{border-color:var(--red);color:var(--red);background:var(--red-bg)}
+.table-actions{display:flex;gap:.5rem;margin-top:.75rem;flex-wrap:wrap;align-items:center}
+.btn{font-family:var(--font-body);font-size:.82rem;padding:.5rem 1rem;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:.35rem}
+.btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-dim)}
+.btn-primary{background:var(--accent);color:var(--bg);border-color:var(--accent);font-weight:600}
+.btn-primary:hover{background:#d4a828;box-shadow:0 0 16px var(--accent-glow)}
+.btn-sm{font-size:.75rem;padding:.35rem .7rem}
+
+.demo-area{display:flex;flex-direction:column;gap:1rem}
+.query-bar{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:.75rem 1rem}
+.sql-display{font-family:var(--font-mono);font-size:.85rem;color:var(--green);display:flex;align-items:center;gap:.3rem;flex-wrap:wrap}
+.sql-kw{color:var(--purple);font-weight:500}
+.sql-tbl{color:var(--blue)}
+.sql-col{color:var(--accent)}
+.val-input{background:var(--bg);border:1px solid var(--border-light);color:var(--accent);font-family:var(--font-mono);font-size:.85rem;padding:.3rem .5rem;border-radius:4px;width:80px;text-align:center;outline:none;transition:border-color .2s}
+.val-input:focus{border-color:var(--accent)}
+.val-select{background:var(--bg);border:1px solid var(--border-light);color:var(--accent);font-family:var(--font-mono);font-size:.82rem;padding:.3rem .5rem;border-radius:4px;outline:none;cursor:pointer;max-width:340px}
+.val-select:focus{border-color:var(--accent)}
+
+/* ===== Tree container / viewport ===== */
+.tree-container{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;position:relative}
+.tree-container svg{width:100%;height:auto;display:block;cursor:default;user-select:none;-webkit-user-select:none;touch-action:none}
+.tree-container svg.panning{cursor:grabbing}
+.tree-label{position:absolute;top:.5rem;left:.7rem;font-family:var(--font-mono);font-size:.7rem;color:var(--text-muted);background:var(--surface2);padding:2px 8px;border-radius:3px;border:1px solid var(--border);z-index:2;pointer-events:none;max-width:70%}
+.tree-tools{position:absolute;top:.5rem;right:.7rem;z-index:3;display:flex;gap:.35rem;align-items:center}
+.zoom-badge{font-family:var(--font-mono);font-size:.68rem;padding:2px 7px;border-radius:3px;border:1px solid var(--border);background:var(--surface2);color:var(--text-dim);min-width:44px;text-align:center}
+.pan-reset-btn{font-family:var(--font-mono);font-size:.68rem;padding:2px 8px;border-radius:3px;border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);cursor:pointer;transition:all .2s}
+.pan-reset-btn:hover{border-color:var(--accent);color:var(--accent)}
+.tree-hint{position:absolute;bottom:.4rem;left:.7rem;z-index:2;font-family:var(--font-mono);font-size:.65rem;color:var(--text-muted);background:rgba(14,16,24,.85);padding:2px 8px;border-radius:3px;border:1px solid var(--border);pointer-events:none}
+
+/* ===== Tree nodes ===== */
+.node-rect{rx:6;ry:6;stroke-width:1.5;transition:fill .3s,stroke .3s,opacity .3s}
+.node-text{font-family:var(--font-mono);font-size:10.5px;fill:var(--text);text-anchor:middle;dominant-baseline:central;pointer-events:none;transition:fill .3s}
+.tree-node{cursor:grab}
+.tree-node.dragging{cursor:grabbing}
+.tree-node.dragging .node-rect{stroke-width:2.5}
+.internal .node-rect{fill:var(--blue-dark);stroke:var(--blue)}
+.internal .node-text{fill:#c8ddf8}
+.leaf .node-rect{fill:var(--green-dark);stroke:var(--green)}
+.leaf .node-text{fill:#b8f0d8}
+.highlight .node-rect{fill:rgba(232,185,49,.18);stroke:var(--accent);stroke-width:2.5;filter:drop-shadow(0 0 10px var(--accent-glow))}
+.highlight .node-text{fill:var(--accent);font-weight:500}
+.found .node-rect{fill:rgba(52,211,153,.2);stroke:var(--green);stroke-width:2.5;filter:drop-shadow(0 0 10px rgba(52,211,153,.3))}
+.found .node-text{fill:var(--green);font-weight:500}
+.miss .node-rect{fill:rgba(248,113,113,.15);stroke:var(--red);stroke-width:2}
+.miss .node-text{fill:var(--red)}
+.dim{opacity:.16}
+.node-text.ehit{fill:var(--accent);font-weight:600}
+.node-text.efound{fill:var(--green);font-weight:600}
+.edge-line{stroke:var(--border-light);stroke-width:1.2;transition:stroke .3s,opacity .3s}
+.edge-line.highlight{stroke:var(--accent);stroke-width:2.5;filter:drop-shadow(0 0 6px var(--accent-glow))}
+.leaf-link{stroke:var(--green);stroke-width:1;stroke-dasharray:4 3;fill:none;opacity:.35;transition:opacity .3s}
+.leaf-link.highlight{opacity:1;stroke-width:1.8;stroke-dasharray:none}
+
+/* ===== 回表跨树连线 ===== */
+.bridge-link{fill:none;stroke:var(--orange);stroke-width:1.6;stroke-dasharray:7 5;opacity:.22;transition:opacity .3s,stroke-width .3s}
+.bridge-link.highlight{opacity:1;stroke-width:2.6;animation:bridgeFlow .9s linear infinite}
+.bridge-link.dim{opacity:.08}
+@keyframes bridgeFlow{to{stroke-dashoffset:-24}}
+.bridge-label{font-family:var(--font-mono);font-size:10px;fill:var(--orange);text-anchor:middle;opacity:.25;transition:opacity .3s}
+.bridge-label.highlight{opacity:1;font-weight:600}
+.bridge-label.dim{opacity:.08}
+.bridge-label-bg{fill:var(--surface);opacity:0;transition:opacity .3s}
+.bridge-label-bg.highlight{opacity:.92}
+
+.step-bar{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+.step-btn{font-family:var(--font-body);font-size:.8rem;padding:.4rem .85rem;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface2);color:var(--text-dim);cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:.25rem}
+.step-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent);background:var(--accent-dim)}
+.step-btn:disabled{opacity:.35;cursor:not-allowed}
+.step-btn.playing{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+.step-info{font-family:var(--font-mono);font-size:.78rem;color:var(--text-muted);margin-left:auto}
+.speed-control{display:flex;align-items:center;gap:.4rem;font-size:.75rem;color:var(--text-muted);font-family:var(--font-mono)}
+.speed-control input[type=range]{width:60px;accent-color:var(--accent)}
+
+.history-box{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);max-height:240px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border-light) transparent}
+.history-box::-webkit-scrollbar{width:5px}
+.history-box::-webkit-scrollbar-thumb{background:var(--border-light);border-radius:3px}
+.history-box::-webkit-scrollbar-track{background:transparent}
+.step-entry{padding:.55rem .85rem;border-left:3px solid transparent;margin:0;font-size:.84rem;color:var(--text-muted);line-height:1.65;cursor:pointer;transition:all .25s}
+.step-entry:hover{background:rgba(255,255,255,.02)}
+.step-entry.completed{opacity:.5;border-left-color:var(--border-light)}
+.step-entry.current{border-left-color:var(--accent);background:var(--accent-dim);color:var(--text);opacity:1}
+.step-entry.future{opacity:.25}
+.step-num{font-family:var(--font-mono);font-size:.7rem;color:var(--text-muted);margin-right:.4rem;display:inline-block;min-width:1.6rem}
+.step-entry.current .step-num{color:var(--accent)}
+
+.explanation-text code{font-family:var(--font-mono);background:var(--surface3);padding:1px 5px;border-radius:3px;color:var(--accent);font-size:.82rem}
+.hl-green{color:var(--green)}.hl-blue{color:var(--blue)}.hl-red{color:var(--red)}.hl-accent{color:var(--accent)}.hl-orange{color:var(--orange)}
+.code-block{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.5rem .75rem;font-family:var(--font-mono);font-size:.78rem;margin:.4rem 0;overflow-x:auto;line-height:1.7}
+
+.legend{display:flex;gap:1rem;flex-wrap:wrap;margin:.5rem 0;font-size:.75rem;font-family:var(--font-mono)}
+.legend-item{display:flex;align-items:center;gap:.3rem;color:var(--text-dim)}
+.legend-dot{width:10px;height:10px;border-radius:3px;border:1.5px solid}
+.legend-dot.internal{border-color:var(--blue);background:var(--blue-dark)}
+.legend-dot.leaf{border-color:var(--green);background:var(--green-dark)}
+.legend-dot.path{border-color:var(--accent);background:var(--accent-dim)}
+.legend-dot.bridge{border-color:var(--orange);background:var(--orange-bg)}
+
+.concept-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem;margin-top:1rem}
+.concept-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.1rem;transition:border-color .2s}
+.concept-card:hover{border-color:var(--accent)}
+.concept-card h4{font-family:var(--font-display);font-size:1.05rem;color:var(--accent);margin-bottom:.4rem}
+.concept-card p{font-size:.82rem;color:var(--text-dim);line-height:1.6}
+.concept-card .icon{font-size:1.4rem;margin-bottom:.5rem;display:block}
+
+.compare-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1rem}
+.compare-panel{border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.compare-panel.good{border-color:rgba(52,211,153,.3)}.compare-panel.bad{border-color:rgba(248,113,113,.3)}
+.compare-header{padding:.6rem 1rem;font-family:var(--font-mono);font-size:.78rem;display:flex;align-items:center;gap:.4rem}
+.compare-panel.good .compare-header{background:var(--green-bg);color:var(--green)}
+.compare-panel.bad .compare-header{background:var(--red-bg);color:var(--red)}
+.compare-body{padding:1rem}
+
+.scenario-list{display:flex;flex-direction:column;gap:.75rem}
+.scenario{border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;cursor:pointer;transition:border-color .2s}
+.scenario:hover{border-color:var(--border-light)}.scenario.active{border-color:var(--accent)}
+.scenario-header{display:flex;align-items:center;gap:.6rem;padding:.7rem 1rem;background:var(--surface);font-size:.85rem}
+.scenario-header .tag{font-family:var(--font-mono);font-size:.65rem;padding:2px 6px;border-radius:3px;font-weight:500}
+.scenario-header .tree-tag{font-family:var(--font-mono);font-size:.63rem;padding:2px 6px;border-radius:3px;background:var(--blue-bg);color:var(--blue);margin-left:auto}
+.tag-fail{background:var(--red-bg);color:var(--red)}.tag-ok{background:var(--green-bg);color:var(--green)}
+.scenario-body{padding:1rem;background:var(--surface2);display:none;font-size:.85rem;line-height:1.7}
+.scenario.active .scenario-body{display:block}
+
+.opt-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:1.25rem}
+.opt-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;transition:border-color .2s}
+.opt-card:hover{border-color:var(--border-light)}
+.opt-card-header{padding:.85rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:.6rem}
+.opt-card-header .opt-icon{font-size:1.2rem}
+.opt-card-header h4{font-family:var(--font-display);font-size:1.05rem;color:var(--text);margin:0}
+.opt-card-body{padding:1rem;font-size:.84rem;line-height:1.75;color:var(--text-dim)}
+.opt-card-body strong{color:var(--text)}
+.opt-card-body .tip{background:var(--accent-dim);border-left:3px solid var(--accent);padding:.5rem .75rem;border-radius:0 var(--radius-sm) var(--radius-sm) 0;margin-top:.6rem;font-size:.82rem;color:var(--accent)}
+.opt-card-body .tip::before{content:'💡 '}
+.opt-card-body .ref{margin-top:.5rem;font-size:.75rem;color:var(--text-muted);font-family:var(--font-mono)}
+.opt-section-title{font-family:var(--font-display);font-size:1.1rem;color:var(--accent);margin:1.5rem 0 .9rem;padding-bottom:.4rem;border-bottom:1px solid var(--border)}
+.opt-section-title:first-child{margin-top:0}
+
+@media(max-width:900px){
+  .compare-row{grid-template-columns:1fr}
+  .flow-steps{grid-template-columns:1fr 1fr !important}
+}
+@media(max-width:768px){
+  .top-nav{flex-wrap:wrap;height:auto;padding:.5rem 1rem;gap:.5rem}
+  .nav-tabs{justify-content:flex-start}
+  .main-content{padding:1rem}
+  .query-bar{flex-direction:column;align-items:flex-start}
+  .opt-grid{grid-template-columns:1fr}
+  .flow-steps{grid-template-columns:1fr !important}
+  .checklist{grid-template-columns:1fr !important}
+}
+</style>
+</head>
+<body>
+
+<nav class="top-nav">
+  <div class="nav-brand">
+    <span class="brand-icon">◆</span>
+    <span class="brand-text">MySQL 索引原理</span>
+    <span class="brand-sub">可视化教学 · v4</span>
+  </div>
+  <div class="nav-tabs" id="navTabs">
+    <button class="nav-tab active" data-tab="data">数据表</button>
+    <button class="nav-tab" data-tab="bplus">B+ 树</button>
+    <button class="nav-tab" data-tab="clustered">聚簇索引</button>
+    <button class="nav-tab" data-tab="secondary">二级索引</button>
+    <button class="nav-tab" data-tab="covering">覆盖索引</button>
+    <button class="nav-tab" data-tab="composite">联合索引</button>
+    <button class="nav-tab" data-tab="failure">索引失效</button>
+    <button class="nav-tab" data-tab="optimization">索引优化</button>
+  </div>
+</nav>
+
+<main class="main-content">
+
+<!-- ===== TAB: DATA ===== -->
+<section class="tab-panel active" id="panel-data">
+  <div class="section-header">
+    <div class="section-title">示例数据表</div>
+    <div class="section-desc">模拟 <code style="font-family:var(--font-mono);color:var(--green)">users</code> 表。直接编辑单元格或增删行，所有 B+ 树和索引演示会<span style="color:var(--accent)">实时同步更新</span>。</div>
+  </div>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;flex-wrap:wrap;gap:.5rem">
+      <div class="card-title" style="margin:0">users 表 <span style="font-size:.75rem;color:var(--text-muted);font-family:var(--font-mono)">InnoDB · utf8mb4</span></div>
+      <div class="legend">
+        <span class="legend-item"><span class="legend-dot" style="border-color:var(--accent);background:var(--accent-dim)"></span> 主键 (PK)</span>
+        <span class="legend-item"><span class="legend-dot" style="border-color:var(--blue);background:var(--blue-bg)"></span> 索引列</span>
+      </div>
+    </div>
+    <div class="table-wrapper">
+      <table class="data-table" id="dataTable">
+        <thead><tr>
+          <th style="width:36px"></th>
+          <th>id <span class="idx-badge pk">PK</span></th>
+          <th>name <span class="idx-badge idx">IDX</span></th>
+          <th>age</th>
+          <th>email</th>
+          <th>dept <span class="idx-badge idx">IDX</span></th>
+          <th>phone <span class="idx-badge idx">IDX</span></th>
+        </tr></thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+    <div class="table-actions">
+      <button class="btn btn-primary" onclick="addRow()">＋ 添加行</button>
+      <button class="btn" onclick="resetData()">↺ 重置数据</button>
+      <span style="font-size:.75rem;color:var(--text-muted);font-family:var(--font-mono)" id="rowCount"></span>
+    </div>
+  </div>
+  <div class="card" style="background:var(--surface2)">
+    <div class="card-title">当前索引结构</div>
+    <div style="font-size:.85rem;line-height:1.8;color:var(--text-dim)">
+      <div><code style="color:var(--accent);font-family:var(--font-mono)">PRIMARY KEY (id)</code> — 聚簇索引，B+ 树，数据与索引存储在一起</div>
+      <div><code style="color:var(--blue);font-family:var(--font-mono)">INDEX idx_name (name)</code> — 二级索引，叶子节点存储 (name → id)</div>
+      <div><code style="color:var(--blue);font-family:var(--font-mono)">INDEX idx_dept_age (dept, age)</code> — 联合索引，按 (dept, age) 排序</div>
+      <div><code style="color:var(--blue);font-family:var(--font-mono)">INDEX idx_phone (phone)</code> — 二级索引，VARCHAR 类型，用于演示隐式类型转换</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">排序规则说明</div>
+    <div style="font-size:.84rem;line-height:1.8;color:var(--text-dim)">
+      本页所有 B+ 树的键顺序模拟 MySQL <code style="font-family:var(--font-mono);color:var(--accent)">utf8mb4</code> 默认排序规则
+      （<code style="font-family:var(--font-mono)">utf8mb4_0900_ai_ci</code> / <code style="font-family:var(--font-mono)">utf8mb4_general_ci</code>）：
+      <span style="color:var(--green)">不区分大小写</span>、按<span style="color:var(--green)">字符码点</span>比较。
+      因此中文字段按码点而非拼音排序，例如 <code style="font-family:var(--font-mono)">人事部 &lt; 市场部 &lt; 技术部</code>
+      （U+4EBA &lt; U+5E02 &lt; U+6280）。若要按拼音排序，需显式使用 <code style="font-family:var(--font-mono)">utf8mb4_zh_0900_as_cs</code> 或 <code style="font-family:var(--font-mono)">CONVERT(col USING gbk)</code>。
+    </div>
+  </div>
+</section>
+
+<!-- ===== TAB: B+ TREE ===== -->
+<section class="tab-panel" id="panel-bplus">
+  <div class="section-header">
+    <div class="section-title">B+ 树结构</div>
+    <div class="section-desc">B+ 树是 InnoDB 的默认索引结构。所有数据存储在叶子节点，叶子节点通过链表相连，支持高效范围查询。左键拖动单个节点可调整布局，右键拖动画布，滚轮缩放。</div>
+  </div>
+  <div class="concept-grid" style="margin-bottom:1.25rem">
+    <div class="concept-card"><span class="icon">🌳</span><h4>多路平衡</h4><p>每个节点可有多个子节点，树高通常 3~4 层即可存储千万级记录。</p></div>
+    <div class="concept-card"><span class="icon">📄</span><h4>数据在叶子节点</h4><p>内部节点只存索引键和指针，所有实际数据都在叶子节点中。</p></div>
+    <div class="concept-card"><span class="icon">🔗</span><h4>叶子节点链表</h4><p>叶子节点通过双向指针相连，支持高效的范围查询（BETWEEN、ORDER BY）。</p></div>
+    <div class="concept-card"><span class="icon">⚡</span><h4>查找效率 O(log n)</h4><p>树高即磁盘 I/O 次数，1500 万条记录通常只需 3~4 次 I/O 即可定位。</p></div>
+  </div>
+  <div class="card">
+    <div class="card-title">交互式 B+ 树 · 基于当前数据</div>
+    <div class="legend">
+      <span class="legend-item"><span class="legend-dot internal"></span> 内部节点（只存键 + 指针）</span>
+      <span class="legend-item"><span class="legend-dot leaf"></span> 叶子节点（含数据）</span>
+      <span class="legend-item"><span class="legend-dot path"></span> 搜索路径 / 选中</span>
+    </div>
+    <div class="tree-container" style="margin-top:.5rem" id="tc-bplus">
+      <span class="tree-label">聚簇索引 · PRIMARY KEY (id)</span>
+      <div class="tree-tools">
+        <span class="zoom-badge" id="zoom-bplus">100%</span>
+        <button class="pan-reset-btn" onclick="resetView('svg-bplus')">↻ 重置视图</button>
+      </div>
+      <svg id="svg-bplus" viewBox="0 0 960 400"></svg>
+      <span class="tree-hint">左键拖节点 · 右键拖画布 · 滚轮缩放 · 单击节点高亮</span>
+    </div>
+  </div>
+  <div class="card" style="background:var(--surface2)">
+    <div class="card-title">⚠️ 本页尺度说明（教学简化）</div>
+    <div style="font-size:.84rem;line-height:1.85;color:var(--text-dim)">
+      为了让 15 行数据的树形结构肉眼可见，本页把<strong style="color:var(--accent)">每节点扇出与叶子容量都设为 4</strong>，因此只有 2~3 层。
+      真实 InnoDB 中，一个节点就是一个 <code style="font-family:var(--font-mono);color:var(--accent)">16KB</code> 的数据页：
+      <div class="code-block">内部页可容纳 ≈ 1200 个 (键, 页号) 对     -- 假设主键 BIGINT(8B) + 页号(6B) = 14B，16384 / 14 ≈ 1170
+叶子页可容纳 ≈ 100 ~ 200 行完整记录      -- 取决于行宽
+
+树高 2 层 ≈ 1200 行
+树高 3 层 ≈ 1200 × 1200 ≈ 144 万行
+树高 4 层 ≈ 1200 × 1200 × 100 ≈ 14 亿行</div>
+      所以「千万级数据只需 3~4 次磁盘 I/O」说的是<strong style="color:var(--green)">真实扇出（约 1200）</strong>下的树高，
+      不是本页画面上的层数。本页的一次「节点跳转」对应真实环境中的一次「页读取」。
+    </div>
+  </div>
+  <div class="card" style="background:var(--surface2)">
+    <div class="card-title">B+ 树 vs B 树</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;font-size:.85rem">
+      <div><strong style="color:var(--accent)">B+ 树（MySQL 使用）</strong><br><span style="color:var(--text-dim);line-height:1.7">数据只在叶子节点 → 内部节点更小 → 每页存更多索引键 → 树更矮 → I/O 更少。叶子链表支持范围扫描，且所有查询路径长度一致（都走到叶子），性能稳定。</span></div>
+      <div><strong style="color:var(--text-dim)">B 树</strong><br><span style="color:var(--text-muted);line-height:1.7">数据在所有节点 → 内部节点更大 → 树更高 → 更多 I/O。命中内部节点时可提前返回，但无叶子链表，范围查询需要中序回溯。</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== TAB: CLUSTERED ===== -->
+<section class="tab-panel" id="panel-clustered">
+  <div class="section-header">
+    <div class="section-title">聚簇索引（Clustered Index）</div>
+    <div class="section-desc">聚簇索引将数据行直接存储在 B+ 树的叶子节点中——「索引即数据」。找到主键就直接拿到了完整行，无需额外查找。InnoDB 表必有且仅有一个聚簇索引：有主键用主键，无主键用第一个非空唯一索引，都没有则生成隐藏的 6 字节 <code style="font-family:var(--font-mono);color:var(--accent)">DB_ROW_ID</code>。</div>
+  </div>
+  <div class="demo-area">
+    <div class="query-bar">
+      <div class="sql-display">
+        <span class="sql-kw">SELECT</span> * <span class="sql-kw">FROM</span> <span class="sql-tbl">users</span> <span class="sql-kw">WHERE</span> <span class="sql-col">id</span> =
+        <input class="val-input" id="clusteredVal" type="number" value="9" min="1" max="999">
+      </div>
+      <button class="btn btn-primary" onclick="demos.clustered.start()">🔍 开始查询</button>
+      <span style="font-size:.75rem;color:var(--text-muted);font-family:var(--font-mono)" id="clusteredHint"></span>
+    </div>
+    <div class="tree-container" id="tc-clustered">
+      <span class="tree-label">聚簇索引 · PRIMARY KEY (id) · 基于当前数据</span>
+      <div class="tree-tools">
+        <span class="zoom-badge" id="zoom-clustered">100%</span>
+        <button class="pan-reset-btn" onclick="resetView('svg-clustered')">↻ 重置视图</button>
+      </div>
+      <svg id="svg-clustered" viewBox="0 0 960 400"></svg>
+      <span class="tree-hint">左键拖节点 · 右键拖画布 · 滚轮缩放</span>
+    </div>
+    <div class="step-bar">
+      <button class="step-btn" id="c-prev" onclick="demos.clustered.prev()" disabled>◀</button>
+      <button class="step-btn" id="c-play" onclick="demos.clustered.togglePlay()" disabled>▶</button>
+      <button class="step-btn" id="c-next" onclick="demos.clustered.next()" disabled>▶</button>
+      <button class="step-btn" id="c-reset" onclick="demos.clustered.reset()" disabled>↺</button>
+      <div class="speed-control"><span>速度</span><input type="range" min="300" max="2000" value="900" oninput="demos.clustered.speed=+this.value"></div>
+      <span class="step-info" id="c-info">等待查询…</span>
+    </div>
+    <div class="history-box" id="c-history"><div class="step-entry future" style="opacity:.3;text-align:center">输入 id 值后点击"开始查询"</div></div>
+  </div>
+</section>
+
+<!-- ===== TAB: SECONDARY ===== -->
+<section class="tab-panel" id="panel-secondary">
+  <div class="section-header">
+    <div class="section-title">二级索引 &amp; 回表</div>
+    <div class="section-desc">二级索引的叶子节点只存储（索引列值 → 主键值）。查到主键后需要再回到聚簇索引查找完整数据，这个过程叫<strong style="color:var(--orange)">回表</strong>。下图中<span style="color:var(--orange)">橙色虚线箭头</span>就是回表路线，它把两棵独立的 B+ 树连成一次完整查询。</div>
+  </div>
+  <div class="demo-area">
+    <div class="query-bar">
+      <div class="sql-display">
+        <span class="sql-kw">SELECT</span> * <span class="sql-kw">FROM</span> <span class="sql-tbl">users</span> <span class="sql-kw">WHERE</span> <span class="sql-col">name</span> =
+        <select class="val-select" id="secondaryVal"></select>
+      </div>
+      <button class="btn btn-primary" onclick="demos.secondary.start()">🔍 开始查询</button>
+    </div>
+    <div class="legend" style="margin:0">
+      <span class="legend-item"><span class="legend-dot internal"></span> 内部节点</span>
+      <span class="legend-item"><span class="legend-dot leaf"></span> 叶子节点</span>
+      <span class="legend-item"><span class="legend-dot path"></span> 查找路径</span>
+      <span class="legend-item"><span class="legend-dot bridge"></span> 回表路线（二级索引 → 聚簇索引）</span>
+    </div>
+    <div class="tree-container" id="tc-secondary">
+      <span class="tree-label">① 二级索引 INDEX (name) ────回表────▶ ② 聚簇索引 PRIMARY KEY (id)</span>
+      <div class="tree-tools">
+        <span class="zoom-badge" id="zoom-secondary">100%</span>
+        <button class="pan-reset-btn" onclick="resetView('svg-secondary')">↻ 重置视图</button>
+      </div>
+      <svg id="svg-secondary" viewBox="0 0 1240 420"></svg>
+      <span class="tree-hint">左键拖节点 · 右键拖画布 · 滚轮缩放</span>
+    </div>
+    <div class="step-bar">
+      <button class="step-btn" id="s-prev" onclick="demos.secondary.prev()" disabled>◀</button>
+      <button class="step-btn" id="s-play" onclick="demos.secondary.togglePlay()" disabled>▶</button>
+      <button class="step-btn" id="s-next" onclick="demos.secondary.next()" disabled>▶</button>
+      <button class="step-btn" id="s-reset" onclick="demos.secondary.reset()" disabled>↺</button>
+      <div class="speed-control"><span>速度</span><input type="range" min="300" max="2000" value="900" oninput="demos.secondary.speed=+this.value"></div>
+      <span class="step-info" id="s-info">等待查询…</span>
+    </div>
+    <div class="history-box" id="s-history"><div class="step-entry future" style="opacity:.3;text-align:center">选择 name 后点击"开始查询"</div></div>
+  </div>
+  <div class="card" style="background:var(--surface2)">
+    <div class="card-title">为什么二级索引不直接存整行数据？</div>
+    <div style="font-size:.84rem;line-height:1.85;color:var(--text-dim)">
+      ① <strong style="color:var(--text)">省空间</strong>：一张表可能有 5~6 个二级索引，若每个都存整行，存储成本翻数倍，缓冲池命中率也会暴跌。<br>
+      ② <strong style="color:var(--text)">降低维护成本</strong>：数据行只存在聚簇索引一处，<code style="font-family:var(--font-mono)">UPDATE</code> 非索引列时不必同步修改所有二级索引。<br>
+      ③ <strong style="color:var(--text)">主键变更代价可控</strong>：存主键值而非物理地址，页分裂/合并导致行移动时，二级索引无需更新（代价是主键不宜过大，见「索引优化 → 页分裂与自增主键」）。
+    </div>
+  </div>
+</section>
+
+<!-- ===== TAB: COVERING ===== -->
+<section class="tab-panel" id="panel-covering">
+  <div class="section-header">
+    <div class="section-title">覆盖索引（Covering Index）</div>
+    <div class="section-desc">当查询所需的所有字段都包含在索引中时，MySQL 无需回表，直接从索引返回结果。切换下方查询模式，观察<span style="color:var(--orange)">回表虚线</span>的出现与消失——这是两种模式最直观的差别。</div>
+  </div>
+  <div class="demo-area">
+    <div class="query-bar">
+      <div class="sql-display">
+        <span class="sql-kw">SELECT</span>
+        <select class="val-select" id="coveringMode" onchange="onCoveringModeChange()">
+          <option value="star">*（需要回表）</option>
+          <option value="covered">id, name（覆盖索引）</option>
+        </select>
+        <span class="sql-kw">FROM</span> <span class="sql-tbl">users</span> <span class="sql-kw">WHERE</span> <span class="sql-col">name</span> =
+        <select class="val-select" id="coveringVal"></select>
+      </div>
+      <button class="btn btn-primary" onclick="demos.covering.start()">🔍 开始查询</button>
+    </div>
+    <div class="compare-row" id="coveringCompare">
+      <div class="compare-panel bad"><div class="compare-header">✗ 需要回表 · SELECT *</div><div class="compare-body" id="cvCompareBad"></div></div>
+      <div class="compare-panel good"><div class="compare-header">✓ 覆盖索引 · 无需回表</div><div class="compare-body" id="cvCompareGood"></div></div>
+    </div>
+    <div class="legend" style="margin:0">
+      <span class="legend-item"><span class="legend-dot leaf"></span> 叶子节点</span>
+      <span class="legend-item"><span class="legend-dot path"></span> 查找路径</span>
+      <span class="legend-item"><span class="legend-dot bridge"></span> 回表路线（仅 SELECT * 时出现）</span>
+    </div>
+    <div class="tree-container" id="tc-covering">
+      <span class="tree-label" id="coveringLabel">覆盖索引对比 · 基于当前数据</span>
+      <div class="tree-tools">
+        <span class="zoom-badge" id="zoom-covering">100%</span>
+        <button class="pan-reset-btn" onclick="resetView('svg-covering')">↻ 重置视图</button>
+      </div>
+      <svg id="svg-covering" viewBox="0 0 1240 420"></svg>
+      <span class="tree-hint">左键拖节点 · 右键拖画布 · 滚轮缩放</span>
+    </div>
+    <div class="step-bar">
+      <button class="step-btn" id="cv-prev" onclick="demos.covering.prev()" disabled>◀</button>
+      <button class="step-btn" id="cv-play" onclick="demos.covering.togglePlay()" disabled>▶</button>
+      <button class="step-btn" id="cv-next" onclick="demos.covering.next()" disabled>▶</button>
+      <button class="step-btn" id="cv-reset" onclick="demos.covering.reset()" disabled>↺</button>
+      <div class="speed-control"><span>速度</span><input type="range" min="300" max="2000" value="900" oninput="demos.covering.speed=+this.value"></div>
+      <span class="step-info" id="cv-info">等待查询…</span>
+    </div>
+    <div class="history-box" id="cv-history"><div class="step-entry future" style="opacity:.3;text-align:center">选择查询模式后点击"开始查询"</div></div>
+  </div>
+</section>
+
+<!-- ===== TAB: COMPOSITE ===== -->
+<section class="tab-panel" id="panel-composite">
+  <div class="section-header">
+    <div class="section-title">联合索引 &amp; 最左前缀原则</div>
+    <div class="section-desc">联合索引 <code style="font-family:var(--font-mono);color:var(--blue)">(dept, age)</code> 先按 dept 排序，dept 相同时再按 age 排序——叶子节点里存的是<strong style="color:var(--accent)">拼接后的复合键</strong>。查询必须从最左字段开始连续匹配才能有效利用索引。</div>
+  </div>
+  <div class="demo-area">
+    <div class="query-bar">
+      <div class="sql-display">
+        <span class="sql-kw">SELECT</span> * <span class="sql-kw">FROM</span> <span class="sql-tbl">users</span> <span class="sql-kw">WHERE</span>
+        <select class="val-select" id="compositeQuery" onchange="demos.composite.reset()"></select>
+      </div>
+      <button class="btn btn-primary" onclick="demos.composite.start()">🔍 分析查询</button>
+    </div>
+    <div class="tree-container" id="tc-composite">
+      <span class="tree-label">联合索引 · INDEX (dept, age) · 基于当前数据</span>
+      <div class="tree-tools">
+        <span class="zoom-badge" id="zoom-composite">100%</span>
+        <button class="pan-reset-btn" onclick="resetView('svg-composite')">↻ 重置视图</button>
+      </div>
+      <svg id="svg-composite" viewBox="0 0 960 400"></svg>
+      <span class="tree-hint">左键拖节点 · 右键拖画布 · 滚轮缩放</span>
+    </div>
+    <div class="step-bar">
+      <button class="step-btn" id="cp-prev" onclick="demos.composite.prev()" disabled>◀</button>
+      <button class="step-btn" id="cp-play" onclick="demos.composite.togglePlay()" disabled>▶</button>
+      <button class="step-btn" id="cp-next" onclick="demos.composite.next()" disabled>▶</button>
+      <button class="step-btn" id="cp-reset" onclick="demos.composite.reset()" disabled>↺</button>
+      <div class="speed-control"><span>速度</span><input type="range" min="300" max="2000" value="900" oninput="demos.composite.speed=+this.value"></div>
+      <span class="step-info" id="cp-info">等待查询…</span>
+    </div>
+    <div class="history-box" id="cp-history"><div class="step-entry future" style="opacity:.3;text-align:center">选择 WHERE 条件后点击"分析查询"</div></div>
+  </div>
+  <div class="card" style="background:var(--surface2);margin-top:1rem">
+    <div class="card-title">最左前缀原则速查</div>
+    <div style="font-family:var(--font-mono);font-size:.82rem;line-height:2">索引 <span style="color:var(--blue)">(a, b, c)</span><br>
+      <span style="color:var(--green)">✓</span> WHERE a=1 · <span style="color:var(--green)">✓</span> WHERE a=1 AND b=2 · <span style="color:var(--green)">✓</span> WHERE a=1 AND b=2 AND c=3<br>
+      <span style="color:var(--green)">✓</span> WHERE a&gt;1（范围列本身可用，但其后的 b、c 用不上）<br>
+      <span style="color:var(--orange)">⚠</span> WHERE a=1 AND c=3（只用到 a，c 需回表后逐行过滤）<br>
+      <span style="color:var(--red)">✗</span> WHERE b=2 · <span style="color:var(--red)">✗</span> WHERE c=3 · <span style="color:var(--red)">✗</span> WHERE b=2 AND c=3
+    </div>
+    <div style="margin-top:.7rem;font-size:.82rem;line-height:1.8;color:var(--text-dim);border-left:3px solid var(--accent);padding-left:.7rem">
+      <strong style="color:var(--accent)">MySQL 8.0 例外：Index Skip Scan。</strong>
+      当首列<strong>基数（distinct 值个数）很低</strong>时，优化器可能对首列的每个取值分别做一次子查询，
+      从而「跳过」最左列。例如索引 <code style="font-family:var(--font-mono)">(gender, age)</code> 上执行
+      <code style="font-family:var(--font-mono)">WHERE age = 25</code>，EXPLAIN 的 <code style="font-family:var(--font-mono)">type</code> 会显示
+      <code style="font-family:var(--font-mono);color:var(--green)">range</code> 而非全表扫描。<br>
+      但这依赖统计信息且首列基数必须足够小，<strong style="color:var(--red)">不能当作可以省略最左列的理由</strong>——设计索引时仍应遵守最左前缀。
+      另：<code style="font-family:var(--font-mono)">ORDER BY</code> 中的 <code style="font-family:var(--font-mono)">ASC</code>/<code style="font-family:var(--font-mono)">DESC</code>
+      混用会破坏索引有序性（8.0 可用降序索引解决）。
+    </div>
+  </div>
+</section>
+
+<!-- ===== TAB: FAILURE ===== -->
+<section class="tab-panel" id="panel-failure">
+  <div class="section-header">
+    <div class="section-title">索引失效场景</div>
+    <div class="section-desc">某些写法会导致 MySQL 无法使用索引，退化为全表扫描。下面 7 个场景按<strong style="color:var(--accent)">能否用当前 users 表真实演示</strong>分为两类，卡片右上角标注了各自使用的索引树。</div>
+  </div>
+  <div class="demo-area">
+    <div class="scenario-list" id="scenarioList"></div>
+    <div class="legend" style="margin:0">
+      <span class="legend-item"><span class="legend-dot leaf"></span> 叶子节点</span>
+      <span class="legend-item"><span class="legend-dot path"></span> 有效查找路径</span>
+      <span class="legend-item" style="color:var(--red)"><span class="legend-dot" style="border-color:var(--red);background:var(--red-bg)"></span> 索引失效 / 全表扫描</span>
+      <span class="legend-item"><span class="legend-dot bridge"></span> 回表路线（隐式转换场景）</span>
+    </div>
+    <div class="tree-container" id="tc-failure" style="margin-top:.5rem">
+      <span class="tree-label" id="failureLabel">选择上方场景卡片开始…</span>
+      <div class="tree-tools">
+        <span class="zoom-badge" id="zoom-failure">100%</span>
+        <button class="pan-reset-btn" onclick="resetView('svg-failure')">↻ 重置视图</button>
+      </div>
+      <svg id="svg-failure" viewBox="0 0 1240 420"></svg>
+      <span class="tree-hint">左键拖节点 · 右键拖画布 · 滚轮缩放</span>
+    </div>
+    <div class="step-bar">
+      <button class="step-btn" id="f-prev" onclick="demos.failure.prev()" disabled>◀</button>
+      <button class="step-btn" id="f-play" onclick="demos.failure.togglePlay()" disabled>▶</button>
+      <button class="step-btn" id="f-next" onclick="demos.failure.next()" disabled>▶</button>
+      <button class="step-btn" id="f-reset" onclick="demos.failure.reset()" disabled>↺</button>
+      <div class="speed-control"><span>速度</span><input type="range" min="300" max="2000" value="900" oninput="demos.failure.speed=+this.value"></div>
+      <span class="step-info" id="f-info">选择场景开始…</span>
+    </div>
+    <div class="history-box" id="f-history"><div class="step-entry future" style="opacity:.3;text-align:center">点击上方场景卡片查看演示</div></div>
+  </div>
+</section>
+
+<!-- ===== TAB: OPTIMIZATION ===== -->
+<section class="tab-panel" id="panel-optimization">
+  <div class="section-header">
+    <div class="section-title">索引优化建议</div>
+    <div class="section-desc">分三部分：<strong style="color:var(--accent)">先看决策流程</strong>建立整体思路，<strong style="color:var(--accent)">基础原则与进阶主题</strong>逐条对应前面的可视化场景，最后用一个<strong style="color:var(--accent)">实战案例</strong>把 EXPLAIN 字段串起来。</div>
+  </div>
+
+  <!-- 决策流程 -->
+  <div class="card" style="margin-bottom:1.5rem;border-left:3px solid var(--accent)">
+    <div class="card-title">🧭 拿到一条 SQL，怎么判断要不要建索引？—— 5 步决策流程</div>
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:.75rem;margin-top:.5rem" class="flow-steps">
+      <div style="background:var(--surface2);padding:.8rem;border-radius:var(--radius-sm);border-top:2px solid var(--accent)">
+        <div style="font-family:var(--font-mono);font-size:.7rem;color:var(--accent);margin-bottom:.3rem">STEP 1</div>
+        <div style="font-size:.88rem;color:var(--text);font-weight:600;margin-bottom:.3rem">找涉及列</div>
+        <div style="font-size:.78rem;color:var(--text-dim);line-height:1.6">列出 WHERE / ORDER BY / GROUP BY / JOIN ON / SELECT 用到的所有列</div>
+      </div>
+      <div style="background:var(--surface2);padding:.8rem;border-radius:var(--radius-sm);border-top:2px solid var(--blue)">
+        <div style="font-family:var(--font-mono);font-size:.7rem;color:var(--blue);margin-bottom:.3rem">STEP 2</div>
+        <div style="font-size:.88rem;color:var(--text);font-weight:600;margin-bottom:.3rem">评估选择性</div>
+        <div style="font-size:.78rem;color:var(--text-dim);line-height:1.6">SELECT COUNT(DISTINCT col)/COUNT(*)，接近 1 才值得建；性别/标志位放弃</div>
+      </div>
+      <div style="background:var(--surface2);padding:.8rem;border-radius:var(--radius-sm);border-top:2px solid var(--green)">
+        <div style="font-family:var(--font-mono);font-size:.7rem;color:var(--green);margin-bottom:.3rem">STEP 3</div>
+        <div style="font-size:.88rem;color:var(--text);font-weight:600;margin-bottom:.3rem">排列顺序</div>
+        <div style="font-size:.78rem;color:var(--text-dim);line-height:1.6">联合索引：等值列在前，范围列在后；同列排按选择性高的在前</div>
+      </div>
+      <div style="background:var(--surface2);padding:.8rem;border-radius:var(--radius-sm);border-top:2px solid var(--orange)">
+        <div style="font-family:var(--font-mono);font-size:.7rem;color:var(--orange);margin-bottom:.3rem">STEP 4</div>
+        <div style="font-size:.88rem;color:var(--text);font-weight:600;margin-bottom:.3rem">考虑覆盖</div>
+        <div style="font-size:.78rem;color:var(--text-dim);line-height:1.6">把 SELECT 返回列一并纳入索引，避免回表（Extra 出现 Using index）</div>
+      </div>
+      <div style="background:var(--surface2);padding:.8rem;border-radius:var(--radius-sm);border-top:2px solid var(--purple)">
+        <div style="font-family:var(--font-mono);font-size:.7rem;color:var(--purple);margin-bottom:.3rem">STEP 5</div>
+        <div style="font-size:.88rem;color:var(--text);font-weight:600;margin-bottom:.3rem">上线验证</div>
+        <div style="font-size:.78rem;color:var(--text-dim);line-height:1.6">EXPLAIN 看 type/key/key_len/rows/Extra；删索引用 INVISIBLE 先观察</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="opt-section-title">一、基础原则</div>
+  <div class="opt-grid" id="optGridBasic"></div>
+  <div class="opt-section-title">二、进阶主题</div>
+  <div class="opt-grid" id="optGridAdvanced"></div>
+
+  <!-- EXPLAIN 表格化 -->
+  <div class="card" style="margin-top:1.5rem">
+    <div class="card-title">🔍 EXPLAIN 执行计划 · 关键字段速查</div>
+    <div style="font-size:.84rem;line-height:1.8;color:var(--text-dim);margin-bottom:.8rem">
+      <code style="color:var(--accent);font-family:var(--font-mono)">EXPLAIN</code> 加在 SELECT 前，输出一行/多行计划。下面两个字段最值得盯：
+    </div>
+    <div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;font-family:var(--font-mono);font-size:.78rem">
+      <thead>
+        <tr style="background:var(--surface2)">
+          <th style="padding:.55rem .7rem;border:1px solid var(--border);text-align:left;color:var(--accent)">type 字段（访问类型，从好到差）</th>
+          <th style="padding:.55rem .7rem;border:1px solid var(--border);text-align:left;color:var(--accent)">含义</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td style="padding:.45rem .7rem;border:1px solid var(--border);color:var(--green)"><strong>system</strong> / const</td><td style="padding:.45rem .7rem;border:1px solid var(--border)">表只有一行 / 主键或唯一索引等值匹配，最快</td></tr>
+        <tr><td style="padding:.45rem .7rem;border:1px solid var(--border);color:var(--green)"><strong>eq_ref</strong></td><td style="padding:.45rem .7rem;border:1px solid var(--border)">JOIN 时用主键/唯一索引，每行匹配一行</td></tr>
+        <tr><td style="padding:.45rem .7rem;border:1px solid var(--border);color:var(--green)"><strong>ref</strong></td><td style="padding:.45rem .7rem;border:1px solid var(--border)">非唯一索引等值匹配，命中多行</td></tr>
+        <tr><td style="padding:.45rem .7rem;border:1px solid var(--border);color:var(--orange)"><strong>range</strong></td><td style="padding:.45rem .7rem;border:1px solid var(--border)">索引范围扫描（BETWEEN / &gt; / LIKE 'x%'）</td></tr>
+        <tr><td style="padding:.45rem .7rem;border:1px solid var(--border);color:var(--orange)"><strong>index</strong></td><td style="padding:.45rem .7rem;border:1px solid var(--border)">全索引扫描（扫描整棵索引树），仍需警惕</td></tr>
+        <tr><td style="padding:.45rem .7rem;border:1px solid var(--border);color:var(--red)"><strong>ALL</strong></td><td style="padding:.45rem .7rem;border:1px solid var(--border)">⚠️ 全表扫描，必须优化</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <div style="overflow-x:auto;margin-top:.8rem">
+    <table style="width:100%;border-collapse:collapse;font-family:var(--font-mono);font-size:.78rem">
+      <thead>
+        <tr style="background:var(--surface2)">
+          <th style="padding:.55rem .7rem;border:1px solid var(--border);text-align:left;color:var(--accent)">Extra 字段</th>
+          <th style="padding:.55rem .7rem;border:1px solid var(--border);text-align:left;color:var(--accent)">含义与判读</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td style="padding:.45rem .7rem;border:1px solid var(--border);color:var(--green)"><strong>Using index</strong></td><td style="padding:.45rem .7rem;border:1px solid var(--border)">✅ 覆盖索引，无需回表</td></tr>
+        <tr><td style="padding:.45rem .7rem;border:1px solid var(--border);color:var(--green)"><strong>Using index condition</strong></td><td style="padding:.45rem .7rem;border:1px solid var(--border)">✅ 索引下推 ICP 生效</td></tr>
+        <tr><td style="padding:.45rem .7rem;border:1px solid var(--border);color:var(--text)"><strong>Using where</strong></td><td style="padding:.45rem .7rem;border:1px solid var(--border)">Server 层过滤，正常但不一定最优</td></tr>
+        <tr><td style="padding:.45rem .7rem;border:1px solid var(--border);color:var(--red)"><strong>Using filesort</strong></td><td style="padding:.45rem .7rem;border:1px solid var(--border)">⚠️ 需要额外排序，考虑让 ORDER BY 走索引</td></tr>
+        <tr><td style="padding:.45rem .7rem;border:1px solid var(--border);color:var(--red)"><strong>Using temporary</strong></td><td style="padding:.45rem .7rem;border:1px solid var(--border)">⚠️ 用临时表（常见于 GROUP BY），需优化</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <div class="tip" style="margin-top:.9rem">
+      其他字段：<code>key</code> 实际用的索引（NULL = 没用上）、<code>key_len</code> 用了几列联合索引（见 D5）、<code>rows</code> 预估扫描行数、<code>filtered</code> 过滤后剩余百分比。<strong>一条慢 SQL 的诊断顺序：type → key → key_len → rows → Extra</strong>。
+    </div>
+  </div>
+
+  <!-- 实战案例 -->
+  <div class="card" style="margin-top:1.5rem;border-left:3px solid var(--green)">
+    <div class="card-title">🧪 实战案例：一条慢 SQL 的三次优化</div>
+    <div style="font-size:.84rem;line-height:1.8;color:var(--text-dim)">
+      <p style="margin-bottom:.6rem">
+        <strong style="color:var(--text)">背景：</strong>
+        <code style="color:var(--accent);font-family:var(--font-mono)">users</code> 表 100 万行，有 id 主键、name、age、dept 列。业务上高频执行这条查询：
+      </p>
+      <div class="code-block">SELECT id, name, age FROM users
+ WHERE dept = '技术部'
+   AND age &gt; 25
+ ORDER BY age
+ LIMIT 10;</div>
+
+      <p style="margin:.8rem 0 .4rem;color:var(--text)"><strong>① 初始状态：无合适索引</strong></p>
+      <div class="code-block">-- EXPLAIN 输出（节选）
+type:  <span style="color:var(--red)">ALL</span>
+key:   <span style="color:var(--red)">NULL</span>
+rows:  <span style="color:var(--red)">987,654</span>
+Extra: <span style="color:var(--red)">Using where; Using filesort</span>
+-- 全表扫描 + 文件外排序，响应 ~1.2s</div>
+
+      <p style="margin:.8rem 0 .4rem;color:var(--text)"><strong>② 第一次优化：建联合索引 (dept, age)</strong></p>
+      <div class="code-block">ALTER TABLE users ADD INDEX idx_dept_age (dept, age);
+
+-- 复查 EXPLAIN
+type:  <span style="color:var(--orange)">range</span>
+key:   idx_dept_age
+key_len: 86          <span style="color:var(--text-muted)">-- dept VARCHAR(20)=82B + age INT=4B，两列都用到了 ✅</span>
+rows:  <span style="color:var(--green)">12,340</span>
+Extra: Using where; Using filesort
+-- 扫描行数降到 1.2 万，响应 ~45ms。但 ORDER BY age 仍 filesort？</div>
+      <div class="tip" style="margin:.5rem 0">
+        为什么 range 后还 filesort？因为 <code>dept='技术部'</code> 是等值、<code>age&gt;25</code> 是范围，B+ 树在 (dept, age) 上同一 dept 内 age 是有序的，
+        理论上应该能避免 filesort——但优化器选了 range 而不是 ref，且 LIMIT 10 下优化器觉得走索引回表 12 万行不如全表 + filesort 快。
+      </div>
+
+      <p style="margin:.8rem 0 .4rem;color:var(--text)"><strong>③ 第二次优化：把 name 纳入索引，走覆盖索引</strong></p>
+      <div class="code-block">ALTER TABLE users DROP INDEX idx_dept_age;
+ALTER TABLE users ADD INDEX idx_dept_age_name (dept, age, name);
+
+-- 复查 EXPLAIN
+type:  <span style="color:var(--green)">range</span>
+key:   idx_dept_age_name
+rows:  <span style="color:var(--green)">12,340</span>
+Extra: <span style="color:var(--green)">Using index condition; Using index</span>
+-- Extra 出现 Using index = 覆盖索引，不回表；
+-- 索引叶子节点里 (dept, age, name, id) 已包含 SELECT 全部列，响应 ~3ms</div>
+
+      <p style="margin:.8rem 0 .4rem;color:var(--text)"><strong>优化效果对比</strong></p>
+      <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-family:var(--font-mono);font-size:.78rem">
+        <thead>
+          <tr style="background:var(--surface2)">
+            <th style="padding:.5rem .7rem;border:1px solid var(--border);text-align:left;color:var(--accent)">阶段</th>
+            <th style="padding:.5rem .7rem;border:1px solid var(--border);text-align:left;color:var(--accent)">type</th>
+            <th style="padding:.5rem .7rem;border:1px solid var(--border);text-align:left;color:var(--accent)">扫描行数</th>
+            <th style="padding:.5rem .7rem;border:1px solid var(--border);text-align:left;color:var(--accent)">Extra</th>
+            <th style="padding:.5rem .7rem;border:1px solid var(--border);text-align:left;color:var(--accent)">耗时</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td style="padding:.45rem .7rem;border:1px solid var(--border)">原始</td><td style="padding:.45rem .7rem;border:1px solid var(--border);color:var(--red)">ALL</td><td style="padding:.45rem .7rem;border:1px solid var(--border);color:var(--red)">98.7 万</td><td style="padding:.45rem .7rem;border:1px solid var(--border);color:var(--red)">filesort</td><td style="padding:.45rem .7rem;border:1px solid var(--border);color:var(--red)">1.2 s</td></tr>
+          <tr><td style="padding:.45rem .7rem;border:1px solid var(--border)">(dept,age)</td><td style="padding:.45rem .7rem;border:1px solid var(--border);color:var(--orange)">range</td><td style="padding:.45rem .7rem;border:1px solid var(--border);color:var(--orange)">1.2 万</td><td style="padding:.45rem .7rem;border:1px solid var(--border);color:var(--orange)">filesort</td><td style="padding:.45rem .7rem;border:1px solid var(--border);color:var(--orange)">45 ms</td></tr>
+          <tr><td style="padding:.45rem .7rem;border:1px solid var(--border)">(dept,age,name)</td><td style="padding:.45rem .7rem;border:1px solid var(--border);color:var(--green)">range</td><td style="padding:.45rem .7rem;border:1px solid var(--border);color:var(--green)">1.2 万</td><td style="padding:.45rem .7rem;border:1px solid var(--border);color:var(--green)">Using index</td><td style="padding:.45rem .7rem;border:1px solid var(--border);color:var(--green)">3 ms</td></tr>
+        </tbody>
+      </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Checklist -->
+  <div class="card" style="margin-top:1.5rem">
+    <div class="card-title">✅ 上线前 Checklist：每条新 SQL / 每个新索引都过一遍</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem 1.5rem;font-size:.84rem;line-height:2;color:var(--text-dim)" class="checklist">
+      <div>☐ EXPLAIN 的 <code style="color:var(--accent)">type</code> 是否至少到 <code style="color:var(--green)">ref/range</code>？</div>
+      <div>☐ <code style="color:var(--accent)">key</code> 是否命中预期索引（不是 NULL）？</div>
+      <div>☐ <code style="color:var(--accent)">key_len</code> 是否符合联合索引列数预期？</div>
+      <div>☐ <code style="color:var(--accent)">rows</code> 是否远小于全表行数？</div>
+      <div>☐ Extra 没有 <span style="color:var(--red)">Using filesort</span> / <span style="color:var(--red)">Using temporary</span>？</div>
+      <div>☐ 回表次数是否可控？能否用覆盖索引消除？</div>
+      <div>☐ 是否有冗余索引？已有 (a,b) 就不必再建 (a)</div>
+      <div>☐ 单表索引数量 ≤ 5~6 个？写入开销是否可接受？</div>
+      <div>☐ 删索引前先用 <code style="color:var(--accent)">INVISIBLE</code> 观察一周？</div>
+      <div>☐ 慢查询日志里这条 SQL 的 P99 是否达标？</div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<script>
+// =============================================================================
+//  MySQL 索引原理 · 可视化教学 v4
+//  变更要点：
+//   A1 左键拖动单个节点，其余节点原位不动，连线实时跟随
+//   A2 滚轮以鼠标为锚点缩放（0.4x ~ 3x），触摸端双指缩放
+//   A3 右键拖动画布；重置键一次归位「节点布局 + 缩放 + 平移」
+//   A4 回表路线：二级索引叶子 → 聚簇索引根，橙色流动虚线 + 标注
+//   A5 覆盖索引改双树单图，SELECT * 才画回表线
+//   B1 演示取值全部来自 tableData，不再硬编码
+//   B2 所有 buildSteps 校验 found，未命中走「未找到」分支
+//   B3 失效场景按能否真实演示分类，各用对应索引树
+//   B4 中文按码点排序（模拟 utf8mb4_*_ci），不再用 localeCompare 拼音序
+//   C1 事件监听幂等绑定（拖拽期间才挂 window 监听）
+//   C2 用户数据进入 innerHTML 前统一转义
+//   C3 仅当索引键变化时才清空演示进度
+// =============================================================================
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const MAX_KEYS = 4;          // 教学用小扇出，真实 InnoDB 约 1200（见「B+ 树」页尺度说明）
+const ZOOM_MIN = 0.4, ZOOM_MAX = 3;
+
+// ---------- 通用工具 ----------
+const clone = o => JSON.parse(JSON.stringify(o));
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+/** C2：用户可编辑的数据进入 innerHTML 前必须转义 */
+const esc = s => String(s).replace(/[&<>"']/g, c => (
+  { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+));
+/**
+ * B4：模拟 MySQL utf8mb4 默认排序规则（_ci 结尾 = 不区分大小写）。
+ * JS 字符串比较基于 UTF-16 码元，对 BMP 内字符等价于码点序，
+ * 因此中文按码点而非拼音排序：人事部 < 市场部 < 技术部。
+ */
+function cmpKey(a, b) {
+  const x = String(a).toLowerCase(), y = String(b).toLowerCase();
+  return x < y ? -1 : x > y ? 1 : 0;
+}
+const cmpNum = (a, b) => a - b;
+
+// =============================================================================
+//  数据（B1：演示取值全部来自这里）
+// =============================================================================
+const INITIAL_DATA = [
+  { id:1,  name:'Alice',   age:25, email:'alice@mail.com',   dept:'技术部', phone:'13800138001' },
+  { id:2,  name:'Bob',     age:30, email:'bob@mail.com',     dept:'市场部', phone:'13800138002' },
+  { id:3,  name:'Charlie', age:28, email:'charlie@mail.com', dept:'技术部', phone:'13800138003' },
+  { id:4,  name:'Diana',   age:35, email:'diana@mail.com',   dept:'人事部', phone:'13800138004' },
+  { id:5,  name:'Eve',     age:22, email:'eve@mail.com',     dept:'技术部', phone:'13800138005' },
+  { id:6,  name:'Frank',   age:40, email:'frank@mail.com',   dept:'市场部', phone:'13800138006' },
+  { id:7,  name:'Grace',   age:27, email:'grace@mail.com',   dept:'技术部', phone:'13800138007' },
+  { id:8,  name:'Helen',   age:33, email:'helen@mail.com',   dept:'人事部', phone:'13800138008' },
+  { id:9,  name:'Ivy',     age:29, email:'ivy@mail.com',     dept:'技术部', phone:'13800138009' },
+  { id:10, name:'Jack',    age:31, email:'jack@mail.com',   dept:'市场部', phone:'13800138010' },
+  { id:11, name:'Kate',    age:26, email:'kate@mail.com',    dept:'技术部', phone:'13800138011' },
+  { id:12, name:'Leo',     age:38, email:'leo@mail.com',     dept:'人事部', phone:'13800138012' },
+  { id:13, name:'Mike',    age:24, email:'mike@mail.com',    dept:'技术部', phone:'13800138013' },
+  { id:14, name:'Nancy',   age:32, email:'nancy@mail.com',   dept:'市场部', phone:'13800138014' },
+  { id:15, name:'Oscar',   age:36, email:'oscar@mail.com',   dept:'人事部', phone:'13800138015' }
+];
+let tableData = clone(INITIAL_DATA);
+
+/** C3：索引键签名——只有影响 B+ 树结构的字段变化时才清空演示进度 */
+const dataSignature = () => tableData
+  .map(r => [r.id, r.name, r.age, r.dept, r.phone].join('|')).join(';');
+
+// ---------- 从数据中动态挑选演示值（B1） ----------
+function pickDept() {
+  const cnt = {};
+  tableData.forEach(r => cnt[r.dept] = (cnt[r.dept] || 0) + 1);
+  const keys = Object.keys(cnt);
+  if (!keys.length) return '';
+  return keys.sort((a, b) => cnt[b] - cnt[a] || cmpKey(a, b))[0];
+}
+function pickName(dept) {
+  const rows = dept ? tableData.filter(r => r.dept === dept) : tableData;
+  return (rows.length ? rows : tableData)[0]?.name ?? '';
+}
+function pickAge(dept) {
+  const rows = tableData.filter(r => r.dept === dept);
+  const pool = rows.length ? rows : tableData;
+  return pool.length ? pool[Math.floor(pool.length / 2)].age : 0;
+}
+function pickPhone() { return tableData[0]?.phone ?? ''; }
+const sortedNames = () => [...tableData].map(r => r.name).sort(cmpKey);
+
+// =============================================================================
+//  B+ 树构建
+// =============================================================================
+function buildBPlusTree(entries, maxKeys, prefix) {
+  if (!entries || !entries.length) return null;
+  const leaves = [];
+  for (let i = 0; i < entries.length; i += maxKeys) {
+    const group = entries.slice(i, i + maxKeys);
+    leaves.push({
+      type: 'leaf', entries: group,
+      keys: group.map(e => e.key),
+      maxKey: group[group.length - 1].key,
+      id: prefix + 'L' + leaves.length, dx: 0, dy: 0
+    });
+  }
+  const levels = [leaves];
+  let cur = leaves, lvl = 1;
+  while (cur.length > 1) {
+    const parents = [];
+    for (let i = 0; i < cur.length; i += maxKeys) {
+      const grp = cur.slice(i, i + maxKeys);
+      parents.push({
+        type: 'internal',
+        keys: grp.slice(0, -1).map(n => n.maxKey),
+        children: grp,
+        maxKey: grp[grp.length - 1].maxKey,
+        id: prefix + 'I' + lvl + '_' + parents.length, dx: 0, dy: 0
+      });
+    }
+    levels.unshift(parents);
+    cur = parents;
+    lvl++;
+  }
+  const all = levels.flat();
+  return { levels, root: cur[0], all, prefix, source: entries };
+}
+
+/** 每个场景持有独立副本，避免同一棵树被多个 SVG 的布局互相覆盖 */
+function cloneTree(src) {
+  const map = new Map();
+  const levels = src.levels.map(l => l.map(n => {
+    const c = Object.assign({}, n);
+    c.dx = 0; c.dy = 0;
+    map.set(n.id, c);
+    return c;
+  }));
+  levels.forEach(l => l.forEach(n => {
+    if (n.children) n.children = n.children.map(c => map.get(c.id));
+  }));
+  const all = levels.flat();
+  return { levels, root: map.get(src.root.id), all, prefix: src.prefix, source: src.source };
+}
+
+function sizeTree(tree, leafW, internalW) {
+  tree.all.forEach(nd => {
+    nd.w = nd.type === 'leaf' ? leafW : Math.max(internalW, nd.keys.length * 28 + 50);
+    nd.h = nd.type === 'leaf' ? 14 + nd.entries.length * 15 : 36;
+  });
+}
+
+function layoutTree(tree, W, H, ox, oy) {
+  const levels = tree.levels, n = levels.length;
+  const topM = 46, botM = 34;
+  const yStep = (H - topM - botM) / Math.max(n - 1, 1);
+  const leaves = levels[n - 1];
+  const spacing = (W - 30) / leaves.length;
+  leaves.forEach((lf, i) => {
+    lf.bx = ox + 15 + spacing * (i + 0.5);
+    lf.by = oy + topM + (n - 1) * yStep;
+  });
+  for (let l = n - 2; l >= 0; l--) {
+    levels[l].forEach(nd => {
+      const xs = nd.children.map(c => c.bx);
+      nd.bx = xs.reduce((a, b) => a + b, 0) / xs.length;
+      nd.by = oy + topM + l * yStep;
+    });
+  }
+  tree.all.forEach(nd => { nd.ex = nd.bx; nd.ey = nd.by; });
+}
+
+const nodeById = (tree, id) => tree.all.find(n => n.id === id);
+
+// ---------- 检索（B2：统一返回 found） ----------
+function searchTree(tree, target, cmp) {
+  const path = [];
+  let node = tree.root;
+  while (node) {
+    path.push(node.id);
+    if (node.type === 'leaf') {
+      const i = node.entries.findIndex(e => cmp(e.key, target) === 0);
+      return { path, found: i >= 0, leaf: node, entryIndex: i };
+    }
+    let ci = node.keys.length;
+    for (let i = 0; i < node.keys.length; i++) {
+      if (cmp(target, node.keys[i]) <= 0) { ci = i; break; }
+    }
+    node = node.children[ci];
+  }
+  return { path, found: false, leaf: null, entryIndex: -1 };
+}
+/** 联合索引：只按最左列 dept 定位子树（age 为 null 时做前缀匹配） */
+function searchComposite(tree, dept, age) {
+  const target = age == null ? dept + '\u0000' : dept + '\u0000' + age;
+  const cmp = (a, b) => cmpKey(String(a).slice(0, String(a).indexOf('\u0000')), String(b).slice(0, String(b).indexOf('\u0000')))
+    || cmpKey(a, b);
+  const r = searchTree(tree, target, cmp);
+  if (age == null && r.leaf) {
+    r.found = r.leaf.entries.some(e => String(e.data.dept) === dept);
+    r.matched = r.leaf.entries.filter(e => String(e.data.dept) === dept).map(e => e.key);
+  } else if (r.leaf) {
+    r.matched = r.found ? [r.leaf.entries[r.entryIndex].key] : [];
+  }
+  return r;
+}
+const allNodeIds = tree => tree.all.map(n => n.id);
+
+// =============================================================================
+//  场景渲染（多棵树共存于一个 SVG + 跨树回表连线）
+// =============================================================================
+const scenes = {};
+
+function renderScene(svgId, partSpecs, bridges) {
+  const svg = document.getElementById(svgId);
+  if (!svg) return null;
+  svg.textContent = '';
+  const vp = document.createElementNS(SVG_NS, 'g');
+  vp.setAttribute('class', 'viewport');
+  svg.appendChild(vp);
+  const layer = cls => {
+    const g = document.createElementNS(SVG_NS, 'g');
+    g.setAttribute('class', cls);
+    vp.appendChild(g);
+    return g;
+  };
+  const gEdge = layer('layer-edges'), gLink = layer('layer-links'),
+        gBrid = layer('layer-bridges'), gNode = layer('layer-nodes'),
+        gText = layer('layer-titles');
+
+  const scene = {
+    svgId, svg, vp,
+    parts: partSpecs.map((spec, i) => {
+      const tree = cloneTree(spec.tree);
+      sizeTree(tree, spec.leafW || 150, spec.internalW || 120);
+      layoutTree(tree, spec.W, spec.H, spec.ox || 0, spec.oy || 0);
+      return { idx: i, tree, spec };
+    }),
+    bridges: bridges || [],
+    nodeEls: [], edgeEls: [], linkEls: [], bridgeEls: []
+  };
+  scenes[svgId] = scene;
+
+  // 标题
+  scene.parts.forEach(p => {
+    if (!p.spec.title) return;
+    const t = document.createElementNS(SVG_NS, 'text');
+    t.setAttribute('x', (p.spec.ox || 0) + p.spec.W / 2);
+    t.setAttribute('y', 20);
+    t.setAttribute('text-anchor', 'middle');
+    t.setAttribute('class', 'tree-title');
+    t.setAttribute('fill', p.spec.titleColor || '#9a97a8');
+    t.setAttribute('font-family', "'DM Mono','Courier New',monospace");
+    t.setAttribute('font-size', '11.5');
+    t.textContent = p.spec.title;
+    gText.appendChild(t);
+  });
+
+  // 边 + 叶子链表 + 节点
+  scene.parts.forEach(p => {
+    p.tree.levels.forEach((level, li) => {
+      if (li === p.tree.levels.length - 1) return;
+      level.forEach(nd => (nd.children || []).forEach(ch => {
+        const line = document.createElementNS(SVG_NS, 'line');
+        line.setAttribute('class', 'edge-line');
+        gEdge.appendChild(line);
+        scene.edgeEls.push({ el: line, part: p.idx, p: nd, c: ch });
+      }));
+    });
+    const leaves = p.tree.levels[p.tree.levels.length - 1];
+    for (let i = 0; i < leaves.length - 1; i++) {
+      const path = document.createElementNS(SVG_NS, 'path');
+      path.setAttribute('class', 'leaf-link');
+      gLink.appendChild(path);
+      scene.linkEls.push({ el: path, part: p.idx, a: leaves[i], b: leaves[i + 1], i });
+    }
+    p.tree.all.forEach(nd => {
+      const g = document.createElementNS(SVG_NS, 'g');
+      g.setAttribute('class', 'tree-node ' + nd.type);
+      g.dataset.id = nd.id;
+      g.dataset.part = p.idx;
+      const rect = document.createElementNS(SVG_NS, 'rect');
+      rect.setAttribute('x', -nd.w / 2); rect.setAttribute('y', -nd.h / 2);
+      rect.setAttribute('width', nd.w); rect.setAttribute('height', nd.h);
+      rect.setAttribute('class', 'node-rect');
+      g.appendChild(rect);
+      if (nd.type === 'leaf') {
+        nd.entries.forEach((entry, li) => {
+          const tx = document.createElementNS(SVG_NS, 'text');
+          tx.setAttribute('x', 0);
+          tx.setAttribute('y', -nd.h / 2 + 12 + li * 15);
+          tx.setAttribute('class', 'node-text');
+          tx.dataset.ekey = String(entry.key);
+          tx.textContent = entry.label;   // C2：SVG 文本走 textContent，天然安全
+          g.appendChild(tx);
+        });
+      } else {
+        const tx = document.createElementNS(SVG_NS, 'text');
+        tx.setAttribute('x', 0); tx.setAttribute('y', 1);
+        tx.setAttribute('class', 'node-text');
+        tx.setAttribute('font-size', '9.5');
+        tx.textContent = nd.keys.length
+          ? nd.keys.map(k => String(k).replace('\u0000', '·')).join(' | ')
+          : '—';
+        g.appendChild(tx);
+      }
+      gNode.appendChild(g);
+      scene.nodeEls.push({ el: g, part: p.idx, nd });
+    });
+  });
+
+  // A4：回表跨树连线
+  scene.bridges.forEach((b, bi) => {
+    const path = document.createElementNS(SVG_NS, 'path');
+    path.setAttribute('class', 'bridge-link');
+    path.dataset.bridge = bi;
+    gBrid.appendChild(path);
+    const bg = document.createElementNS(SVG_NS, 'rect');
+    bg.setAttribute('class', 'bridge-label-bg');
+    bg.dataset.bridge = bi;
+    gBrid.appendChild(bg);
+    const label = document.createElementNS(SVG_NS, 'text');
+    label.setAttribute('class', 'bridge-label');
+    label.dataset.bridge = bi;
+    label.textContent = b.label;
+    gBrid.appendChild(label);
+    scene.bridgeEls.push({ el: path, bg, label, spec: b });
+  });
+
+  relayoutScene(svgId);
+  // 重渲染会替换 viewport 分组，需把当前缩放/平移状态重新贴回去，否则视图会跳回 100%
+  views[svgId]?.apply();
+  return scene;
+}
+
+/** A1 核心：节点位移后重算自身 transform 与所有连线端点（其余节点不动） */
+function relayoutScene(svgId) {
+  const sc = scenes[svgId];
+  if (!sc) return;
+  sc.nodeEls.forEach(({ el, nd }) => {
+    nd.ex = nd.bx + (nd.dx || 0);
+    nd.ey = nd.by + (nd.dy || 0);
+    el.setAttribute('transform', `translate(${nd.ex},${nd.ey})`);
+  });
+  sc.edgeEls.forEach(({ el, p, c }) => {
+    el.setAttribute('x1', p.ex); el.setAttribute('y1', p.ey + p.h / 2);
+    el.setAttribute('x2', c.ex); el.setAttribute('y2', c.ey - c.h / 2);
+  });
+  sc.linkEls.forEach(({ el, a, b }) => {
+    const x1 = a.ex + a.w / 2, y1 = a.ey, x2 = b.ex - b.w / 2, y2 = b.ey;
+    const my = Math.min(y1, y2) - 12;
+    el.setAttribute('d', `M${x1},${y1} C${(x1 + x2) / 2},${my} ${(x1 + x2) / 2},${my} ${x2},${y2}`);
+  });
+  sc.bridgeEls.forEach(({ el, bg, label, spec }) => {
+    const from = nodeById(sc.parts[spec.fromPart].tree, spec.fromId);
+    const to = nodeById(sc.parts[spec.toPart].tree, spec.toId);
+    if (!from || !to) { el.setAttribute('d', ''); return; }
+    const x1 = from.ex + from.w / 2, y1 = from.ey;
+    const x2 = to.ex - to.w / 2, y2 = to.ey;
+    const cx = (x1 + x2) / 2;
+    el.setAttribute('d', `M${x1},${y1} C${cx},${y1} ${cx},${y2} ${x2},${y2}`);
+    const lx = cx, ly = (y1 + y2) / 2;
+    label.setAttribute('x', lx); label.setAttribute('y', ly + 3.5);
+    const w = spec.label.length * 6.6 + 14;
+    bg.setAttribute('x', lx - w / 2); bg.setAttribute('y', ly - 8);
+    bg.setAttribute('width', w); bg.setAttribute('height', 16);
+    bg.setAttribute('rx', 3);
+  });
+}
+
+/** A3：清空手动位移，回到自动布局（节点结构不变时） */
+function resetNodeOffsets(svgId) {
+  const sc = scenes[svgId];
+  if (!sc) return;
+  sc.parts.forEach(p => p.tree.all.forEach(n => { n.dx = 0; n.dy = 0; }));
+  relayoutScene(svgId);
+}
+
+// =============================================================================
+//  A1/A2/A3 · 视口交互（节点拖拽 / 画布平移 / 滚轮缩放）
+//  views 以 svgId 为键——renderScene() 重渲染后需按 svgId 找回视图贴回缩放状态
+// =============================================================================
+const views = {};
+
+/**
+ * 统一的重置入口：6 个「↻ 重置视图」按钮都走这里。
+ * 此前按钮内联写 views['svg-x'].reset()，键名一旦与注册处不匹配，
+ * onclick 里抛的 TypeError 不会冒泡到 UI——按钮点了毫无反应（静默失败）。
+ * 这里加兜底：视图缺失时打印明确的已注册键名清单，便于定位。
+ */
+function resetView(svgId) {
+  const v = views[svgId];
+  if (!v || typeof v.reset !== 'function') {
+    console.error('[索引可视化] 重置失败：未找到视图', svgId,
+      '· 已注册键名 =', Object.keys(views));
+    return;
+  }
+  v.reset();
+}
+// 供内联 onclick 调用
+window.resetView = resetView;
+
+class Viewport {
+  constructor(svgId, badgeId, opts = {}) {
+    this.svgId = svgId;
+    this.svg = document.getElementById(svgId);
+    this.badge = document.getElementById(badgeId);
+    this.clickHighlight = !!opts.clickHighlight;
+    this.k = 1; this.tx = 0; this.ty = 0;
+    this.pointers = new Map();
+    this.drag = null;
+    this.pinch = null;
+    if (this.svg && !this.svg.dataset.vpBound) {   // C1：幂等绑定
+      this.svg.dataset.vpBound = '1';
+      this.bind();
+    }
+    this.apply();
+  }
+  get vp() { return this.svg ? this.svg.firstElementChild : null; }
+
+  apply() {
+    const vp = this.vp;
+    if (vp) vp.setAttribute('transform', `translate(${this.tx},${this.ty}) scale(${this.k})`);
+    if (this.badge) this.badge.textContent = Math.round(this.k * 100) + '%';
+  }
+
+  /** 屏幕坐标 → viewBox 用户坐标（不受 viewport transform 影响） */
+  toUser(cx, cy) {
+    const pt = this.svg.createSVGPoint();
+    pt.x = cx; pt.y = cy;
+    const m = this.svg.getScreenCTM();
+    return m ? pt.matrixTransform(m.inverse()) : { x: 0, y: 0 };
+  }
+
+  /** A2：以鼠标位置为锚点缩放 */
+  zoomAt(userPt, factor) {
+    const nk = clamp(this.k * factor, ZOOM_MIN, ZOOM_MAX);
+    if (nk === this.k) return;
+    const r = nk / this.k;
+    this.tx = userPt.x - r * (userPt.x - this.tx);
+    this.ty = userPt.y - r * (userPt.y - this.ty);
+    this.k = nk;
+    this.apply();
+  }
+
+  /** A3：缩放 + 平移 + 节点布局一次归位 */
+  reset() {
+    this.k = 1; this.tx = 0; this.ty = 0;
+    this.apply();
+    resetNodeOffsets(this.svgId);
+  }
+
+  bind() {
+    const svg = this.svg;
+    // 屏蔽右键菜单，否则右键拖动画布会被浏览器菜单打断（A3）
+    svg.addEventListener('contextmenu', e => e.preventDefault());
+
+    svg.addEventListener('wheel', e => {
+      e.preventDefault();
+      const p = this.toUser(e.clientX, e.clientY);
+      this.zoomAt(p, e.deltaY < 0 ? 1.12 : 1 / 1.12);
+    }, { passive: false });
+
+    svg.addEventListener('pointerdown', e => {
+      this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      // 双指 → 捏合缩放
+      if (this.pointers.size === 2) {
+        const [a, b] = [...this.pointers.values()];
+        this.pinch = {
+          dist: Math.hypot(a.x - b.x, a.y - b.y),
+          mid: this.toUser((a.x + b.x) / 2, (a.y + b.y) / 2)
+        };
+        this.drag = null;
+        svg.releasePointerCapture?.(e.pointerId);
+        return;
+      }
+      if (this.pointers.size > 2) return;
+
+      const nodeG = e.target.closest ? e.target.closest('.tree-node') : null;
+      const p = this.toUser(e.clientX, e.clientY);
+
+      if (e.button === 2 || e.button === 1) {
+        // A3：右键（或中键）拖动画布
+        this.drag = { mode: 'pan', start: p, tx0: this.tx, ty0: this.ty, moved: 0 };
+        svg.classList.add('panning');
+      } else if (e.button === 0 && nodeG) {
+        // A1：左键拖动单个节点，其余节点不动
+        const part = +nodeG.dataset.part;
+        const nd = nodeById(scenes[this.svgId].parts[part].tree, nodeG.dataset.id);
+        if (!nd) return;
+        nodeG.classList.add('dragging');
+        this.drag = {
+          mode: 'node', part, nd, el: nodeG, start: p,
+          dx0: nd.dx || 0, dy0: nd.dy || 0, moved: 0
+        };
+      } else {
+        this.drag = { mode: 'idle', start: p, moved: 0, target: e.target };
+      }
+      if (this.drag) {
+        // C1：仅在拖拽期间挂载 window 监听，结束即移除
+        window.addEventListener('pointermove', this.onMove);
+        window.addEventListener('pointerup', this.onUp);
+        window.addEventListener('pointercancel', this.onUp);
+      }
+    });
+
+    this.onMove = e => {
+      if (this.pointers.has(e.pointerId)) {
+        this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      }
+      // 双指捏合
+      if (this.pinch && this.pointers.size >= 2) {
+        const [a, b] = [...this.pointers.values()];
+        const d = Math.hypot(a.x - b.x, a.y - b.y);
+        if (this.pinch.dist > 0) this.zoomAt(this.pinch.mid, d / this.pinch.dist);
+        this.pinch.dist = d;
+        return;
+      }
+      if (!this.drag) return;
+      const p = this.toUser(e.clientX, e.clientY);
+      const d = this.drag;
+      d.moved = Math.max(d.moved, Math.hypot(p.x - d.start.x, p.y - d.start.y));
+
+      if (d.mode === 'pan') {
+        this.tx = d.tx0 + (p.x - d.start.x);
+        this.ty = d.ty0 + (p.y - d.start.y);
+        this.apply();
+      } else if (d.mode === 'node') {
+        // 屏幕位移换算到模型坐标需除以缩放系数
+        d.nd.dx = d.dx0 + (p.x - d.start.x) / this.k;
+        d.nd.dy = d.dy0 + (p.y - d.start.y) / this.k;
+        relayoutScene(this.svgId);   // 只更新该节点及其连线
+      }
+    };
+
+    this.onUp = e => {
+      this.pointers.delete(e.pointerId);
+      if (this.pointers.size < 2) this.pinch = null;
+      window.removeEventListener('pointermove', this.onMove);
+      window.removeEventListener('pointerup', this.onUp);
+      window.removeEventListener('pointercancel', this.onUp);
+      this.svg.classList.remove('panning');
+      const d = this.drag;
+      this.drag = null;
+      if (!d) return;
+      if (d.mode === 'node') d.el.classList.remove('dragging');
+      // 位移小于阈值视为单击（用于 B+ 树页的节点高亮）
+      if (this.clickHighlight && d.moved < 3 / this.k && d.mode !== 'pan' && e.button === 0) {
+        const nodeG = d.target?.closest ? d.target.closest('.tree-node') : null;
+        if (nodeG) {
+          const was = nodeG.classList.contains('highlight');
+          clearScene(this.svgId);
+          if (!was) {
+            const part = +nodeG.dataset.part;
+            highlightIn(this.svgId, part, [nodeG.dataset.id], 'highlight');
+          }
+        }
+      }
+    };
+  }
+}
+
+// =============================================================================
+//  高亮
+// =============================================================================
+function clearScene(svgId) {
+  const sc = scenes[svgId];
+  if (!sc) return;
+  sc.nodeEls.forEach(({ el }) => el.classList.remove('highlight', 'found', 'miss', 'dim'));
+  sc.edgeEls.forEach(({ el }) => el.classList.remove('highlight', 'dim'));
+  sc.linkEls.forEach(({ el }) => el.classList.remove('highlight'));
+  sc.bridgeEls.forEach(({ el, bg, label }) => {
+    el.classList.remove('highlight', 'dim');
+    bg.classList.remove('highlight');
+    label.classList.remove('highlight', 'dim');
+  });
+  sc.svg.querySelectorAll('.node-text').forEach(t => t.classList.remove('ehit', 'efound'));
+}
+
+function highlightIn(svgId, part, nodeIds, cls) {
+  const sc = scenes[svgId];
+  if (!sc) return;
+  const set = new Set(nodeIds);
+  sc.nodeEls.forEach(({ el, part: p, nd }) => {
+    if (p !== part) return;
+    el.classList.add('dim');
+    if (set.has(nd.id)) { el.classList.remove('dim'); el.classList.add(cls); }
+  });
+  sc.edgeEls.forEach(({ el, part: p, p: pn, c }) => {
+    if (p !== part) return;
+    el.classList.add('dim');
+    if (set.has(pn.id) && set.has(c.id)) { el.classList.remove('dim'); el.classList.add('highlight'); }
+  });
+}
+
+/** 按步骤描述应用高亮 */
+function applyStep(svgId, step) {
+  clearScene(svgId);
+  const sc = scenes[svgId];
+  if (!sc || !step) return;
+  (step.highlights || []).forEach(h => {
+    if (!h.nodes || !h.nodes.length) return;
+    highlightIn(svgId, h.part || 0, h.nodes, h.cls || 'highlight');
+  });
+  // 全表扫描：整棵树标红
+  (step.fullScan || []).forEach(f => {
+    const tree = sc.parts[f.part || 0].tree;
+    tree.all.forEach(n => {
+      const el = sc.nodeEls.find(x => x.nd === n)?.el;
+      if (el) { el.classList.remove('dim', 'highlight', 'found'); el.classList.add('miss'); }
+    });
+    sc.edgeEls.filter(x => (x.part || 0) === (f.part || 0))
+      .forEach(({ el }) => el.classList.remove('dim'));
+  });
+  // 叶子链表（范围扫描）
+  (step.leafLinks || []).forEach(ll => {
+    const rec = sc.linkEls.find(x => (x.part || 0) === (ll.part || 0) && x.i === ll.i);
+    if (rec) rec.el.classList.add('highlight');
+  });
+  // 命中条目文本
+  (step.entries || []).forEach(en => {
+    const rec = sc.nodeEls.find(x => (x.part || 0) === (en.part || 0) && x.nd.id === en.node);
+    if (!rec) return;
+    rec.el.querySelectorAll('.node-text').forEach(t => {
+      if (en.keys.includes(t.dataset.ekey)) t.classList.add(en.cls || 'ehit');
+    });
+  });
+  // A4：回表连线点亮
+  if (step.bridge) {
+    sc.bridgeEls.forEach(b => {
+      const on = step.bridge === 'on';
+      b.el.classList.toggle('highlight', on);
+      b.bg.classList.toggle('highlight', on);
+      b.label.classList.toggle('highlight', on);
+      if (!on && step.bridge === 'dim') {
+        b.el.classList.add('dim'); b.label.classList.add('dim');
+      }
+    });
+  }
+}
+
+// =============================================================================
+//  树数据源
+// =============================================================================
+let trees = { clustered: null, secondary: null, composite: null, phone: null };
+
+function buildSourceTrees() {
+  trees.clustered = buildBPlusTree(
+    [...tableData].sort((a, b) => cmpNum(a.id, b.id))
+      .map(r => ({ key: r.id, label: `${r.id}:${r.name}`, data: r })),
+    MAX_KEYS, 'clu_');
+
+  trees.secondary = buildBPlusTree(
+    [...tableData].sort((a, b) => cmpKey(a.name, b.name))
+      .map(r => ({ key: r.name, label: `${r.name}→${r.id}`, data: r })),
+    MAX_KEYS, 'sec_');
+
+  trees.composite = buildBPlusTree(
+    [...tableData].sort((a, b) => cmpKey(a.dept, b.dept) || cmpNum(a.age, b.age))
+      .map(r => ({ key: `${r.dept}\u0000${r.age}`, label: `${r.dept},${r.age}→${r.id}`, data: r })),
+    MAX_KEYS, 'cmp_');
+
+  trees.phone = buildBPlusTree(
+    [...tableData].sort((a, b) => cmpKey(a.phone, b.phone))
+      .map(r => ({ key: r.phone, label: `${r.phone}→${r.id}`, data: r })),
+    MAX_KEYS, 'phn_');
+}
+
+// ---------- 场景装配 ----------
+const SINGLE = { W: 960, H: 400 };
+const DUAL_L = { W: 540, H: 420, ox: 0 };
+const DUAL_R = { W: 540, H: 420, ox: 700 };
+
+function sceneSingle(svgId, tree, leafW, title, internalW) {
+  return renderScene(svgId, [{ tree, ...SINGLE, leafW, internalW: internalW || 120, title }], []);
+}
+
+/** A4/A5：双树单图 + 回表连线 */
+function sceneDual(svgId, leftTree, rightTree, opts) {
+  const o = opts || {};
+  const bridges = [];
+  if (o.bridge) {
+    const sr = searchTree(leftTree, o.bridge.key, o.bridge.cmp || cmpKey);
+    if (sr.found && sr.leaf) {
+      bridges.push({
+        fromPart: 0, fromId: sr.leaf.id,
+        toPart: 1, toId: rightTree.root.id,
+        label: o.bridge.label
+      });
+    }
+  }
+  return renderScene(svgId, [
+    { tree: leftTree, ...DUAL_L, leafW: o.leftLeafW || 128, internalW: o.leftInternalW || 104,
+      title: o.leftTitle, titleColor: '#4a9eff' },
+    { tree: rightTree, ...DUAL_R, leafW: o.rightLeafW || 128, internalW: o.rightInternalW || 104,
+      title: o.rightTitle, titleColor: '#e8b931' }
+  ], bridges);
+}
+
+function renderAllScenes() {
+  sceneSingle('svg-bplus', trees.clustered, 152, '聚簇索引 · PRIMARY KEY (id)');
+  sceneSingle('svg-clustered', trees.clustered, 152, '聚簇索引 · PRIMARY KEY (id)');
+  sceneSingle('svg-composite', trees.composite, 158, '联合索引 · INDEX (dept, age)', 128);
+  renderSecondaryScene();
+  renderCoveringScene();
+  renderFailureScene(selectedScenario);
+}
+
+function renderSecondaryScene() {
+  const name = document.getElementById('secondaryVal')?.value || pickName();
+  const row = tableData.find(r => r.name === name);
+  sceneDual('svg-secondary', trees.secondary, trees.clustered, {
+    leftTitle: '① 二级索引 · INDEX (name)',
+    rightTitle: '② 聚簇索引 · PRIMARY KEY (id)',
+    leftLeafW: 126, rightLeafW: 126,
+    bridge: row ? { key: name, label: `⤷ 回表 id=${row.id}` } : null
+  });
+}
+
+function renderCoveringScene() {
+  const modeEl = document.getElementById('coveringMode');
+  const valEl = document.getElementById('coveringVal');
+  const mode = modeEl?.value || 'star';
+  const name = valEl?.value || pickName();
+  const row = tableData.find(r => r.name === name);
+  const isStar = mode === 'star';
+  sceneDual('svg-covering', trees.secondary, trees.clustered, {
+    leftTitle: '① 二级索引 · idx_name (name)',
+    rightTitle: isStar ? '② 聚簇索引（SELECT * 需回表）' : '② 聚簇索引（覆盖索引 · 不访问）',
+    leftLeafW: 126, rightLeafW: 126,
+    // A5：只有 SELECT * 才画回表线
+    bridge: (isStar && row) ? { key: name, label: `⤷ 回表 id=${row.id}` } : null
+  });
+  const lbl = document.getElementById('coveringLabel');   // C4：动态标签
+  if (lbl) lbl.textContent = isStar
+    ? `SELECT * → 索引无法覆盖，需回表 · name='${name}'`
+    : `SELECT id, name → 索引已覆盖，无需回表 · name='${name}'`;
+}
+
+// =============================================================================
+//  演示引擎
+// =============================================================================
+class Demo {
+  constructor(prefix, svgId, btnIds, infoId, historyId) {
+    this.prefix = prefix; this.svgId = svgId;
+    this.btnIds = btnIds; this.infoId = infoId; this.historyId = historyId;
+    this.steps = []; this.current = -1;
+    this.playing = false; this.playTimer = null; this.speed = 900;
+    this.sig = null;
+  }
+  setSteps(s) { this.steps = s; this.current = -1; this.playing = false; clearTimeout(this.playTimer); }
+  scene() { return scenes[this.svgId]; }
+  tree(part) { return scenes[this.svgId]?.parts[part || 0]?.tree || null; }
+  enableBtns(on) {
+    this.btnIds.forEach(id => { const el = document.getElementById(id); if (el) el.disabled = !on; });
+  }
+  renderHistory() {
+    const c = document.getElementById(this.historyId);
+    if (!c) return;
+    if (this.current < 0) {
+      c.textContent = '';
+      const d = document.createElement('div');
+      d.className = 'step-entry future';
+      d.style.cssText = 'opacity:.3;text-align:center';
+      d.textContent = this.emptyHint || '点击"开始查询"查看演示';
+      c.appendChild(d);
+      return;
+    }
+    c.textContent = '';
+    this.steps.forEach((s, i) => {
+      const d = document.createElement('div');
+      d.className = 'step-entry ' + (i < this.current ? 'completed' : i === this.current ? 'current' : 'future');
+      d.onclick = () => this.goTo(i);
+      const n = document.createElement('span');
+      n.className = 'step-num';
+      n.textContent = i + 1;
+      d.appendChild(n);
+      // C2：步骤文案是我们自己生成的 HTML，其中的用户数据已在 buildSteps 里 esc()
+      const body = document.createElement('span');
+      body.innerHTML = s.text;
+      d.appendChild(body);
+      c.appendChild(d);
+    });
+    c.querySelector('.current')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+  updateUI() {
+    const info = document.getElementById(this.infoId);
+    if (this.current < 0) {
+      if (info) info.textContent = '等待查询…';
+      this.enableBtns(false);
+      clearScene(this.svgId);
+      this.renderHistory();
+      return;
+    }
+    this.enableBtns(true);
+    if (info) info.textContent = `步骤 ${this.current + 1} / ${this.steps.length}`;
+    applyStep(this.svgId, this.steps[this.current]);
+    this.renderHistory();
+    const prev = document.getElementById(this.btnIds[0]);
+    const next = document.getElementById(this.btnIds[2]);
+    if (prev) prev.disabled = this.current <= 0;
+    if (next) next.disabled = this.current >= this.steps.length - 1;
+    const pb = document.getElementById(this.btnIds[1]);
+    if (pb) { pb.textContent = this.playing ? '⏸' : '▶'; pb.classList.toggle('playing', this.playing); }
+  }
+  goTo(i) { if (i < 0 || i >= this.steps.length) return; this.stop(); this.current = i; this.updateUI(); }
+  next() { if (this.current >= this.steps.length - 1) { this.stop(); return; } this.current++; this.updateUI(); }
+  prev() { if (this.current <= 0) return; this.current--; this.updateUI(); }
+  stop() { this.playing = false; clearTimeout(this.playTimer); this.updateUI(); }
+  togglePlay() {
+    if (this.playing) { this.stop(); return; }
+    this.playing = true;
+    if (this.current >= this.steps.length - 1) this.current = -1;
+    this.playLoop();
+  }
+  playLoop() {
+    if (!this.playing) return;
+    this.next();
+    if (this.current < this.steps.length - 1) this.playTimer = setTimeout(() => this.playLoop(), this.speed);
+    else { this.playing = false; this.updateUI(); }
+  }
+  reset() {
+    this.stop(); this.current = -1; this.sig = null;
+    clearScene(this.svgId);
+    this.updateUI();
+  }
+  start() {
+    this.stop();
+    this.current = -1;
+    this.buildSteps();
+    if (!this.steps.length) { this.updateUI(); return; }
+    this.sig = dataSignature();
+    this.enableBtns(true);
+    this.updateUI();
+    setTimeout(() => this.togglePlay(), 220);
+  }
+  /** C3：数据变化后，签名一致则保留进度并重绘高亮 */
+  onDataChange() {
+    if (this.current >= 0 && this.sig === dataSignature()) this.updateUI();
+    else this.reset();
+  }
+  buildSteps() {}
+}
+
+const demos = {};
+
+// ---------- 聚簇索引 ----------
+demos.clustered = new Demo('c', 'svg-clustered',
+  ['c-prev', 'c-play', 'c-next', 'c-reset'], 'c-info', 'c-history');
+demos.clustered.emptyHint = '输入 id 值后点击"开始查询"';
+demos.clustered.buildSteps = function () {
+  const raw = parseInt(document.getElementById('clusteredVal').value, 10);
+  const val = Number.isFinite(raw) ? raw : NaN;
+  const tree = this.tree(0);
+  if (!tree) return;
+  const ids = tableData.map(r => r.id).sort(cmpNum);
+  const hint = document.getElementById('clusteredHint');
+  if (hint) hint.textContent = ids.length ? `当前数据 id 范围：${ids[0]} ~ ${ids[ids.length - 1]}` : '';
+
+  if (!Number.isFinite(val)) {
+    this.setSteps([{ text: '<span class="hl-red">请输入一个有效的 id 数值。</span>' }]);
+    return;
+  }
+  const sr = searchTree(tree, val, cmpNum);
+  const row = tableData.find(r => r.id === val);
+  const leaf = sr.leaf;
+  const labels = leaf ? leaf.entries.map(e => esc(e.label)).join(', ') : '—';
+  const steps = [
+    { text: `<span class="hl-accent">SELECT * FROM users WHERE id = ${esc(val)}</span><br>` +
+            `id 是主键，走聚簇索引 B+ 树。${row ? '' : '<span class="hl-orange">该 id 在当前数据中不存在，演示「未命中」路径。</span>'}` },
+    { text: `从<span class="hl-accent">根节点</span>开始，把 id=${esc(val)} 与分隔键比较，决定进入哪个子树。`,
+      highlights: [{ part: 0, nodes: [sr.path[0]] }] },
+  ];
+  if (sr.path.length >= 3) {
+    steps.push({ text: `进入内部节点继续比较。真实 InnoDB 中这一步是一次<strong>磁盘页读取</strong>（命中缓冲池则为内存访问）。`,
+      highlights: [{ part: 0, nodes: sr.path.slice(0, 2) }] });
+  }
+  if (leaf) {
+    steps.push({ text: `到达叶子节点 <code>[${labels}]</code>，在其中定位 id=${esc(val)}。`,
+      highlights: [{ part: 0, nodes: [sr.path[0], leaf.id] }],
+      entries: leaf ? [{ part: 0, node: leaf.id, keys: leaf.entries.map(e => String(e.key)), cls: 'ehit' }] : [] });
+  }
+  if (sr.found && row) {
+    steps.push({
+      text: `<span class="hl-green">✓ 找到！</span>叶子节点直接存放<strong>完整行数据</strong>（索引即数据），` +
+            `<span class="hl-green">无需回表</span>。<br>结果：id=${esc(row.id)}, ${esc(row.name)}, ${esc(row.age)}岁, ` +
+            `${esc(row.dept)}, ${esc(row.email)}`,
+      highlights: [{ part: 0, nodes: [leaf.id], cls: 'found' }],
+      entries: [{ part: 0, node: leaf.id, keys: [String(row.id)], cls: 'efound' }]
+    });
+  } else {
+    steps.push({
+      text: `<span class="hl-red">✗ 未找到 id=${esc(val)}</span>。走到叶子节点后确认该键不存在，` +
+            `即可判定记录不存在——<strong>无需扫描其他叶子</strong>，这正是 B+ 树有序性的价值。`,
+      highlights: leaf ? [{ part: 0, nodes: [leaf.id], cls: 'miss' }] : []
+    });
+  }
+  this.setSteps(steps);
+};
+
+// ---------- 二级索引 & 回表（A4） ----------
+demos.secondary = new Demo('s', 'svg-secondary',
+  ['s-prev', 's-play', 's-next', 's-reset'], 's-info', 's-history');
+demos.secondary.emptyHint = '选择 name 后点击"开始查询"';
+demos.secondary.buildSteps = function () {
+  const name = document.getElementById('secondaryVal').value;
+  const row = tableData.find(r => r.name === name);
+  const sTree = this.tree(0), cTree = this.tree(1);
+  if (!sTree || !cTree) return;
+  if (!row) {
+    this.setSteps([{ text: `<span class="hl-red">当前数据中不存在 name='${esc(name)}'，请重新选择。</span>` }]);
+    return;
+  }
+  const sPath = searchTree(sTree, name, cmpKey);
+  const cPath = searchTree(cTree, row.id, cmpNum);
+  const sLeaf = sPath.leaf, cLeaf = cPath.leaf;
+  const sLabels = sLeaf ? sLeaf.entries.map(e => esc(e.label)).join(', ') : '—';
+
+  this.setSteps([
+    { text: `<span class="hl-accent">SELECT * FROM users WHERE name = '${esc(name)}'</span><br>` +
+            `name 上建有二级索引 idx_name，优化器选择先查二级索引。`,
+      bridge: 'dim' },
+    { text: `在<strong>二级索引 B+ 树</strong>中从根节点开始，按字符序比较 <code>'${esc(name)}'</code>。`,
+      highlights: [{ part: 0, nodes: [sPath.path[0]] }], bridge: 'dim' },
+    { text: `逐层向下定位到叶子节点 <code>[${sLabels}]</code>。`,
+      highlights: [{ part: 0, nodes: sPath.path }],
+      entries: [{ part: 0, node: sLeaf.id, keys: [name], cls: 'ehit' }], bridge: 'dim' },
+    { text: `找到 <code>name='${esc(name)}'</code>，叶子节点里只存了 ` +
+            `<span class="hl-accent">(name → 主键 id=${esc(row.id)})</span>，没有 email、dept 等字段。`,
+      highlights: [{ part: 0, nodes: [sLeaf.id], cls: 'found' }],
+      entries: [{ part: 0, node: sLeaf.id, keys: [name], cls: 'efound' }], bridge: 'dim' },
+    // A4：回表路线点亮
+    { text: `<span class="hl-orange">⚠️ 回表！</span>顺着<span class="hl-orange">橙色虚线</span>拿 id=${esc(row.id)} ` +
+            `去查<strong>聚簇索引</strong>——这是<strong>第二棵独立的 B+ 树</strong>，从它的根节点重新开始。`,
+      highlights: [{ part: 0, nodes: [sLeaf.id], cls: 'found' }, { part: 1, nodes: [cPath.path[0]] }],
+      entries: [{ part: 0, node: sLeaf.id, keys: [name], cls: 'efound' }], bridge: 'on' },
+    { text: `在聚簇索引中逐层向下，用 <code>id=${esc(row.id)}</code> 定位叶子节点。`,
+      highlights: [{ part: 0, nodes: [sLeaf.id], cls: 'found' }, { part: 1, nodes: cPath.path }],
+      entries: [{ part: 0, node: sLeaf.id, keys: [name], cls: 'efound' }], bridge: 'on' },
+    { text: `<span class="hl-green">✓ 查询完成！</span>共经历 <strong>2 次完整 B+ 树查找</strong>` +
+            `（二级索引 ${esc(sPath.path.length)} 层 + 回表 ${esc(cPath.path.length)} 层）。<br>` +
+            `结果：${esc(row.name)}, ${esc(row.age)}岁, ${esc(row.dept)}, ${esc(row.email)}, ${esc(row.phone)}`,
+      highlights: [{ part: 0, nodes: [sLeaf.id], cls: 'found' }, { part: 1, nodes: [cLeaf.id], cls: 'found' }],
+      entries: [{ part: 0, node: sLeaf.id, keys: [name], cls: 'efound' },
+                { part: 1, node: cLeaf.id, keys: [String(row.id)], cls: 'efound' }],
+      bridge: 'on' }
+  ]);
+};
+
+// ---------- 覆盖索引（A5） ----------
+demos.covering = new Demo('cv', 'svg-covering',
+  ['cv-prev', 'cv-play', 'cv-next', 'cv-reset'], 'cv-info', 'cv-history');
+demos.covering.emptyHint = '选择查询模式后点击"开始查询"';
+demos.covering.buildSteps = function () {
+  const mode = document.getElementById('coveringMode').value;
+  const name = document.getElementById('coveringVal').value;
+  const row = tableData.find(r => r.name === name);
+  const sTree = this.tree(0), cTree = this.tree(1);
+  if (!sTree || !cTree) return;
+  if (!row) {
+    this.setSteps([{ text: `<span class="hl-red">当前数据中不存在 name='${esc(name)}'，请重新选择。</span>` }]);
+    return;
+  }
+  const sPath = searchTree(sTree, name, cmpKey);
+  const sLeaf = sPath.leaf;
+  const sLabels = sLeaf ? sLeaf.entries.map(e => esc(e.label)).join(', ') : '—';
+
+  if (!sPath.found) {
+    this.setSteps([{ text: `<span class="hl-red">✗ 索引中未找到 name='${esc(name)}'</span>，直接返回空结果集。` }]);
+    return;
+  }
+
+  if (mode === 'star') {
+    const cPath = searchTree(cTree, row.id, cmpNum);
+    const cLeaf = cPath.leaf;
+    this.setSteps([
+      { text: `<span class="hl-accent">SELECT * FROM users WHERE name = '${esc(name)}'</span><br>` +
+              `<code>*</code> 需要 age / email / dept / phone 全部字段，而 idx_name 叶子只有 (name, id)，` +
+              `<span class="hl-red">索引无法覆盖</span>。`, bridge: 'dim' },
+      { text: `在二级索引中查找 <code>name='${esc(name)}'</code>。`,
+        highlights: [{ part: 0, nodes: sPath.path }],
+        entries: [{ part: 0, node: sLeaf.id, keys: [name], cls: 'ehit' }], bridge: 'dim' },
+      { text: `到达叶子节点 <code>[${sLabels}]</code>，拿到 <code>id=${esc(row.id)}</code>。`,
+        highlights: [{ part: 0, nodes: [sLeaf.id], cls: 'found' }],
+        entries: [{ part: 0, node: sLeaf.id, keys: [name], cls: 'efound' }], bridge: 'dim' },
+      { text: `<span class="hl-orange">⚠️ 必须回表！</span>沿橙色虚线用 id=${esc(row.id)} 回到聚簇索引，` +
+              `再走一遍完整的 B+ 树查找。`,
+        highlights: [{ part: 0, nodes: [sLeaf.id], cls: 'found' }, { part: 1, nodes: cPath.path }],
+        entries: [{ part: 0, node: sLeaf.id, keys: [name], cls: 'efound' }], bridge: 'on' },
+      { text: `<span class="hl-red">共 2 次 B+ 树查找。</span>EXPLAIN 的 Extra <strong>不会</strong>出现 ` +
+              `<code>Using index</code>。回表是随机 I/O，在<strong>命中行数多</strong>时代价急剧上升` +
+              `（这也是优化器在预估扫描行数超过全表约 20%~30% 时会直接放弃索引的原因）。`,
+        highlights: [{ part: 0, nodes: [sLeaf.id], cls: 'found' }, { part: 1, nodes: [cLeaf.id], cls: 'found' }],
+        entries: [{ part: 0, node: sLeaf.id, keys: [name], cls: 'efound' },
+                  { part: 1, node: cLeaf.id, keys: [String(row.id)], cls: 'efound' }], bridge: 'on' }
+    ]);
+  } else {
+    this.setSteps([
+      { text: `<span class="hl-accent">SELECT id, name FROM users WHERE name = '${esc(name)}'</span><br>` +
+              `只查 id 和 name。二级索引叶子的结构是 <code>(name → id)</code>，` +
+              `<span class="hl-green">两个字段都在索引里</span>。`, bridge: 'off' },
+      { text: `在二级索引中查找 <code>name='${esc(name)}'</code>。注意右侧聚簇索引<strong>完全没有被访问</strong>，` +
+              `也没有橙色回表线。`,
+        highlights: [{ part: 0, nodes: sPath.path }],
+        entries: [{ part: 0, node: sLeaf.id, keys: [name], cls: 'ehit' }], bridge: 'off' },
+      { text: `叶子节点 <code>[${sLabels}]</code> 已包含查询所需的全部数据。`,
+        highlights: [{ part: 0, nodes: [sLeaf.id], cls: 'found' }],
+        entries: [{ part: 0, node: sLeaf.id, keys: [name], cls: 'efound' }], bridge: 'off' },
+      { text: `<span class="hl-green">✓ 无需回表！</span>仅 <strong>1 次 B+ 树查找</strong>，` +
+              `EXPLAIN 的 Extra 显示 <code style="color:var(--green)">Using index</code>。` +
+              `这就是<strong>覆盖索引</strong>——它不是新的索引类型，而是「查询被现有索引完全满足」的一种状态。`,
+        highlights: [{ part: 0, nodes: [sLeaf.id], cls: 'found' }],
+        entries: [{ part: 0, node: sLeaf.id, keys: [name], cls: 'efound' }], bridge: 'off' }
+    ]);
+  }
+};
+
+function onCoveringModeChange() {
+  renderCoveringScene();
+  updateCoveringCompare();
+  demos.covering.reset();
+}
+
+function updateCoveringCompare() {
+  const name = document.getElementById('coveringVal')?.value || pickName();
+  const row = tableData.find(r => r.name === name);
+  const bad = document.getElementById('cvCompareBad');
+  const good = document.getElementById('cvCompareGood');
+  if (!bad || !good) return;
+  const id = row ? row.id : 'N';
+  bad.innerHTML =
+    `<div class="code-block">SELECT * FROM users WHERE name = '${esc(name)}'</div>` +
+    `<div style="font-size:.82rem;line-height:1.9;color:var(--text-dim)">` +
+    `① 查二级索引 idx_name<br>② 找到 name='${esc(name)}' → id=${esc(id)}<br>` +
+    `<span style="color:var(--orange)">③ ⚠️ 回表：用 id=${esc(id)} 回聚簇索引再查一次</span><br>` +
+    `<span style="color:var(--red);font-weight:600">共 2 次 B+ 树查找</span></div>`;
+  good.innerHTML =
+    `<div class="code-block">SELECT id, name FROM users WHERE name = '${esc(name)}'</div>` +
+    `<div style="font-size:.82rem;line-height:1.9;color:var(--text-dim)">` +
+    `索引 idx_name 叶子已含 (name, id)<br>① 查索引 B+ 树<br>` +
+    `<span style="color:var(--green)">② ✓ 直接返回，无需回表</span><br>` +
+    `<span style="color:var(--green);font-weight:600">仅 1 次 B+ 树查找</span> · Extra: Using index</div>`;
+}
+
+// ---------- 联合索引 & 最左前缀（B1/B2） ----------
+demos.composite = new Demo('cp', 'svg-composite',
+  ['cp-prev', 'cp-play', 'cp-next', 'cp-reset'], 'cp-info', 'cp-history');
+demos.composite.emptyHint = '选择 WHERE 条件后点击"分析查询"';
+
+function updateCompositeSelect() {
+  const sel = document.getElementById('compositeQuery');
+  if (!sel) return;
+  const dept = pickDept();
+  const other = tableData.find(r => r.dept !== dept);
+  const age = pickAge(dept);
+  const nm = pickName(dept);
+  fillSelect(sel, [
+    { value: 'dept',       label: `dept = '${dept}'（命中 ✓）` },
+    { value: 'dept_age',   label: `dept = '${dept}' AND age > ${age}（命中 ✓）` },
+    { value: 'age',        label: `age = ${age}（未命中 ✗ 跳过最左列）` },
+    { value: 'dept_name',  label: `dept = '${dept}' AND name = '${nm}'（部分 ⚠️）` },
+    { value: 'dept_range', label: `dept > '${other ? other.dept : dept}'（范围 ⚠️）` }
+  ], sel.value);
+}
+
+demos.composite.buildSteps = function () {
+  const query = document.getElementById('compositeQuery').value;
+  const tree = this.tree(0);
+  if (!tree) return;
+  const dept = pickDept(), age = pickAge(dept), nm = pickName(dept);
+  const other = tableData.find(r => r.dept !== dept);
+  const otherDept = other ? other.dept : dept;
+
+  if (query === 'dept') {
+    const sr = searchComposite(tree, dept, null);
+    if (!sr.found) { this.setSteps([{ text: `<span class="hl-red">当前数据中不存在 dept='${esc(dept)}'。</span>` }]); return; }
+    this.setSteps([
+      { text: `<span class="hl-accent">WHERE dept = '${esc(dept)}'</span><br>` +
+              `联合索引 (dept, age) 的<strong>最左列就是 dept</strong>，<span class="hl-green">符合最左前缀</span>。` },
+      { text: `根节点按 dept 码点序排列，比较后定位到 '${esc(dept)}' 所在子树。`,
+        highlights: [{ part: 0, nodes: sr.path.slice(0, Math.min(2, sr.path.length)) }] },
+      { text: `到达叶子节点。因为整棵树<strong>先按 dept 排序</strong>，'${esc(dept)}' 的记录在叶子上是<strong>连续存放</strong>的。`,
+        highlights: [{ part: 0, nodes: sr.path }],
+        entries: [{ part: 0, node: sr.leaf.id, keys: sr.matched, cls: 'ehit' }] },
+      { text: `<span class="hl-green">✓ 索引有效！</span>沿叶子链表顺序扫描即可取出全部 ${esc(sr.matched.length)} 条记录，` +
+              `<span class="hl-green">无需全表扫描</span>。EXPLAIN 中 <code>type=ref</code>。`,
+        highlights: [{ part: 0, nodes: sr.path, cls: 'found' }],
+        entries: [{ part: 0, node: sr.leaf.id, keys: sr.matched, cls: 'efound' }],
+        leafLinks: sr.leaf ? [{ part: 0, i: tree.levels[tree.levels.length - 1].indexOf(sr.leaf) }] : [] }
+    ]);
+  } else if (query === 'dept_age') {
+    const sr = searchComposite(tree, dept, null);
+    if (!sr.found) { this.setSteps([{ text: `<span class="hl-red">当前数据中不存在 dept='${esc(dept)}'。</span>` }]); return; }
+    const hit = sr.matched.filter(k => +String(k).split('\u0000')[1] > age);
+    this.setSteps([
+      { text: `<span class="hl-accent">WHERE dept = '${esc(dept)}' AND age &gt; ${esc(age)}</span><br>` +
+              `两个条件正好对应索引的两列，<span class="hl-green">完美命中</span>。` },
+      { text: `第一步：按 <code>dept='${esc(dept)}'</code> 定位子树。`,
+        highlights: [{ part: 0, nodes: sr.path.slice(0, Math.min(2, sr.path.length)) }] },
+      { text: `第二步：在该子树的叶子内部，记录<strong>已按 age 有序</strong>，` +
+              `所以 <code>age &gt; ${esc(age)}</code> 可以直接二分定位起点，再沿链表向后扫。`,
+        highlights: [{ part: 0, nodes: sr.path }],
+        entries: [{ part: 0, node: sr.leaf.id, keys: sr.matched, cls: 'ehit' }] },
+      { text: `<span class="hl-green">✓ 索引完全有效！</span>命中 ${esc(hit.length)} 条（age &gt; ${esc(age)}）。` +
+              `<br><strong>设计要点：</strong>联合索引应把<span style="color:var(--accent)">等值列放前、范围列放后</span>。` +
+              `若建成 (age, dept)，则 age 用上范围后 dept 就无法再用索引过滤了。`,
+        highlights: [{ part: 0, nodes: sr.path, cls: 'found' }],
+        entries: [{ part: 0, node: sr.leaf.id, keys: hit.length ? hit : sr.matched, cls: 'efound' }] }
+    ]);
+  } else if (query === 'age') {
+    this.setSteps([
+      { text: `<span class="hl-accent">WHERE age = ${esc(age)}</span><br>` +
+              `联合索引是 (dept, age)，但这个查询<span class="hl-red">跳过了最左列 dept</span>。` },
+      { text: `根节点是按 <strong>dept</strong> 排序的。缺少 dept 条件时，age=${esc(age)} 的记录` +
+              `<span class="hl-red">散落在每一个 dept 分组里</span>，无法确定该走哪个分支。`,
+        highlights: [{ part: 0, nodes: [tree.root.id], cls: 'miss' }] },
+      { text: `<span class="hl-red">✗ 索引失效！</span>违反最左前缀，优化器只能选择<span class="hl-red">全表扫描</span>` +
+              `（type=ALL），逐个叶子、逐行判断 age。`,
+        fullScan: [{ part: 0 }] },
+      { text: `<strong>解决方案：</strong><br>` +
+              `① 补上 dept 条件：<code>WHERE dept='...' AND age=${esc(age)}</code><br>` +
+              `② 或单独建索引：<code>ALTER TABLE users ADD INDEX idx_age (age)</code><br>` +
+              `<span class="hl-blue">注：MySQL 8.0 的 Index Skip Scan 在 dept 基数极低时可自动「跳过」最左列，` +
+              `但不能依赖它——详见「联合索引」页说明。</span>`,
+        fullScan: [{ part: 0 }] }
+    ]);
+  } else if (query === 'dept_range') {
+    const sr = searchComposite(tree, otherDept, null);
+    const leaves = tree.levels[tree.levels.length - 1];
+    this.setSteps([
+      { text: `<span class="hl-accent">WHERE dept &gt; '${esc(otherDept)}'</span><br>` +
+              `最左列 dept 上是<strong>范围条件</strong>，同样符合最左前缀。` },
+      { text: `先在 B+ 树中定位到 dept='${esc(otherDept)}' 的起点。`,
+        highlights: sr.leaf ? [{ part: 0, nodes: sr.path }] : [{ part: 0, nodes: [tree.root.id] }] },
+      { text: `<span class="hl-orange">范围查询的真正威力在叶子链表：</span>` +
+              `定位到起点后，<strong>沿叶子链表一路向右扫到末尾</strong>即可，不必回到根节点重新查找。`,
+        highlights: [{ part: 0, nodes: sr.path, cls: 'found' }],
+        leafLinks: leaves.slice(0, leaves.length - 1).map((_, i) => ({ part: 0, i })) },
+      { text: `<span class="hl-orange">⚠️ 但要注意：</span>范围列<strong>之后</strong>的列用不上索引。` +
+              `若索引是 (dept, age)，则 <code>WHERE dept &gt; 'x' AND age = 25</code> 中的 age ` +
+              `只能回表后逐行过滤，EXPLAIN 里表现为 <code>Using index condition</code>（索引下推）。`,
+        highlights: [{ part: 0, nodes: sr.path, cls: 'found' }],
+        leafLinks: leaves.slice(0, leaves.length - 1).map((_, i) => ({ part: 0, i })) }
+    ]);
+  } else {
+    const sr = searchComposite(tree, dept, null);
+    if (!sr.found) { this.setSteps([{ text: `<span class="hl-red">当前数据中不存在 dept='${esc(dept)}'。</span>` }]); return; }
+    this.setSteps([
+      { text: `<span class="hl-accent">WHERE dept = '${esc(dept)}' AND name = '${esc(nm)}'</span><br>` +
+              `索引是 (dept, age)，第二个条件用的是 <code>name</code>，<span class="hl-orange">不是索引列</span>。` },
+      { text: `<code>dept='${esc(dept)}'</code> 命中最左前缀，可以正常定位子树。`,
+        highlights: [{ part: 0, nodes: sr.path.slice(0, Math.min(2, sr.path.length)) }] },
+      { text: `但 name 不在这个索引中，索引无法帮忙过滤，只能把该 dept 下的记录` +
+              `<span class="hl-orange">全部取出后逐行检查 name</span>（Server 层过滤）。`,
+        highlights: [{ part: 0, nodes: sr.path }],
+        entries: [{ part: 0, node: sr.leaf.id, keys: sr.matched, cls: 'ehit' }] },
+      { text: `<span class="hl-orange">⚠️ 部分命中。</span>索引只用到 dept 一列，扫描 ${esc(sr.matched.length)} 行后再过滤。` +
+              `<br>比全表扫描好，但不是最优。<strong>改进：</strong>建 <code>(dept, name)</code> 或 ` +
+              `<code>(dept, age, name)</code> 让两个条件都能走索引。`,
+        highlights: [{ part: 0, nodes: sr.path, cls: 'found' }],
+        entries: [{ part: 0, node: sr.leaf.id, keys: sr.matched, cls: 'efound' }] }
+    ]);
+  }
+};
+
+// ---------- 索引失效（B3：按能否真实演示分类） ----------
+demos.failure = new Demo('f', 'svg-failure',
+  ['f-prev', 'f-play', 'f-next', 'f-reset'], 'f-info', 'f-history');
+demos.failure.emptyHint = '点击上方场景卡片查看演示';
+
+/**
+ * B3 关键：场景卡片里的 SQL 与树上高亮的记录<strong>共用同一组取值</strong>，
+ * 否则会出现「卡片写 name='Ivy'、画面却高亮 Alice」这类图文不符。
+ */
+function failCtx() {
+  const dept = pickDept();
+  const row = tableData.find(r => r.dept === dept) || tableData[0] || {};
+  const otherDepts = [...new Set(tableData.map(r => r.dept))].filter(d => d !== dept);
+  return {
+    dept, otherDepts,
+    name: row.name ?? '', phone: row.phone ?? '',
+    age: row.age ?? 0, id: row.id ?? 0,
+    total: tableData.length
+  };
+}
+
+/**
+ * B3：demo=true 的场景在 users 表上真实可演示（tree 字段标注所用索引树）；
+ * demo=false 的场景（依赖表中不存在的列）只给 SQL 对比，不假装演示。
+ * bad / good 是函数，接收 failCtx()，保证文案随数据同步。
+ */
+const failureScenarios = [
+  {
+    title: '对索引列使用函数 / 运算', tag: '失效', tagCls: 'tag-fail',
+    tree: 'idx_name', demo: true,
+    bad: c => `WHERE UPPER(name) = '${c.name.toUpperCase()}'\n` +
+              `WHERE LEFT(name, ${Math.min(3, c.name.length)}) = '${c.name.slice(0, Math.min(3, c.name.length))}'\n` +
+              `WHERE id + 1 = ${c.id + 1}`,
+    good: c => `WHERE name = '${c.name}'\n` +
+               `WHERE name LIKE '${c.name.slice(0, Math.min(3, c.name.length))}%'\n` +
+               `WHERE id = ${c.id}`,
+    reason: '索引里存的是列的<strong>原始值</strong>并按原始值排序。一旦对列施加函数，B+ 树的有序性对函数结果不再成立，MySQL 必须逐行取出原值、计算函数、再比较。',
+    solution: '把函数移到<strong>常量一侧</strong>，或改写成等价的范围/前缀条件。MySQL 8.0 也可对表达式建<strong>函数索引</strong>：<code>INDEX ((UPPER(name)))</code>。'
+  },
+  {
+    title: '隐式类型转换', tag: '失效', tagCls: 'tag-fail',
+    tree: 'idx_phone', demo: true, dual: true,
+    bad: c => `-- phone 是 VARCHAR(20)\nWHERE phone = ${c.phone}`,
+    good: c => `WHERE phone = '${c.phone}'`,
+    reason: '字符串列与数字比较时，MySQL 按规则把<strong>列值转成数字</strong>再比（等价于 <code>CAST(phone AS DOUBLE) = 常量</code>），这就退化成「对索引列使用函数」。反过来「数字列传字符串」通常仍能走索引，因为转换发生在常量侧。',
+    solution: '保证传入值的类型与列类型一致。ORM / 预编译语句里尤其注意参数绑定类型。'
+  },
+  {
+    title: 'LIKE 左模糊 / 全模糊', tag: '失效', tagCls: 'tag-fail',
+    tree: 'idx_name', demo: true,
+    bad: c => `WHERE name LIKE '%${c.name}'\nWHERE name LIKE '%${c.name}%'`,
+    good: c => `WHERE name LIKE '${c.name}%'`,
+    reason: 'B+ 树按<strong>从左到右</strong>的字符序组织。前缀确定时才能定位起点；前缀是通配符时，任何位置都可能匹配，有序性完全用不上。',
+    solution: '改用右模糊（前缀匹配）。确实需要全文搜索时用 <code>FULLTEXT</code> 索引（中文需 ngram 分词器）或 Elasticsearch。'
+  },
+  {
+    title: '违反最左前缀', tag: '失效', tagCls: 'tag-fail',
+    tree: 'idx_dept_age', demo: true,
+    bad: c => `-- 索引 (dept, age)\nWHERE age = ${c.age}`,
+    good: c => `WHERE dept = '${c.dept}' AND age = ${c.age}`,
+    reason: '联合索引先按 dept 排序、dept 相同才按 age 排序。跳过 dept 时，age 在整棵树上是<strong>无序</strong>的。',
+    solution: '从最左列开始<strong>连续</strong>匹配。设计时把高频等值列放最左。'
+  },
+  {
+    title: 'OR 连接了无索引的列', tag: '失效', tagCls: 'tag-fail',
+    tree: 'idx_name', demo: true,
+    bad: c => `-- age 上没有索引\nWHERE name = '${c.name}' OR age = ${c.age}`,
+    good: c => `-- 方案一：给 age 建索引，让优化器有机会走 index_merge(union)\n` +
+               `ALTER TABLE users ADD INDEX idx_age (age);\n\n` +
+               `-- 方案二：拆成 UNION，两侧各自独立走索引\n` +
+               `SELECT * FROM users WHERE name = '${c.name}'\nUNION\n` +
+               `SELECT * FROM users WHERE age = ${c.age};`,
+    reason: 'OR 要求<strong>每一侧都能用索引</strong>。只要有一侧只能全表扫描，整个条件就无法靠索引提前排除行，优化器会直接选择全表扫描（走索引反而更慢）。',
+    solution: '给 OR 的另一侧也建索引（可触发 index_merge），或拆成 UNION / UNION ALL。<strong>注意</strong>：两侧都有索引时是否走 index_merge 仍由优化器按成本决定，不是必然。'
+  },
+  {
+    title: '!= / NOT IN 与低选择性', tag: '失效', tagCls: 'tag-fail',
+    tree: 'idx_dept_age', demo: true, negate: true,
+    bad: c => `WHERE dept != '${c.dept}'\nWHERE dept NOT IN ('${c.dept}')`,
+    good: c => `-- 改写成正向枚举\nWHERE dept IN (${c.otherDepts.map(d => `'${d}'`).join(', ') || `'${c.dept}'`})`,
+    reason: '否定条件命中的往往是<strong>大部分数据</strong>。当预估扫描行数占全表比例过高（经验值约 20%~30%）时，走索引的「随机回表 I/O」比顺序全表扫描更慢，优化器会<strong>主动放弃索引</strong>——这不是 bug，是基于成本的正确选择。',
+    solution: '改写成正向 <code>IN</code> 枚举；或接受全表扫描。判断依据永远看 EXPLAIN 的 <code>rows</code> 与 <code>type</code>，而不是「有没有建索引」。'
+  },
+  {
+    title: '正常等值查询（对照组）', tag: '正常', tagCls: 'tag-ok',
+    tree: 'idx_name', demo: true, dual: true,
+    bad: null,
+    good: c => `SELECT * FROM users WHERE name = '${c.name}'`,
+    reason: '等值查询、右模糊、范围查询、遵守最左前缀的联合索引查询，都能高效利用 B+ 树的有序性。',
+    solution: '保持好习惯：不对索引列用函数、类型对齐、遵守最左前缀、只 SELECT 需要的字段（争取覆盖索引）。'
+  }
+];
+
+/** 取某个场景在当前数据下的 SQL 文本 */
+const scenarioSQL = (s, c) => ({ bad: s.bad ? s.bad(c) : null, good: s.good(c) });
+
+let selectedScenario = -1;
+
+function renderScenarios() {
+  const list = document.getElementById('scenarioList');
+  if (!list) return;
+  const c = failCtx();
+  list.textContent = '';
+  failureScenarios.forEach((s, i) => {
+    const sql = scenarioSQL(s, c);
+    const box = document.createElement('div');
+    box.className = 'scenario' + (i === selectedScenario ? ' active' : '');
+    box.id = 'scenario-' + i;
+    box.onclick = () => selectScenario(i);
+
+    const head = document.createElement('div');
+    head.className = 'scenario-header';
+    const tag = document.createElement('span');
+    tag.className = 'tag ' + s.tagCls;
+    tag.textContent = s.tag;
+    const ttl = document.createElement('span');
+    ttl.textContent = s.title;
+    head.appendChild(tag); head.appendChild(ttl);
+    const tt = document.createElement('span');
+    tt.className = 'tree-tag';
+    tt.textContent = s.demo ? '演示索引树：' + s.tree : '仅 SQL 对比';
+    head.appendChild(tt);
+    box.appendChild(head);
+
+    const body = document.createElement('div');
+    body.className = 'scenario-body';
+    // C2：SQL 由 failCtx() 生成，含用户可编辑数据，一律 esc()；说明文字为作者常量
+    body.innerHTML =
+      (sql.bad ? `<div style="margin-bottom:.35rem"><strong style="color:var(--red)">✗ 索引失效写法：</strong></div>` +
+        `<div class="code-block">${esc(sql.bad)}</div>` : '') +
+      `<div style="margin:.5rem 0 .35rem"><strong style="color:var(--green)">✓ 推荐写法：</strong></div>` +
+      `<div class="code-block">${esc(sql.good)}</div>` +
+      `<div style="margin-top:.65rem"><strong>原因：</strong>${s.reason}</div>` +
+      `<div style="margin-top:.35rem"><strong>方案：</strong>${s.solution}</div>` +
+      (s.demo
+        ? `<div style="margin-top:.7rem"><button class="btn btn-primary btn-sm" ` +
+          `onclick="event.stopPropagation();demos.failure.start()">🔍 在 ${s.tree} 上查看演示</button></div>`
+        : `<div style="margin-top:.6rem;font-size:.8rem;color:var(--text-muted)">` +
+          `⚠️ 该场景依赖 users 表中不存在的列，此处只做 SQL 对比，不做树动画演示。</div>`);
+    box.appendChild(body);
+    list.appendChild(box);
+  });
+}
+
+function selectScenario(i) {
+  document.querySelectorAll('.scenario').forEach(s => s.classList.remove('active'));
+  document.getElementById('scenario-' + i)?.classList.add('active');
+  selectedScenario = i;
+  demos.failure.reset();
+  renderFailureScene(i);
+}
+
+/** B3：按场景切换到对应索引树（不再全部复用 name 树） */
+function renderFailureScene(i) {
+  const label = document.getElementById('failureLabel');
+  if (i < 0 || !failureScenarios[i]) {
+    if (label) label.textContent = '选择上方场景卡片开始…';
+    sceneDual('svg-failure', trees.secondary, trees.clustered, {
+      leftTitle: '二级索引 · INDEX (name)', rightTitle: '聚簇索引 · PRIMARY KEY (id)',
+      leftLeafW: 126, rightLeafW: 126
+    });
+    return;
+  }
+  const s = failureScenarios[i];
+  const c = failCtx();   // 与卡片 SQL、动画高亮共用同一组取值
+  if (label) label.textContent = `场景 ${i + 1}/${failureScenarios.length} · ${s.title} · 使用 ${s.tree}`;
+
+  if (s.tree === 'idx_phone' || s.tree === 'idx_name') {
+    const isPhone = s.tree === 'idx_phone';
+    const key = isPhone ? c.phone : c.name;
+    const row = tableData.find(r => (isPhone ? r.phone : r.name) === key);
+    sceneDual('svg-failure', isPhone ? trees.phone : trees.secondary, trees.clustered, {
+      leftTitle: isPhone ? '① 二级索引 · INDEX (phone)' : '① 二级索引 · INDEX (name)',
+      rightTitle: '② 聚簇索引 · PRIMARY KEY (id)',
+      leftLeafW: 140, rightLeafW: 126,
+      bridge: row ? { key, cmp: cmpKey, label: `⤷ 回表 id=${row.id}` } : null
+    });
+  } else {
+    sceneSingle('svg-failure', trees.composite, 158, '联合索引 · INDEX (dept, age)', 128);
+  }
+}
+
+demos.failure.buildSteps = function () {
+  if (selectedScenario < 0) return;
+  const s = failureScenarios[selectedScenario];
+  const tree = this.tree(0);
+  if (!tree) return;
+  const dual = !!s.dual;
+  const cTree = dual ? this.tree(1) : null;
+  // B3：与场景卡片共用 failCtx()，保证「卡片写的 SQL」= 「树上高亮的记录」
+  const c = failCtx();
+  const sql = scenarioSQL(s, c);
+  const isGood = s.tagCls === 'tag-ok';
+
+  // ---- 联合索引树上的两个场景 ----
+  if (s.tree === 'idx_dept_age') {
+    if (s.negate) {
+      const sr = searchComposite(tree, c.dept, null);
+      const leaves = tree.levels[tree.levels.length - 1];
+      const others = tableData.filter(r => r.dept !== c.dept).length;
+      const pct = tableData.length ? Math.round(others / tableData.length * 100) : 0;
+      this.setSteps([
+        { text: `<span class="hl-red">索引失效：${esc(s.title)}</span><br><code>${esc(sql.bad.split('\n')[0])}</code>` },
+        { text: `索引 (dept, age) 本身<strong>可以用</strong>：dept 是最左列，<code>!=</code> 也能改写成范围扫描。`,
+          highlights: sr.leaf ? [{ part: 0, nodes: sr.path }] : [{ part: 0, nodes: [tree.root.id] }] },
+        { text: `但 <code>dept != '${esc(c.dept)}'</code> 命中 <strong>${esc(others)} / ${esc(c.total)}</strong> 行` +
+                `（约 ${esc(pct)}%）。比例过高时，<span class="hl-red">逐行随机回表的代价超过顺序全表扫描</span>。`,
+          highlights: sr.leaf ? [{ part: 0, nodes: sr.path, cls: 'miss' }] : [{ part: 0, nodes: [tree.root.id], cls: 'miss' }],
+          leafLinks: leaves.slice(0, -1).map((_, i) => ({ part: 0, i })) },
+        { text: `<span class="hl-orange">于是优化器主动放弃索引</span>（type=ALL）。这不是索引「坏了」，` +
+                `而是<strong>成本模型的正确决策</strong>。`, fullScan: [{ part: 0 }] },
+        { text: `<span class="hl-green">✓ 优化方案：</span><div class="code-block">${esc(sql.good)}</div>${s.solution}` }
+      ]);
+      return;
+    }
+    const sr = searchComposite(tree, c.dept, c.age);
+    this.setSteps([
+      { text: `<span class="hl-red">索引失效：${esc(s.title)}</span><br><code>${esc(sql.bad.split('\n').pop())}</code>（索引为 (dept, age)）` },
+      { text: `根节点按 <strong>dept</strong> 排序。查询里没有 dept 条件，` +
+              `<span class="hl-red">无法确定该进入哪个分支</span>。`,
+        highlights: [{ part: 0, nodes: [tree.root.id], cls: 'miss' }] },
+      { text: `age=${esc(c.age)} 的记录分散在<strong>每一个</strong> dept 分组内，索引有序性用不上 → ` +
+              `<span class="hl-red">全表扫描</span>，逐行比较。`, fullScan: [{ part: 0 }] },
+      { text: sr.found
+          ? `<span class="hl-green">✓ 对比：加上最左列后立即命中</span><br>` +
+            `<code>WHERE dept='${esc(c.dept)}' AND age=${esc(c.age)}</code> → 定位到 ` +
+            `<strong>${esc(sr.matched.length)}</strong> 条记录，只扫 ${esc(sr.path.length)} 层。`
+          : `<span class="hl-orange">✓ 对比：加上最左列 <code>WHERE dept='${esc(c.dept)}' AND age=${esc(c.age)}</code> ` +
+            `即可走索引；当前数据中该组合恰好无匹配行，但索引路径依然生效（快速返回空集）。</span>`,
+        highlights: sr.found ? [{ part: 0, nodes: sr.path, cls: 'found' }] : [],
+        entries: sr.found && sr.leaf ? [{ part: 0, node: sr.leaf.id, keys: sr.matched, cls: 'efound' }] : [] }
+    ]);
+    return;
+  }
+
+  // ---- name / phone 索引树上的场景 ----
+  const isPhone = s.tree === 'idx_phone';
+  const key = isPhone ? c.phone : c.name;
+  const hitRow = tableData.find(r => (isPhone ? r.phone : r.name) === key) || null;
+  const sr = searchTree(tree, key, cmpKey);
+  const leaf = sr.leaf;
+  const labels = leaf ? leaf.entries.map(e => esc(e.label)).join(', ') : '—';
+  const cPath = (dual && hitRow) ? searchTree(cTree, hitRow.id, cmpNum) : null;
+
+  if (isGood) {
+    this.setSteps([
+      { text: `<span class="hl-green">正常查询（对照组）：</span><code>${esc(sql.good)}</code>` },
+      { text: `等值条件、类型匹配、无函数包裹 → 索引 B+ 树从根节点开始有序查找。`,
+        highlights: [{ part: 0, nodes: [sr.path[0]] }], bridge: 'dim' },
+      { text: sr.found
+          ? `逐层向下，仅 <strong>${esc(sr.path.length)} 次比较</strong>就定位到叶子 <code>[${labels}]</code>。`
+          : `<span class="hl-orange">当前数据中未找到该键，但查找路径依然是有序的 ${esc(sr.path.length)} 层。</span>`,
+        highlights: [{ part: 0, nodes: sr.path }],
+        entries: (sr.found && leaf) ? [{ part: 0, node: leaf.id, keys: [key], cls: 'ehit' }] : [],
+        bridge: 'dim' },
+      { text: (dual && hitRow)
+          ? `<span class="hl-orange">SELECT * 需回表</span>：沿橙色虚线用 id=${esc(hitRow.id)} 查聚簇索引。` +
+            `若改成 <code>SELECT id, ${isPhone ? 'phone' : 'name'}</code> 则可命中<strong>覆盖索引</strong>，省掉这一步。`
+          : `<span class="hl-green">✓ 高效完成！</span>复杂度 O(log n)，与表行数只成对数关系。`,
+        highlights: (dual && cPath)
+          ? [{ part: 0, nodes: leaf ? [leaf.id] : [], cls: 'found' }, { part: 1, nodes: cPath.path }]
+          : [{ part: 0, nodes: leaf ? [leaf.id] : [], cls: 'found' }],
+        entries: (sr.found && leaf) ? [{ part: 0, node: leaf.id, keys: [key], cls: 'efound' }] : [],
+        bridge: (dual && hitRow) ? 'on' : 'off' },
+      { text: `<span class="hl-green">✓ 结论：</span>${s.solution}` }
+    ]);
+    return;
+  }
+
+  // 失效分支
+  const badFirst = sql.bad.split('\n').filter(l => !l.startsWith('--') && l.trim())[0] || sql.bad;
+  const steps = [
+    { text: `<span class="hl-red">索引失效：${esc(s.title)}</span><br><code>${esc(badFirst)}</code>`, bridge: 'off' },
+    { text: `<span class="hl-red">✗ 索引无法使用！</span>${s.reason}`,
+      highlights: [{ part: 0, nodes: [sr.path[0]], cls: 'miss' }], bridge: 'off' },
+    { text: `优化器退化为<span class="hl-red">全表扫描</span>：从最左叶子开始，沿叶子链表` +
+            `<strong>逐行</strong>取原值、计算、比较，一行都跳不过。`,
+      fullScan: [{ part: 0 }],
+      leafLinks: tree.levels[tree.levels.length - 1].slice(0, -1).map((_, i) => ({ part: 0, i })),
+      bridge: 'off' }
+  ];
+  if (sr.found) {
+    steps.push({
+      text: isPhone
+        ? `对照：改成 <code>${esc(sql.good)}</code> 后类型一致，<span class="hl-green">索引立刻生效</span>——` +
+          `${esc(sr.path.length)} 次比较定位到 <code>[${labels}]</code>${dual ? '，再回表取完整行' : ''}。`
+        : `对照推荐写法 <code>${esc(sql.good.split('\n').filter(l => !l.startsWith('--') && l.trim())[0])}</code>：` +
+          `<span class="hl-green">索引恢复生效</span>，只需 ${esc(sr.path.length)} 次比较。`,
+      highlights: [{ part: 0, nodes: sr.path, cls: 'found' },
+                   ...(cPath ? [{ part: 1, nodes: cPath.path }] : [])],
+      entries: leaf ? [{ part: 0, node: leaf.id, keys: [key], cls: 'efound' }] : [],
+      bridge: dual ? 'on' : 'off'
+    });
+  } else {
+    steps.push({
+      text: `<span class="hl-orange">当前数据中没有 <code>${esc(key)}</code>，但失效原因与数据无关：</span>` +
+            `只要写法是对索引列施加函数/转换或以通配符开头，索引就用不上。`,
+      fullScan: [{ part: 0 }], bridge: 'off'
+    });
+  }
+  steps.push({
+    text: `<span class="hl-red">数据量放大后差距是数量级的：</span>${esc(c.total)} 行时全表扫描几乎无感，` +
+          `1000 万行时就是 1000 万次行计算 + 大量随机 I/O。<br>` +
+          `<span class="hl-green">✓ 优化方案：</span><div class="code-block">${esc(sql.good)}</div>${s.solution}`,
+    bridge: 'off'
+  });
+  this.setSteps(steps);
+};
+
+// =============================================================================
+//  索引优化卡片（B5 修正 + D 组进阶）
+// =============================================================================
+const optimizationBasic = [
+  { icon:'🎯', title:'选择高选择性列', body:
+    `<strong>选择性 = 不重复值个数 / 总行数</strong>，越接近 1 过滤效果越好。` +
+    `<div class="code-block"><span class="hl-green">✓</span> email / phone：几乎唯一，选择性 ≈ 1.0
+<span class="hl-red">✗</span> gender：只有 2~3 种取值
+   → 100 万行表上选择性 ≈ 3 / 1,000,000 = 3×10⁻⁶
+<span class="hl-red">✗</span> is_deleted / status：低基数标志位同理</div>` +
+    `<div class="tip">低选择性列建索引后，命中行数占全表比例过高，优化器会直接放弃索引走全表扫描——索引白建，还要付维护成本。</div>`,
+    ref:'与 EXPLAIN 的 rows / filtered 字段对照观察' },
+  { icon:'🚫', title:'避免对索引列使用函数或运算', body:
+    `对应「索引失效」场景 1。<div class="code-block"><span class="hl-red">✗</span> WHERE YEAR(created_at) = 2024
+<span class="hl-red">✗</span> WHERE LEFT(name, 3) = 'Ivy'
+<span class="hl-red">✗</span> WHERE id + 1 = 10
+<span class="hl-green">✓</span> WHERE created_at >= '2024-01-01'
+      AND created_at <  '2025-01-01'
+<span class="hl-green">✓</span> WHERE name LIKE 'Ivy%'
+<span class="hl-green">✓</span> WHERE id = 9</div>` +
+    `<div class="tip">原则：让索引列<strong>裸奔</strong>，把运算移到常量一侧。8.0 可用函数索引 <code>INDEX ((UPPER(name)))</code> 兜底。</div>`,
+    ref:'索引失效 → 对索引列使用函数 / 运算' },
+  { icon:'🔤', title:'注意隐式类型转换', body:
+    `对应「索引失效」场景 2。<div class="code-block">-- phone 是 VARCHAR
+<span class="hl-red">✗</span> WHERE phone = 13800138001
+<span class="hl-green">✓</span> WHERE phone = '13800138001'
+
+-- id 是 INT（方向相反，通常仍走索引）
+<span class="hl-green">✓</span> WHERE id = '9'</div>` +
+    `<div class="tip">规则：字符串列 vs 数字常量 → 转换发生在<strong>列侧</strong>，索引失效；数字列 vs 字符串常量 → 转换发生在<strong>常量侧</strong>，索引可用。字符集不一致的 JOIN 同理（utf8 vs utf8mb4）。</div>`,
+    ref:'索引失效 → 隐式类型转换' },
+  { icon:'🔗', title:'遵守最左前缀原则', body:
+    `对应「索引失效」场景 4 与「联合索引」演示。<div class="code-block">-- 索引 (dept, age, name)
+<span class="hl-green">✓</span> WHERE dept = '技术部'
+<span class="hl-green">✓</span> WHERE dept = '技术部' AND age > 25
+<span class="hl-orange">⚠</span> WHERE dept = '技术部' AND name = 'Ivy'
+     （只用到 dept，name 逐行过滤）
+<span class="hl-red">✗</span> WHERE age = 25      （跳过 dept）
+<span class="hl-red">✗</span> WHERE name = 'Ivy'   （跳过 dept, age）</div>` +
+    `<div class="tip">列顺序设计：<strong>等值列在前，范围列在后</strong>；范围列之后的列无法再用于索引过滤。</div>`,
+    ref:'联合索引 & 最左前缀原则' },
+  { icon:'📋', title:'善用覆盖索引', body:
+    `对应「覆盖索引」演示。<div class="code-block">-- 索引 idx_name(name)，叶子含 (name → id)
+SELECT id, name FROM users
+ WHERE name = 'Ivy';
+-- Extra: <span class="hl-green">Using index</span>  ← 覆盖索引
+
+SELECT * FROM users
+ WHERE name = 'Ivy';
+-- 需回表，无 Using index</div>` +
+    `<div class="tip">把高频查询的少量字段并入联合索引即可避免回表，但要权衡索引体积与写入成本，不要为「覆盖」把整表塞进索引。</div>`,
+    ref:'覆盖索引' },
+  { icon:'🔍', title:'LIKE 使用前缀匹配', body:
+    `对应「索引失效」场景 3。<div class="code-block"><span class="hl-red">✗</span> WHERE name LIKE '%Ivy'    -- 左模糊
+<span class="hl-red">✗</span> WHERE name LIKE '%Ivy%'   -- 全模糊
+<span class="hl-green">✓</span> WHERE name LIKE 'Ivy%'    -- 右模糊，走 range</div>` +
+    `<div class="tip">必须做内容搜索时：中文用 <code>FULLTEXT ... WITH PARSER ngram</code>，规模更大用 Elasticsearch。</div>`,
+    ref:'索引失效 → LIKE 左模糊' },
+  { icon:'📊', title:'控制索引数量', body:
+    `每个索引都是一棵需要维护的 B+ 树：<div class="code-block">INSERT → 每棵相关索引树都要插入 + 可能页分裂
+UPDATE → 改了索引列 = 删旧值 + 插新值
+DELETE → 每棵树都要删除条目并可能页合并
+空间   → 每个索引都占独立磁盘/缓冲池空间</div>` +
+    `<div class="tip">单表建议不超过 5~6 个。用 <code>sys.schema_unused_indexes</code> 找未使用索引，用 <code>sys.schema_redundant_indexes</code> 找冗余索引（如已有 (a,b) 就不必再建 (a)）。</div>`,
+    ref:'索引设计原则' },
+  { icon:'⚡', title:'用索引消除排序与临时表', body:
+    `<div class="code-block">-- 索引 (dept, age)
+SELECT * FROM users
+ WHERE dept = '技术部'
+ ORDER BY age;          -- <span class="hl-green">Using index</span>，无 filesort
+
+SELECT * FROM users
+ WHERE dept = '技术部'
+ ORDER BY age DESC, id ASC;  -- <span class="hl-red">方向混用 → filesort</span></div>` +
+    `<div class="tip">ORDER BY 的<strong>列顺序与升降方向</strong>都需与索引一致。8.0 支持降序索引 <code>INDEX (age DESC, id ASC)</code> 可解决方向混用；GROUP BY 同理，否则出现 <code>Using temporary</code>。</div>`,
+    ref:'EXPLAIN 执行计划 · Extra' }
+];
+
+const optimizationAdvanced = [
+  { icon:'🔽', title:'D1 · 索引下推 ICP（Index Condition Pushdown）', body:
+    `MySQL 5.6 引入。让<strong>存储引擎层</strong>在遍历索引时就过滤掉不满足条件的记录，减少回表次数。` +
+    `<div class="code-block">-- 索引 (dept, name)
+SELECT * FROM users
+ WHERE dept LIKE '技%' AND name = 'Ivy';
+
+<span class="hl-orange">无 ICP</span>：引擎按 dept 前缀取出所有行 → 全部回表
+        → Server 层再过滤 name = 'Ivy'
+<span class="hl-green">有 ICP</span>：引擎在索引里就判断 name = 'Ivy'
+        → 只对通过的行回表</div>` +
+    `<div class="tip">EXPLAIN 的 Extra 显示 <code>Using index condition</code>。仅适用于二级索引的 range / ref / eq_ref / ref_or_null 访问方式，可用 <code>SET optimizer_switch='index_condition_pushdown=off'</code> 关闭对比。</div>`,
+    ref:'进阶 · 减少回表' },
+  { icon:'🧩', title:'D2 · 页分裂与自增主键 vs UUID', body:
+    `B+ 树叶子页写满后再插入相邻键，就要<strong>页分裂</strong>：申请新页、搬走约一半数据、更新父节点分隔键。` +
+    `<div class="code-block"><span class="hl-green">自增主键</span>：新行总是追加到最右叶子页
+  → 顺序写、页几乎不分裂、空间紧凑
+
+<span class="hl-red">UUID / 随机主键</span>：新行落点随机
+  → 频繁页分裂、页内碎片（利用率常降至 50%~70%）
+  → 缓冲池被写脏页污染、随机 I/O 激增</div>` +
+    `<div class="tip">分布式场景需要全局唯一时，用<strong>趋势递增</strong>的雪花算法 ID 而非 UUID。二级索引的键值乱序同样会引发该索引树的页分裂——这也是主键不宜过长的原因（每个二级索引叶子都要存一份主键值）。</div>`,
+    ref:'进阶 · 写入性能' },
+  { icon:'✂️', title:'D3 · 前缀索引', body:
+    `长字符串列（email、URL）只索引<strong>前 N 个字符</strong>，显著缩小索引体积。` +
+    `<div class="code-block">-- 先算完整列选择性
+SELECT COUNT(DISTINCT email) / COUNT(*) FROM users;
+
+-- 再比较不同前缀长度的选择性
+SELECT COUNT(DISTINCT LEFT(email, 6))  / COUNT(*) FROM users;
+SELECT COUNT(DISTINCT LEFT(email, 10)) / COUNT(*) FROM users;
+
+ALTER TABLE users ADD INDEX idx_email (email(10));</div>` +
+    `<div class="tip">选一个让选择性接近完整列的长度。代价：① 无法用于覆盖索引（必须回表核对完整值）② 不能用于该列的 ORDER BY / GROUP BY。utf8mb4 下前缀长度上限受 3072 字节索引长度限制约束。</div>`,
+    ref:'进阶 · 索引体积' },
+  { icon:'📝', title:'D4 · Change Buffer（写缓冲）', body:
+    `对<strong>非唯一二级索引</strong>的 INSERT / UPDATE / DELETE，若目标页不在缓冲池中，InnoDB 不立即读盘，而是把变更记入 change buffer，等该页因其他原因被读入时再合并（merge）。` +
+    `<div class="code-block"><span class="hl-green">受益场景</span>：写多读少、批量导入、日志类表
+  → 把大量随机读 I/O 变成后续的合并操作
+
+<span class="hl-red">不受益</span>：写后立即读（merge 马上被触发）
+  → 反而多了一次记录开销
+
+<span class="hl-orange">唯一索引不能用</span>：必须读页才能判断是否违反唯一性</div>` +
+    `<div class="tip">由 <code>innodb_change_buffer_max_size</code>（默认 25%）控制上限。这也解释了「唯一索引比普通索引写入更慢」的原因。</div>`,
+    ref:'进阶 · 写入优化' },
+  { icon:'📏', title:'D5 · 用 key_len 判断联合索引用了几列', body:
+    `<code>key_len</code> 是实际使用的索引字节数，是判断最左前缀命中到哪一列的<strong>唯一可靠依据</strong>。` +
+    `<div class="code-block">计算规则（utf8mb4，1 字符 = 4 字节）：
+  CHAR(n)      → n × 4
+  VARCHAR(n)   → n × 4 + 2（长度前缀）
+  INT          → 4      BIGINT → 8
+  允许 NULL    → 再 + 1
+
+索引 (dept VARCHAR(20), age INT)：
+  key_len = 82  → 只用到 dept  (20×4+2)
+  key_len = 86  → 两列都用到    (82 + 4)</div>` +
+    `<div class="tip">看到 <code>key=idx_dept_age</code> 别急着高兴，务必核对 key_len——它可能只用到了第一列。这也是排查「索引好像生效但还是很慢」的第一步。</div>`,
+    ref:'进阶 · EXPLAIN 判读' },
+  { icon:'🆕', title:'D6 · MySQL 8.0 索引新特性', body:
+    `<div class="code-block"><span class="hl-accent">降序索引</span>  INDEX (a ASC, b DESC)
+  解决 ORDER BY 方向混用导致的 filesort
+
+<span class="hl-accent">函数索引</span>  INDEX ((UPPER(name)))
+              INDEX ((price * qty))
+  让「对列用函数」的查询也能走索引
+
+<span class="hl-accent">不可见索引</span> ALTER TABLE t
+    ALTER INDEX idx_a INVISIBLE;
+  优化器忽略但仍维护 → <strong>安全试删索引</strong>，
+  确认无影响再真正 DROP
+
+<span class="hl-accent">Index Skip Scan</span>
+  首列基数极低时可跳过最左列
+
+<span class="hl-accent">直方图</span>    ANALYZE TABLE t
+    UPDATE HISTOGRAM ON col;
+  无索引列也能获得较准的选择性统计</div>` +
+    `<div class="tip">删索引前先用 INVISIBLE 观察一段时间，比直接 DROP 安全得多——回滚只需一条 ALTER。</div>`,
+    ref:'进阶 · 版本能力' }
+];
+
+function renderOptCards(containerId, data) {
+  const grid = document.getElementById(containerId);
+  if (!grid) return;
+  grid.textContent = '';
+  data.forEach(o => {
+    const card = document.createElement('div');
+    card.className = 'opt-card';
+    // C2：body / ref 均为作者常量，不含用户数据
+    card.innerHTML =
+      `<div class="opt-card-header"><span class="opt-icon">${o.icon}</span><h4>${o.title}</h4></div>` +
+      `<div class="opt-card-body">${o.body}<div class="ref">📌 相关：${o.ref}</div></div>`;
+    grid.appendChild(card);
+  });
+}
+
+// =============================================================================
+//  表格管理
+// =============================================================================
+const FIELDS = ['name', 'age', 'email', 'dept', 'phone'];
+
+function renderTable() {
+  const tbody = document.getElementById('tableBody');
+  if (!tbody) return;
+  tbody.textContent = '';
+  tableData.forEach((r, i) => {
+    const tr = document.createElement('tr');
+    const tdDel = document.createElement('td');
+    const btn = document.createElement('button');
+    btn.className = 'del-btn'; btn.textContent = '×'; btn.title = '删除';
+    btn.onclick = () => deleteRow(i);
+    tdDel.appendChild(btn);
+    tr.appendChild(tdDel);
+
+    const tdId = document.createElement('td');
+    tdId.textContent = r.id;
+    tr.appendChild(tdId);
+
+    FIELDS.forEach(f => {
+      const td = document.createElement('td');
+      td.setAttribute('contenteditable', 'true');
+      td.textContent = r[f];
+      td.onblur = function () { editCell(i, f, this); };
+      td.onkeydown = function (e) { if (e.key === 'Enter') { e.preventDefault(); this.blur(); } };
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+  const rc = document.getElementById('rowCount');
+  if (rc) rc.textContent = `${tableData.length} 行`;
+}
+
+function editCell(idx, field, el) {
+  let val = el.textContent.trim();
+  if (field === 'age') val = parseInt(val, 10) || 0;
+  if (tableData[idx][field] === val) return;
+  tableData[idx][field] = val;
+  refreshAll(false);
+}
+
+function addRow() {
+  const maxId = Math.max(...tableData.map(r => r.id), 0);
+  tableData.push({
+    id: maxId + 1, name: 'NewUser', age: 20,
+    email: 'new@mail.com', dept: pickDept() || '技术部',
+    phone: '138' + String(10000000 + maxId).slice(-8)
+  });
+  renderTable();
+  refreshAll(true);
+}
+
+function deleteRow(i) {
+  if (tableData.length <= 1) return;
+  tableData.splice(i, 1);
+  renderTable();
+  refreshAll(true);
+}
+
+function resetData() {
+  tableData = clone(INITIAL_DATA);
+  renderTable();
+  refreshAll(true);
+}
+
+/** C3：结构变化时同步下拉框；演示进度按索引键签名决定是否保留 */
+function refreshAll(structural) {
+  buildSourceTrees();
+  updateSecondarySelect();
+  updateCoveringSelect();
+  updateCompositeSelect();
+  renderAllScenes();
+  updateCoveringCompare();
+  renderScenarios();          // 场景卡片 SQL 由 failCtx() 生成，需随数据同步
+  lastSig = dataSignature();
+  Object.values(demos).forEach(d => {
+    // structural=true（增删行）或索引键已变化 → 树形改变，重置进度；否则保留当前位置
+    if (structural || !(d.current >= 0 && d.sig === lastSig)) d.reset();
+    else d.updateUI();
+  });
+}
+
+let lastSig = null;
+
+/**
+ * 下拉框统一用 DOM 构建：option.value 保存<strong>原始值</strong>，
+ * 避免 innerHTML + esc() 转义后回查 tableData 匹配不上（如 name 含 ' 或 <）。
+ */
+function fillSelect(sel, items, keep) {
+  if (!sel) return;
+  sel.textContent = '';
+  items.forEach(it => {
+    const o = document.createElement('option');
+    o.value = it.value;              // 原始值，供 buildSteps 直接查表
+    o.textContent = it.label;        // C2：走 textContent，天然安全
+    sel.appendChild(o);
+  });
+  if (keep != null && items.some(it => it.value === keep)) sel.value = keep;
+  else if (items.length) sel.value = items[0].value;
+}
+
+function updateSecondarySelect() {
+  const sel = document.getElementById('secondaryVal');
+  fillSelect(sel, sortedNames().map(n => {
+    const r = tableData.find(x => x.name === n);
+    return { value: n, label: `${n} (id=${r ? r.id : '?'})` };
+  }), sel ? sel.value : null);
+  if (sel) sel.onchange = () => { renderSecondaryScene(); demos.secondary.reset(); };
+}
+
+function updateCoveringSelect() {
+  const sel = document.getElementById('coveringVal');
+  fillSelect(sel, sortedNames().map(n => ({ value: n, label: n })), sel ? sel.value : null);
+  if (sel) sel.onchange = () => { renderCoveringScene(); updateCoveringCompare(); demos.covering.reset(); };
+}
+
+// =============================================================================
+//  初始化
+// =============================================================================
+function initApp() {
+  renderTable();
+  buildSourceTrees();
+  updateSecondarySelect();
+  updateCoveringSelect();
+  updateCompositeSelect();
+  renderAllScenes();
+  updateCoveringCompare();
+  renderScenarios();
+  renderOptCards('optGridBasic', optimizationBasic);
+  renderOptCards('optGridAdvanced', optimizationAdvanced);
+  lastSig = dataSignature();
+
+  // A1/A2/A3：每个 SVG 一个 Viewport，监听器幂等绑定
+  views['svg-bplus']     = new Viewport('svg-bplus',     'zoom-bplus',     { clickHighlight: true });
+  views['svg-clustered'] = new Viewport('svg-clustered', 'zoom-clustered');
+  views['svg-secondary'] = new Viewport('svg-secondary', 'zoom-secondary');
+  views['svg-covering']  = new Viewport('svg-covering',  'zoom-covering');
+  views['svg-composite'] = new Viewport('svg-composite', 'zoom-composite');
+  views['svg-failure']   = new Viewport('svg-failure',   'zoom-failure');
+
+  // Tab 切换
+  document.querySelectorAll('.nav-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById('panel-' + tab.dataset.tab)?.classList.add('active');
+    });
+  });
+
+  // 数据表变化时同步演示区的取值提示
+  document.getElementById('clusteredVal')?.addEventListener('input', () => demos.clustered.reset());
+}
+
+document.addEventListener('DOMContentLoaded', initApp);
+</script>
+</body>
+</html>
