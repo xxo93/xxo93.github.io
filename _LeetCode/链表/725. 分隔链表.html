@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>725. 分隔链表 · 详解版</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#08080f; --surface:#111827; --surface-2:#1a2234; --border:#1e293b;
+  --accent:#d4a843; --accent-glow:rgba(212,168,67,.18);
+  --ok:#34d399; --bad:#f87171; --next:#60a5fa;
+  --text:#e2e8f0; --text-muted:#64748b; --text-bright:#f8fafc;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+body{background:var(--bg); color:var(--text); font-family:'Noto Serif SC',serif; font-size:1rem; line-height:1.75; padding:2rem 1rem 4rem;}
+.container{max-width:1200px; margin:0 auto;}
+.tag{display:inline-block; font-family:'JetBrains Mono',monospace; font-size:.72rem; letter-spacing:.15em; color:var(--accent); border:1px solid var(--accent); padding:.25em .8em; border-radius:2px; margin-bottom:1rem; text-transform:uppercase;}
+h1{font-size:2.2rem; color:var(--text-bright); margin-bottom:.5rem; line-height:1.3;}
+.problem-desc{color:var(--text-muted); margin-bottom:1.5rem; max-width:900px;}
+.problem-desc code{font-family:'JetBrains Mono',monospace; font-size:.85em; background:var(--surface-2); padding:.1em .4em; border-radius:3px; color:var(--accent);}
+.formula-card{background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:0 8px 8px 0; padding:1rem 1.3rem; margin-bottom:1.5rem; font-family:'JetBrains Mono',monospace;}
+.formula-card .formula{font-size:1.05rem; color:var(--accent); margin-bottom:.3rem;}
+.formula-card .explain{font-size:.85rem; color:var(--text-muted); font-family:'Noto Serif SC',serif;}
+.input-section{background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:1.2rem 1.4rem; margin-bottom:1rem; display:flex; gap:.8rem; align-items:center; flex-wrap:wrap;}
+.input-section label{font-family:'JetBrains Mono',monospace; font-size:.82rem; color:var(--text-muted);}
+.input-section input{background:var(--surface-2); border:1px solid var(--border); color:var(--text-bright); font-family:'JetBrains Mono',monospace; font-size:.95rem; padding:.5em .8em; border-radius:4px;}
+.input-section input:focus{outline:none; border-color:var(--accent);}
+#inpArr{flex:2; min-width:280px;}
+#inpK{flex:0 0 80px;}
+.btn{font-family:'JetBrains Mono',monospace; font-size:.82rem; background:var(--surface-2); color:var(--text); border:1px solid var(--border); padding:.55em 1.2em; border-radius:4px; cursor:pointer; transition:all .15s;}
+.btn:hover{border-color:var(--accent); color:var(--accent);}
+.btn.primary{background:var(--accent); color:#000; border-color:var(--accent); font-weight:600;}
+.btn.primary:hover{background:var(--accent-glow); color:var(--accent);}
+.btn.sm{font-size:.72rem; padding:.4em .8em;}
+.example-btns{display:flex; align-items:center; gap:.6rem; margin-bottom:1.5rem; flex-wrap:wrap;}
+.example-label{font-family:'JetBrains Mono',monospace; font-size:.72rem; color:var(--text-muted); letter-spacing:.05em; white-space:nowrap;}
+.example-btn{font-size:.72rem; padding:.4em .8em; border-color:var(--surface-2); background:var(--surface-2); color:var(--text-muted);}
+.example-btn:hover{border-color:var(--accent); color:var(--accent); background:var(--accent-glow);}
+.legend{display:flex; gap:1.2rem; justify-content:center; margin-bottom:.8rem; flex-wrap:wrap; font-family:'JetBrains Mono',monospace; font-size:.76rem;}
+.legend-item{display:flex; align-items:center; gap:.4rem; color:var(--text-muted);}
+.legend-dot{width:12px; height:12px; border-radius:50%; border:2px solid;}
+.viz-card{background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:1rem; margin-bottom:1.2rem; overflow-x:auto;}
+svg{display:block; margin:0 auto; max-width:100%; height:auto;}
+.step-card{background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:1.3rem 1.5rem; margin-bottom:1rem;}
+.step-desc{font-size:1.05rem; margin-bottom:1rem; color:var(--text);}
+.step-desc code{font-family:'JetBrains Mono',monospace; font-size:.88em; background:var(--surface-2); padding:.1em .4em; border-radius:3px; color:var(--accent);}
+.step-desc .hl-ok{color:var(--ok); font-weight:600;}
+.step-desc strong{color:var(--text-bright);}
+.ctr-row{display:flex; gap:1rem; flex-wrap:wrap;}
+.ctr-card{flex:1; min-width:120px; background:var(--surface-2); border:1px solid var(--border); border-radius:6px; padding:.8rem 1rem;}
+.ctr-label{font-family:'JetBrains Mono',monospace; font-size:.72rem; color:var(--text-muted); letter-spacing:.05em;}
+.ctr-val{font-family:'JetBrains Mono',monospace; font-size:1.4rem; font-weight:700; color:var(--text-bright); margin-top:.2rem;}
+.ctr-val.pop{animation:pop .3s;}
+.ctr-val.accent{color:var(--accent);} .ctr-val.next{color:var(--next);}
+.answer-banner{margin-top:1rem; padding:.9rem 1.2rem; border-radius:6px; background:var(--accent-glow); border:1px solid var(--accent); font-family:'JetBrains Mono',monospace; font-size:.95rem; color:var(--accent); display:none;}
+.answer-banner.show{display:block; animation:fadeUp .4s;}
+.controls{display:flex; gap:.6rem; justify-content:center; margin:1.2rem 0 .8rem; flex-wrap:wrap;}
+.progress{display:flex; gap:.35rem; justify-content:center; flex-wrap:wrap; margin-bottom:.8rem;}
+.dot{width:9px; height:9px; border-radius:50%; background:var(--surface-2); cursor:pointer; transition:all .2s; border:none; padding:0;}
+.dot.visited{background:rgba(212,168,67,.4);}
+.dot.current{background:var(--accent); transform:scale(1.5); box-shadow:0 0 8px var(--accent-glow);}
+.kbd-hint{text-align:center; font-family:'JetBrains Mono',monospace; font-size:.72rem; color:var(--text-muted); margin-bottom:1.5rem;}
+.kbd-hint kbd{background:var(--surface-2); border:1px solid var(--border); padding:.1em .4em; border-radius:3px; margin:0 .15em;}
+.log-card{background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:1.2rem 1.4rem; margin-bottom:1.2rem; max-height:280px; overflow-y:auto;}
+.log-card h3{font-family:'JetBrains Mono',monospace; font-size:.9rem; color:var(--accent); letter-spacing:.08em; margin-bottom:.8rem;}
+.log-entry{font-family:'JetBrains Mono',monospace; font-size:.78rem; padding:.35rem 0; border-bottom:1px dashed var(--border); color:var(--text-muted);}
+.log-entry:last-child{border-bottom:none;}
+.log-step{color:var(--accent); margin-right:.5em;}
+.log-stats{color:var(--text);}
+.algo-card{background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:1.5rem 1.8rem;}
+.algo-card h2{font-size:1.35rem; color:var(--text-bright); margin:1.4rem 0 .7rem;}
+.algo-card h2:first-child{margin-top:0;}
+.algo-card h3{font-family:'Noto Serif SC',serif; font-size:1.1rem; color:var(--accent); margin:1.2rem 0 .5rem;}
+.algo-card p{margin-bottom:.8rem; color:var(--text);}
+.algo-card ul, .algo-card ol{margin-left:1.5rem; margin-bottom:.8rem;}
+.algo-card li{margin-bottom:.35rem;}
+.algo-card strong{color:var(--text-bright);}
+.algo-card code{font-family:'JetBrains Mono',monospace; font-size:.88em; background:var(--surface-2); padding:.1em .4em; border-radius:3px; color:var(--accent);}
+.key-insight{background:rgba(212,168,67,.07); border-left:3px solid var(--accent); padding:.9rem 1.2rem; border-radius:0 6px 6px 0; margin:1rem 0;}
+.key-insight strong{color:var(--accent);}
+.example-table{width:100%; border-collapse:collapse; margin:.8rem 0; font-family:'JetBrains Mono',monospace; font-size:.82rem;}
+.example-table th, .example-table td{border:1px solid var(--border); padding:.5em .8em; text-align:center;}
+.example-table th{background:var(--surface-2); color:var(--accent);}
+.code-block{background:#0d1117; border:1px solid var(--border); border-radius:6px; padding:1.1rem 1.3rem; overflow-x:auto; margin:.8rem 0; font-family:'JetBrains Mono',monospace; font-size:.82rem; line-height:1.7; white-space:pre;}
+.code-block .ck{color:#ff7b72;} .code-block .cf{color:#d2a8ff;}
+.code-block .cs{color:#7ee787;} .code-block .cc{color:#8b949e; font-style:italic;}
+.code-block .cn{color:#79c0ff;} .code-block .ct{color:#ffa657;}
+.complexity{font-family:'JetBrains Mono',monospace; font-size:.85rem; background:var(--surface-2); padding:.9rem 1.1rem; border-radius:6px; color:var(--text); border-left:3px solid var(--accent); margin-top:1rem;}
+.node-text{font-family:'JetBrains Mono',monospace; font-weight:700; font-size:14px; fill:var(--text-bright); text-anchor:middle; dominant-baseline:central;}
+.ptr-label{font-family:'JetBrains Mono',monospace; font-weight:700; font-size:11px; text-anchor:middle;}
+.row-label{font-family:'JetBrains Mono',monospace; font-weight:700; font-size:13px;}
+@keyframes fadeUp{from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);}}
+@keyframes pop{0%{transform:scale(1);} 50%{transform:scale(1.25);} 100%{transform:scale(1);}}
+@media(max-width:640px){ h1{font-size:1.5rem;} .ctr-card{min-width:120px;} }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="tag">LeetCode · 725 · 链表 · 中等</div>
+  <h1>分隔链表</h1>
+  <p class="problem-desc">
+    给定链表头节点 <code>head</code> 和整数 <code>k</code>，把链表分成 <code>k</code> 个连续部分。
+    每部分长度尽量相等（差不超过 1，前面的更长），前面部分 ≥ 后面部分。返回长度为 k 的数组。
+  </p>
+
+  <div class="formula-card">
+    <div class="formula">n = 链表长度　avg = n // k　前 n % k 段长度 = avg+1，其余 = avg</div>
+    <div class="explain">先数总长，再按"整除 + 余数分配"切分，最后一段尾节点指空。</div>
+  </div>
+
+  <div class="input-section">
+    <label>head =</label>
+    <input id="inpArr" type="text" value="1,2,3,4,5,6,7,8,9,10">
+    <label style="margin-left:.5rem">k =</label>
+    <input id="inpK" type="text" value="3">
+    <button class="btn primary" onclick="regenerate()">生成演示</button>
+  </div>
+
+  <div class="example-btns">
+    <span class="example-label">示例用例：</span>
+    <button class="btn sm example-btn" onclick="loadExample(1)">10节点, k=3 → [4],[3],[3]</button>
+    <button class="btn sm example-btn" onclick="loadExample(2)">[1,2,3], k=5 → [1],[2],[3],[],[]</button>
+    <button class="btn sm example-btn" onclick="loadExample(3)">10节点, k=4 → [3],[3],[2],[2]</button>
+    <button class="btn sm example-btn" onclick="loadExample(4)">空, k=3 → [[],[],[]]</button>
+  </div>
+
+  <div class="legend">
+    <span class="legend-item"><span class="legend-dot" style="border-color:var(--accent);background:var(--accent-glow)"></span> 当前正在切的段</span>
+    <span class="legend-item"><span class="legend-dot" style="border-color:var(--ok);background:rgba(52,211,153,.15)"></span> 已切走的段</span>
+    <span class="legend-item"><span class="legend-dot" style="border-color:var(--next);background:rgba(96,165,255,.15)"></span> 剩余未切</span>
+  </div>
+
+  <div class="viz-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;padding:0 .5rem">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--text-muted)">🖱️ 滚轮缩放 · 拖拽平移</span>
+      <span style="display:flex;gap:.5rem;align-items:center">
+        <span id="zoomBadge" style="font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--accent)">100%</span>
+        <button class="btn sm" onclick="resetView()">↻ 重置视图</button>
+      </span>
+    </div>
+    <svg id="svgViz" viewBox="0 0 900 400" style="cursor:grab;user-select:none"></svg>
+  </div>
+
+  <div class="step-card">
+    <div class="step-desc" id="stepDesc">点击「下一步」开始演示。</div>
+    <div class="ctr-row">
+      <div class="ctr-card"><div class="ctr-label">总长度 n</div><div class="ctr-val" id="ctrN">0</div></div>
+      <div class="ctr-card"><div class="ctr-label">avg / 前 x 段+1</div><div class="ctr-val accent" id="ctrAvg">—</div></div>
+      <div class="ctr-card"><div class="ctr-label">当前段 i</div><div class="ctr-val next" id="ctrI">0</div></div>
+      <div class="ctr-card"><div class="ctr-label">本段大小</div><div class="ctr-val" id="ctrSize">—</div></div>
+    </div>
+    <div class="answer-banner" id="answerBanner"></div>
+  </div>
+
+  <div class="controls">
+    <button class="btn" onclick="prevStep()">← 上一步</button>
+    <button class="btn primary" id="playBtn" onclick="togglePlay()">▶ 自动播放</button>
+    <button class="btn" onclick="nextStep()">下一步 →</button>
+    <button class="btn" onclick="resetDemo()">重置</button>
+  </div>
+  <div class="progress" id="progress"></div>
+  <div class="kbd-hint">
+    <kbd>←</kbd> 上一步 <kbd>→</kbd> 下一步 <kbd>Space</kbd> 播放/暂停 <kbd>F8</kbd> 自动播放
+  </div>
+
+  <div class="log-card">
+    <h3>操作日志</h3>
+    <div id="logBox"></div>
+  </div>
+
+  <div class="algo-card">
+    <h2>一、思路：先数长度，再按"整除+余数"分配</h2>
+    <div class="key-insight">
+      <strong>核心公式</strong>：n 个节点分 k 段，平均每段 n/k 个。如果 n 不能整除 k，余数 r 意味着前 r 段要多 1 个节点（题目要求"前面的更长"）。
+      <br>即：<code>avg = n // k</code>，<code>前 r 段长度 = avg + 1</code>，其余段 = avg。
+    </div>
+    <p><strong>切分过程</strong>：用指针 curr 从 head 出发，对每一段：</p>
+    <ol>
+      <li>记录 parts[i] = curr（本段头节点）；</li>
+      <li>沿着 curr 走 part_size - 1 步，到达本段尾节点；</li>
+      <li>保存 next_head = curr.next；</li>
+      <li>把 curr.next 置空（剪断尾节点，否则会串到下一段）；</li>
+      <li>curr = next_head，进入下一段。</li>
+    </ol>
+
+    <h2>二、手动推导 [1..10], k=3</h2>
+    <table class="example-table">
+      <thead><tr><th>段 i</th><th>大小</th><th>包含节点</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td>0</td><td>4</td><td>[1,2,3,4]</td><td>i &lt; r=1，多 1 个</td></tr>
+        <tr><td>1</td><td>3</td><td>[5,6,7]</td><td>i ≥ r，取 avg=3</td></tr>
+        <tr><td>2</td><td>3</td><td>[8,9,10]</td><td>i ≥ r，取 avg=3</td></tr>
+      </tbody>
+    </table>
+
+    <h2>三、带详细注释的 Python 代码</h2>
+    <div class="code-block"><span class="ck">class</span> <span class="cf">Solution</span>:
+    <span class="ck">def</span> <span class="ct">splitListToParts</span>(self, head, k):
+        <span class="cc"># 第 1 步：数链表长度 n</span>
+        n = <span class="cn">0</span>
+        node = head
+        <span class="ck">while</span> node:
+            n += <span class="cn">1</span>
+            node = node.next
+
+        avg = n // k    <span class="cc"># 每段至少 avg 个</span>
+        r = n % k       <span class="cc"># 前 r 段多 1 个</span>
+
+        parts = [None] * k
+        curr = head
+        <span class="ck">for</span> i <span class="ck">in</span> range(k):
+            parts[i] = curr
+            <span class="cc"># 本段长度：前 r 段多 1</span>
+            size = avg + (<span class="cn">1</span> <span class="ck">if</span> i &lt; r <span class="ck">else</span> <span class="cn">0</span>)
+            <span class="cc"># 走到本段尾节点（size-1 步）</span>
+            <span class="ck">for</span> _ <span class="ck">in</span> range(size - <span class="cn">1</span>):
+                <span class="ck">if</span> curr: curr = curr.next
+            <span class="cc"># 剪断尾节点，否则会串到下一段</span>
+            <span class="ck">if</span> curr:
+                next_head = curr.next
+                curr.next = <span class="cn">None</span>
+                curr = next_head
+        <span class="ck">return</span> parts</div>
+
+    <h2>四、常见追问</h2>
+    <ul>
+      <li><strong>为什么必须 curr.next = None？</strong>链表是按引用连接的，不剪断尾节点的话，parts[0] 会一路串到 parts[1]、parts[2]……返回的前几段会变成完整链表。</li>
+      <li><strong>为什么 k &gt; n 时返回空段？</strong>n=3, k=5 时 avg=0, r=3，前 3 段各 1 个节点，后 2 段 size=0，parts[i] = curr（此时 curr 已为 null），自然就是 null。</li>
+      <li><strong>为什么要先遍历一次数长度？</strong>因为不知道每段该切多长，必须先知道总 n。两趟遍历：一趟数长度，一趟切分。</li>
+    </ul>
+
+    <h2>五、复杂度</h2>
+    <div class="complexity">
+      <strong>时间 O(n)</strong>：数长度一趟 + 切分一趟，每个节点访问常数次。<br>
+      <strong>空间 O(k)</strong>：返回长度为 k 的数组（不算输出空间则 O(1)）。
+    </div>
+  </div>
+</div>
+
+<script>
+const EXAMPLES = [
+  { arr: [1,2,3,4,5,6,7,8,9,10], k: 3 },
+  { arr: [1,2,3], k: 5 },
+  { arr: [1,2,3,4,5,6,7,8,9,10], k: 4 },
+  { arr: [], k: 3 },
+];
+let arr=[], k=3, steps=[], curStep=-1, timer=null;
+
+function loadExample(n){
+  const ex=EXAMPLES[n-1];
+  document.getElementById('inpArr').value=ex.arr.join(',');
+  document.getElementById('inpK').value=ex.k;
+  regenerate();
+}
+function parseArr(){
+  const s=document.getElementById('inpArr').value.trim();
+  return s.split(/[,，\s]+/).filter(x=>x!=='').map(Number).filter(x=>!isNaN(x));
+}
+
+function genSteps(a, kk){
+  const st=[];
+  const n=a.length;
+  const avg = Math.floor(n/kk);
+  const r = n%kk;
+  const parts = []; // 已切出的段，每段是数组
+  let cur = 0; // 当前指针（在原数组的索引）
+
+  st.push({
+    type:'count',
+    desc:`第 1 步：遍历链表数长度。<code>n = ${n}</code>，<code>avg = n // k = ${avg}</code>，<code>r = n % k = ${r}</code>。前 ${r} 段长度 = ${avg+1}，其余 = ${avg}。`,
+    cur: cur, parts: parts.map(p=>p.slice()), curPart: -1, curSize: 0, answer: null
+  });
+
+  for(let i=0;i<kk;i++){
+    const size = avg + (i<r ? 1 : 0);
+    if(size===0){
+      parts.push([]);
+      st.push({
+        type:'empty',
+        desc:`第 ${i+1} 段：size = ${avg}（i≥r），但 curr 已为 null，本段为空。`,
+        cur: cur, parts: parts.map(p=>p.slice()), curPart: i, curSize: 0, answer: null
+      });
+      continue;
+    }
+    if(cur >= n) break;
+    const part = a.slice(cur, cur+size);
+    st.push({
+      type:'cut',
+      desc:`第 ${i+1} 段：size = <code>${size}</code>${i<r?'（i&lt;r，多 1 个）':''}。从 <code>cur=${a[cur]}</code> 开始切 ${size} 个节点：<code>[${part.join(',')}]</code>，尾节点 <code>${part[part.length-1]}</code> 指向 null。`,
+      cur: cur+size, parts: parts.map(p=>p.slice()).concat([part]), curPart: i, curSize: size, answer: null
+    });
+    parts.push(part);
+    cur += size;
+  }
+
+  const result = parts.map(p=>`[${p.join(',')}]`);
+  st.push({
+    type:'done',
+    desc:`切分完成。<span class="hl-ok">返回数组 = [${result.join(', ')}]</span>。`,
+    cur: cur, parts: parts.map(p=>p.slice()), curPart: -1, curSize: 0, answer: result
+  });
+
+  return st;
+}
+
+// viewport
+let vp={k:1,tx:0,ty:0};
+function applyVP(){
+  const g=document.getElementById('viewport');
+  if(g) g.setAttribute('transform',`translate(${vp.tx},${vp.ty}) scale(${vp.k})`);
+  document.getElementById('zoomBadge').textContent=Math.round(vp.k*100)+'%';
+}
+function resetView(){
+  vp={k:1,tx:0,ty:0};
+  applyVP();
+}
+
+const SVG_NS='http://www.w3.org/2000/svg';
+function el(tag,attrs){
+  const e=document.createElementNS(SVG_NS,tag);
+  for(const k in attrs) e.setAttribute(k,attrs[k]);
+  return e;
+}
+
+function renderSVG(s){
+  const svg=document.getElementById('svgViz');
+  svg.innerHTML='';
+  const R=22, gap=48;
+  const n=arr.length;
+
+  // 计算内容宽度：原链表行 + 输出段行
+  const maxPartLen = Math.max(1, ...s.parts.map(p=>p.length), 0);
+  const vbW = Math.max(700, 100 + Math.max(n, maxPartLen)*gap + 60);
+  const vbH = 100 + s.parts.length*42 + 60;
+  svg.setAttribute('viewBox',`0 0 ${vbW} ${vbH}`);
+  svg.setAttribute('width', vbW);
+
+  svg.appendChild(el('defs',{}));
+  const g=el('g',{id:'viewport'});
+  svg.appendChild(g);
+
+  const startX=80;
+  const yTop=60;
+
+  // 原链表行
+  const tTop=el('text',{x:20,y:yTop+5,class:'row-label',fill:'#64748b'});
+  tTop.textContent='原链表'; g.appendChild(tTop);
+
+  if(n===0){
+    const t=el('text',{x:startX,y:yTop+5,fill:'#64748b','font-family':'JetBrains Mono,monospace','font-size':13});
+    t.textContent='（空链表）'; g.appendChild(t);
+  } else {
+    const xs=arr.map((_,i)=>startX+i*gap);
+    // 边
+    for(let i=0;i<n-1;i++){
+      g.appendChild(el('line',{x1:xs[i]+R,y1:yTop,x2:xs[i+1]-R,y2:yTop,stroke:'#4a5568','stroke-width':1.2}));
+    }
+    // 节点
+    arr.forEach((v,i)=>{
+      const isCut = i < s.cur;
+      const isCurrent = i >= s.cur && s.curPart >= 0;
+      const c=el('circle',{
+        cx:xs[i],cy:yTop,r:R,
+        fill: isCut?'rgba(52,211,153,.12)':(isCurrent?'rgba(212,168,67,.25)':'#1a2234'),
+        stroke: isCut?'#34d399':(isCurrent?'#d4a843':'#353850'),
+        'stroke-width': isCut||isCurrent?2:1.5,
+        opacity: isCut?0.5:1
+      });
+      g.appendChild(c);
+      const t=el('text',{x:xs[i],y:yTop,class:'node-text'});
+      t.textContent=v; g.appendChild(t);
+    });
+    // curr 指针
+    if(s.cur < n){
+      const x=xs[s.cur];
+      g.appendChild(el('path',{d:`M ${x-6} ${yTop+R+4} L ${x+6} ${yTop+R+4} L ${x} ${yTop+R+11} z`,fill:'#60a5fa'}));
+      const t=el('text',{x:x,y:yTop+R+22,class:'ptr-label',fill:'#60a5fa'});
+      t.textContent='curr'; g.appendChild(t);
+    }
+  }
+
+  // 输出段行
+  s.parts.forEach((part, idx)=>{
+    const y = yTop + 100 + idx*42;
+    const lbl=el('text',{x:20,y:y+5,class:'row-label',fill: idx===s.curPart?'#d4a843':'#64748b'});
+    lbl.textContent=`parts[${idx}]`; g.appendChild(lbl);
+    if(part.length===0){
+      const t=el('text',{x:startX,y:y+5,fill:'#64748b','font-family':'JetBrains Mono,monospace','font-size':12,'font-style':'italic'});
+      t.textContent='null'; g.appendChild(t);
+    } else {
+      part.forEach((v,i)=>{
+        const x=startX+i*gap;
+        const c=el('circle',{
+          cx:x,cy:y,r:R,
+          fill: idx===s.curPart?'rgba(212,168,67,.25)':'rgba(52,211,153,.12)',
+          stroke: idx===s.curPart?'#d4a843':'#34d399',
+          'stroke-width':1.8
+        });
+        g.appendChild(c);
+        const t=el('text',{x:x,y:y,class:'node-text'});
+        t.textContent=v; g.appendChild(t);
+        if(i<part.length-1){
+          g.appendChild(el('line',{x1:x+R,y1:y,x2:x+gap-R,y2:y,stroke:'#34d399','stroke-width':1.2}));
+        }
+      });
+    }
+  });
+
+  applyVP();
+}
+
+function setCtr(id,val){
+  const e=document.getElementById(id);
+  if(e.textContent!==String(val)){ e.textContent=val; e.classList.remove('pop'); void e.offsetWidth; e.classList.add('pop'); }
+}
+
+function update(idx){
+  curStep=idx;
+  const s=steps[idx];
+  document.getElementById('stepDesc').innerHTML=s.desc;
+  renderSVG(s);
+
+  const n=arr.length;
+  const avg = Math.floor(n/k);
+  const r = n%k;
+  setCtr('ctrN', n);
+  setCtr('ctrAvg', `${avg} / ${r}`);
+  setCtr('ctrI', s.curPart+1);
+  setCtr('ctrSize', s.curSize);
+
+  const banner=document.getElementById('answerBanner');
+  if(s.answer){
+    banner.textContent=`✅ 返回数组 = [${s.answer.join(', ')}]`;
+    banner.classList.add('show');
+  } else banner.classList.remove('show');
+
+  const dots=document.getElementById('progress');
+  dots.innerHTML='';
+  steps.forEach((_,i)=>{
+    const d=document.createElement('button');
+    d.className='dot';
+    if(i<idx) d.classList.add('visited');
+    if(i===idx) d.classList.add('current');
+    d.onclick=()=>goTo(i);
+    dots.appendChild(d);
+  });
+
+  const logBox=document.getElementById('logBox');
+  const entry=document.createElement('div');
+  entry.className='log-entry';
+  const sd=s.desc.replace(/<[^>]+>/g,'').slice(0,120);
+  entry.innerHTML=`<span class="log-step">[步骤 ${idx+1}]</span><span class="log-stats">${sd}</span>`;
+  logBox.appendChild(entry);
+  logBox.scrollTop=logBox.scrollHeight;
+}
+
+function nextStep(){ if(curStep<steps.length-1) update(curStep+1); else stopPlay(); }
+function prevStep(){ if(curStep>0) update(curStep-1); }
+function goTo(i){ if(i>=0&&i<steps.length) update(i); }
+function togglePlay(){ timer?stopPlay():startPlay(); }
+function startPlay(){
+  document.getElementById('playBtn').textContent='⏸ 暂停';
+  timer=setInterval(()=>{ if(curStep>=steps.length-1){stopPlay();return;} nextStep(); },1200);
+}
+function stopPlay(){ clearInterval(timer); timer=null; document.getElementById('playBtn').textContent='▶ 自动播放'; }
+function resetDemo(){ stopPlay(); document.getElementById('logBox').innerHTML=''; if(steps.length>0) update(0); }
+function regenerate(){
+  stopPlay();
+  arr=parseArr();
+  k=parseInt(document.getElementById('inpK').value)||1;
+  steps=genSteps(arr,k);
+  document.getElementById('logBox').innerHTML='';
+  resetView();
+  update(0);
+}
+
+document.addEventListener('keydown',e=>{
+  if(document.activeElement.tagName==='INPUT') return;
+  if(e.key==='ArrowLeft') prevStep();
+  else if(e.key==='ArrowRight') nextStep();
+  else if(e.key===' '){ e.preventDefault(); togglePlay(); }
+  else if(e.key==='F8'){ e.preventDefault(); togglePlay(); }
+});
+
+// SVG 交互
+(function(){
+  const svg=document.getElementById('svgViz');
+  svg.addEventListener('wheel',e=>{
+    e.preventDefault();
+    const rect=svg.getBoundingClientRect();
+    const mx=(e.clientX-rect.left)/rect.width*parseFloat(svg.viewBox.baseVal.width);
+    const my=(e.clientY-rect.top)/rect.height*parseFloat(svg.viewBox.baseVal.height);
+    const factor=e.deltaY<0?1.15:1/1.15;
+    const newK=Math.min(3,Math.max(.3,vp.k*factor));
+    vp.tx=mx-(mx-vp.tx)*(newK/vp.k);
+    vp.ty=my-(my-vp.ty)*(newK/vp.k);
+    vp.k=newK; applyVP();
+  },{passive:false});
+  let drag=null;
+  svg.addEventListener('pointerdown',e=>{ drag={x:e.clientX,y:e.clientY}; svg.style.cursor='grabbing'; svg.setPointerCapture(e.pointerId); });
+  svg.addEventListener('pointermove',e=>{
+    if(!drag) return;
+    const rect=svg.getBoundingClientRect();
+    const vw=parseFloat(svg.viewBox.baseVal.width);
+    const vh=parseFloat(svg.viewBox.baseVal.height);
+    vp.tx+=(e.clientX-drag.x)/rect.width*vw;
+    vp.ty+=(e.clientY-drag.y)/rect.height*vh;
+    drag.x=e.clientX; drag.y=e.clientY;
+    applyVP();
+  });
+  svg.addEventListener('pointerup',()=>{ drag=null; svg.style.cursor='grab'; });
+  svg.addEventListener('pointercancel',()=>{ drag=null; svg.style.cursor='grab'; });
+})();
+
+regenerate();
+</script>
+</body>
+</html>

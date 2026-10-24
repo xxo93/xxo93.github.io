@@ -1,0 +1,3295 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MySQL 底层原理：MVCC 与事务锁图解</title>
+<style>
+/* ============================================================
+   SECTION: design-tokens 设计变量
+   ============================================================ */
+:root{
+  --bg:#f4f6fb;
+  --bg-deep:#0f172a;
+  --card:#ffffff;
+  --ink:#1e293b;
+  --ink-soft:#475569;
+  --ink-mute:#94a3b8;
+  --line:#e2e8f0;
+  --brand:#0f6e8c;
+  --brand-soft:#e6f4f8;
+  --accent:#f29111;
+  --accent-soft:#fef4e6;
+  --blue:#2563eb;
+  --blue-soft:#e8efff;
+  --green:#0f8a5f;
+  --green-soft:#e6f6ef;
+  --red:#dc2626;
+  --red-soft:#fdeaea;
+  --amber:#b45309;
+  --amber-soft:#fdf3e0;
+  --purple:#7c3aed;
+  --purple-soft:#f1ebff;
+  --code-bg:#0f172a;
+  --code-ink:#e2e8f0;
+  --r-lg:18px;
+  --r-md:12px;
+  --r-sm:8px;
+  --shadow:0 1px 3px rgba(15,23,42,.06),0 8px 24px rgba(15,23,42,.06);
+  --mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+}
+
+/* ============================================================
+   SECTION: base 基础排版
+   ============================================================ */
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  font-family:system-ui,-apple-system,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  background:var(--bg);
+  color:var(--ink);
+  line-height:1.75;
+  font-size:16px;
+}
+h1,h2,h3,h4{line-height:1.35;margin:0;font-weight:700}
+p{margin:0 0 14px}
+p:last-child{margin-bottom:0}
+strong{font-weight:700;color:var(--ink)}
+em{font-style:normal;background:linear-gradient(transparent 62%,#ffe9b8 62%);padding:0 2px;font-weight:600}
+ul,ol{margin:0 0 14px;padding-left:22px}
+li{margin-bottom:7px}
+li::marker{color:var(--brand)}
+a{color:var(--brand)}
+code{font-family:var(--mono);font-size:.88em;background:#eef2f7;color:#0f4c63;padding:2px 6px;border-radius:5px;border:1px solid #dfe6ef}
+
+/* ============================================================
+   SECTION: layout 页面骨架
+   ============================================================ */
+.wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+
+.topbar{
+  background:linear-gradient(135deg,#0b3d52 0%,#0f6e8c 55%,#1a8fa8 100%);
+  color:#fff;
+  padding:38px 0 30px;
+  position:relative;
+  overflow:hidden;
+}
+.topbar::after{
+  content:"";position:absolute;right:-70px;top:-70px;width:280px;height:280px;
+  background:radial-gradient(circle,rgba(242,145,17,.35),transparent 68%);
+}
+.topbar .wrap{position:relative;z-index:1}
+.eyebrow{
+  display:inline-block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+  background:rgba(255,255,255,.16);padding:5px 12px;border-radius:999px;margin-bottom:14px;
+  border:1px solid rgba(255,255,255,.22);
+}
+.topbar h1{font-size:clamp(24px,4.4vw,38px);letter-spacing:-.5px;margin-bottom:10px}
+.topbar .lede{color:rgba(255,255,255,.86);font-size:clamp(14px,2vw,16px);max-width:70ch;margin:0}
+.topbar .meta-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.chip{
+  font-size:12.5px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.24);
+  padding:4px 11px;border-radius:999px;color:#fff;
+}
+
+/* SECTION: tabs 页签导航 */
+.tabbar{
+  position:sticky;top:0;z-index:50;background:rgba(255,255,255,.96);
+  backdrop-filter:saturate(180%) blur(8px);border-bottom:1px solid var(--line);
+  box-shadow:0 1px 0 rgba(15,23,42,.03);
+}
+.tabscroll{display:flex;gap:6px;overflow-x:auto;padding:10px 20px;scrollbar-width:thin}
+.tabscroll::-webkit-scrollbar{height:5px}
+.tabscroll::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:99px}
+.tabbtn{
+  flex:0 0 auto;display:flex;align-items:center;gap:8px;
+  background:transparent;border:1px solid transparent;border-radius:999px;
+  padding:8px 16px;font-size:14.5px;font-weight:600;color:var(--ink-soft);
+  cursor:pointer;transition:.18s;white-space:nowrap;font-family:inherit;
+}
+.tabbtn:hover{background:var(--brand-soft);color:var(--brand)}
+.tabbtn .num{
+  display:grid;place-items:center;width:20px;height:20px;border-radius:50%;
+  background:#e2e8f0;color:var(--ink-soft);font-size:11.5px;font-weight:700;transition:.18s;
+}
+.tabbtn[aria-selected="true"]{background:var(--brand);color:#fff;box-shadow:0 4px 12px rgba(15,110,140,.3)}
+.tabbtn[aria-selected="true"] .num{background:rgba(255,255,255,.24);color:#fff}
+.tabbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* SECTION: panel 内容面板 */
+main{padding:34px 0 60px}
+.panel{display:none;animation:fade .32s ease}
+.panel.is-active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+.sec-head{margin:38px 0 18px;padding-top:26px;border-top:1px dashed var(--line)}
+.panel > .sec-head:first-child{margin-top:0;padding-top:0;border-top:0}
+.sec-head .kicker{font-size:12px;font-weight:700;letter-spacing:.1em;color:var(--accent);text-transform:uppercase;margin-bottom:6px}
+.sec-head h2{font-size:clamp(20px,3.2vw,26px);margin-bottom:8px}
+.sec-head h3{font-size:19px;margin-top:26px;margin-bottom:10px;color:var(--brand)}
+.sec-head .sub{color:var(--ink-soft);font-size:15px;max-width:74ch;margin:0}
+
+/* ============================================================
+   SECTION: card 卡片与内容块
+   ============================================================ */
+.card{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);
+  padding:24px;margin-bottom:18px;box-shadow:var(--shadow);
+}
+.card > h3:first-child{margin-top:0;font-size:18px;color:var(--ink);margin-bottom:12px}
+.card > h4:first-child{margin-top:0;font-size:16px;margin-bottom:10px}
+
+.grid{display:grid;gap:16px}
+.grid.c2{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+.grid.c3{grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+.grid.c4{grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}
+
+/* SECTION: analogy 生活化类比 */
+.analogy{
+  background:linear-gradient(180deg,#fffaf0,#fef6e7);
+  border:1px solid #f6e0b5;border-left:4px solid var(--accent);
+  border-radius:var(--r-md);padding:16px 18px;margin:16px 0;
+}
+.analogy .tag{
+  display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;
+  color:var(--amber);letter-spacing:.06em;margin-bottom:7px;
+}
+.analogy .tag::before{content:"🏠";font-size:14px}
+.analogy p{font-size:14.8px;color:#5c4a2a;margin:0}
+
+/* SECTION: keypoint 要点提示 */
+.keypoint{
+  background:var(--blue-soft);border:1px solid #c7d8fb;border-left:4px solid var(--blue);
+  border-radius:var(--r-md);padding:15px 18px;margin:16px 0;
+}
+.keypoint .tag{display:inline-block;font-size:12px;font-weight:700;color:#1e40af;letter-spacing:.06em;margin-bottom:6px}
+.keypoint p{font-size:14.8px;color:#1e3a5f;margin:0}
+
+.warn{
+  background:var(--red-soft);border:1px solid #f5c9c9;border-left:4px solid var(--red);
+  border-radius:var(--r-md);padding:15px 18px;margin:16px 0;
+}
+.warn .tag{display:inline-block;font-size:12px;font-weight:700;color:#991b1b;letter-spacing:.06em;margin-bottom:6px}
+.warn p{font-size:14.8px;color:#6b2020;margin:0}
+
+/* SECTION: sql 代码块 */
+.sql{
+  background:var(--code-bg);border-radius:var(--r-md);padding:16px 18px;margin:14px 0;
+  overflow-x:auto;border:1px solid #1e293b;
+}
+.sql pre{
+  margin:0;font-family:var(--mono);font-size:13.4px;line-height:1.72;color:var(--code-ink);
+  white-space:pre;tab-size:2;
+}
+.sql .kw{color:#7dd3fc;font-weight:600}
+.sql .fn{color:#fbbf24}
+.sql .str{color:#86efac}
+.sql .num{color:#f9a8d4}
+.sql .cm{color:#64748b;font-style:italic}
+.sql .tbl{color:#c4b5fd}
+.sql-label{
+  display:inline-block;font-size:11.5px;font-weight:700;letter-spacing:.08em;
+  color:#94a3b8;margin-bottom:8px;text-transform:uppercase;
+}
+
+/* SECTION: table 表格 */
+.tblwrap{overflow-x:auto;margin:16px 0;border:1px solid var(--line);border-radius:var(--r-md)}
+table{border-collapse:collapse;width:100%;font-size:14.4px;min-width:520px;background:#fff}
+caption{caption-side:top;text-align:left;font-size:13px;color:var(--ink-mute);padding:0 0 8px}
+th,td{padding:11px 14px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+thead th{background:#f1f5f9;font-weight:700;color:var(--ink);border-bottom:2px solid #cbd5e1;white-space:nowrap}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover{background:#fafcff}
+td code{font-size:13px}
+.yes{color:var(--green);font-weight:700}
+.no{color:var(--red);font-weight:700}
+.mid{color:var(--amber);font-weight:700}
+
+/* SECTION: badge 标记 */
+.badge{
+  display:inline-block;font-size:11.5px;font-weight:700;padding:2px 9px;border-radius:999px;
+  letter-spacing:.03em;white-space:nowrap;
+}
+.b-blue{background:var(--blue-soft);color:#1e40af}
+.b-green{background:var(--green-soft);color:#0b6b4a}
+.b-red{background:var(--red-soft);color:#991b1b}
+.b-amber{background:var(--amber-soft);color:#92400e}
+.b-purple{background:var(--purple-soft);color:#5b21b6}
+.b-gray{background:#eef2f7;color:#475569}
+
+/* SECTION: summary 章节小结 */
+.summary{
+  background:linear-gradient(135deg,#0b3d52,#0f6e8c);color:#e8f6fa;
+  border-radius:var(--r-lg);padding:26px;margin:30px 0 8px;position:relative;overflow:hidden;
+}
+.summary::before{
+  content:"";position:absolute;left:-40px;bottom:-60px;width:200px;height:200px;
+  background:radial-gradient(circle,rgba(242,145,17,.28),transparent 70%);
+}
+.summary > *{position:relative;z-index:1}
+.summary h3{color:#fff;font-size:18px;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.summary h3::before{content:"✦";color:var(--accent)}
+.summary ol{padding-left:20px;margin:0}
+.summary li{font-size:14.8px;color:#d3ecf3;margin-bottom:9px}
+.summary li::marker{color:var(--accent)}
+.summary strong{color:#fff}
+.summary code{background:rgba(255,255,255,.13);color:#cdeef7;border-color:rgba(255,255,255,.16)}
+
+/* ============================================================
+   SECTION: interactive 交互组件通用
+   ============================================================ */
+.demo{
+  background:#fbfcfe;border:1px solid var(--line);border-radius:var(--r-lg);
+  padding:20px;margin:18px 0;
+}
+.demo-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.demo-title{font-size:14px;font-weight:700;color:var(--brand);display:flex;align-items:center;gap:7px}
+.demo-title::before{content:"▶";font-size:10px;color:var(--accent)}
+.demo-hint{font-size:12.6px;color:var(--ink-mute)}
+
+.btn{
+  font-family:inherit;font-size:13.6px;font-weight:600;padding:8px 16px;border-radius:var(--r-sm);
+  border:1px solid var(--line);background:#fff;color:var(--ink-soft);cursor:pointer;transition:.16s;
+  display:inline-flex;align-items:center;gap:6px;min-height:38px;
+}
+.btn:hover:not(:disabled){border-color:var(--brand);color:var(--brand);background:var(--brand-soft)}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn.primary:hover:not(:disabled){background:#0b5a73;color:#fff}
+.btn.ghost{background:transparent}
+
+.segbar{display:flex;gap:6px;flex-wrap:wrap;background:#eef2f7;padding:5px;border-radius:var(--r-sm)}
+.seg{
+  font-family:inherit;font-size:13.2px;font-weight:600;padding:7px 14px;border-radius:6px;
+  border:0;background:transparent;color:var(--ink-soft);cursor:pointer;transition:.16s;min-height:34px;
+}
+.seg:hover{color:var(--brand)}
+.seg[aria-pressed="true"]{background:#fff;color:var(--brand);box-shadow:0 1px 4px rgba(15,23,42,.14)}
+.seg:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+
+/* SECTION: stage 演示舞台通用 */
+.stage{
+  background:#fff;border:1px solid var(--line);border-radius:var(--r-md);
+  padding:18px;margin-top:14px;overflow-x:auto;
+}
+.stage-note{
+  margin-top:14px;padding:13px 16px;background:var(--brand-soft);border-radius:var(--r-sm);
+  font-size:14.2px;color:#0b4a5e;border-left:3px solid var(--brand);min-height:46px;
+}
+.stage-note b{color:#083746}
+.ctrl{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:14px}
+.ctrl .spacer{flex:1}
+.stepcount{font-size:12.6px;color:var(--ink-mute);font-variant-numeric:tabular-nums;font-family:var(--mono)}
+
+/* SECTION: txlane 双事务泳道 */
+.lanes{display:grid;grid-template-columns:1fr 1fr;gap:14px;min-width:560px}
+.lane{border:1px solid var(--line);border-radius:var(--r-md);overflow:hidden;background:#fff}
+.lane-head{padding:9px 14px;font-size:13px;font-weight:700;color:#fff;display:flex;justify-content:space-between;align-items:center}
+.lane-a .lane-head{background:linear-gradient(90deg,#2563eb,#3b82f6)}
+.lane-b .lane-head{background:linear-gradient(90deg,#b45309,#d97706)}
+.lane-head .tid{font-family:var(--mono);font-size:11.5px;font-weight:600;opacity:.86}
+.lane-body{padding:12px 14px;min-height:120px}
+.op{
+  font-family:var(--mono);font-size:12.8px;padding:8px 11px;border-radius:6px;margin-bottom:8px;
+  background:#f8fafc;border:1px solid var(--line);color:var(--ink-mute);transition:.28s;
+  display:flex;align-items:center;gap:8px;
+}
+.op.done{background:var(--green-soft);border-color:#b9e5d3;color:#0b6b4a}
+.op.active{background:var(--blue-soft);border-color:#9dc0fb;color:#1e40af;font-weight:700;box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.op.blocked{background:var(--red-soft);border-color:#f3c4c4;color:#991b1b}
+.op .ic{flex:0 0 auto;width:16px;text-align:center}
+.op .rs{margin-left:auto;font-size:11.4px;font-weight:700;opacity:.9;white-space:nowrap}
+
+/* SECTION: rowview 数据行状态 */
+.rowview{min-width:230px}
+.rv-title{font-size:12px;font-weight:700;color:var(--ink-mute);letter-spacing:.06em;margin-bottom:9px;text-transform:uppercase}
+.rv{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid #cbd5e1;
+  border-radius:var(--r-sm);overflow:hidden;font-family:var(--mono);font-size:12.6px;margin-bottom:8px;
+}
+.rv > div{padding:7px 9px;text-align:center;border-right:1px solid var(--line);background:#fff}
+.rv > div:last-child{border-right:0}
+.rv .hd{background:#f1f5f9;font-weight:700;font-size:11.4px;color:var(--ink-soft);font-family:inherit}
+.rv .hl{background:#fef9c3;animation:pop .4s ease}
+@keyframes pop{0%{background:#fde68a;transform:scale(1.06)}100%{background:#fef9c3;transform:none}}
+
+/* SECTION: lockbox 锁指示 */
+.lockbox{
+  display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:var(--r-sm);
+  font-size:12.8px;font-weight:600;margin-top:6px;border:1px solid transparent;
+}
+.lockbox.none{background:#f1f5f9;color:var(--ink-mute);border-color:var(--line)}
+.lockbox.s{background:var(--blue-soft);color:#1e40af;border-color:#c7d8fb}
+.lockbox.x{background:var(--red-soft);color:#991b1b;border-color:#f3c4c4}
+.lockbox.gap{background:var(--amber-soft);color:#92400e;border-color:#f2dcae}
+.lockbox.wait{background:#f3e8ff;color:#6b21a8;border-color:#e0ccf7;animation:pulse 1.4s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.58}}
+
+/* SECTION: versionchain 版本链 */
+.chain{display:flex;align-items:stretch;gap:0;min-width:620px;padding:6px 0}
+.vnode{
+  flex:1;border:2px solid var(--line);border-radius:var(--r-md);padding:11px 12px;background:#fff;
+  cursor:pointer;transition:.2s;position:relative;min-width:130px;text-align:left;font-family:inherit;
+}
+.vnode:hover{border-color:var(--brand);transform:translateY(-2px);box-shadow:var(--shadow)}
+.vnode:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.vnode.is-newest{border-color:var(--brand)}
+.vnode.visible{border-color:var(--green);background:var(--green-soft)}
+.vnode.hidden-v{border-color:#e2e8f0;background:#f8fafc;opacity:.62}
+.vnode.picked{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 3px rgba(242,145,17,.22)}
+.vnode .vtag{font-size:11px;font-weight:700;color:var(--ink-mute);letter-spacing:.05em;margin-bottom:5px;display:block}
+.vnode .vval{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--ink);margin-bottom:5px}
+.vnode .vmeta{font-family:var(--mono);font-size:11px;color:var(--ink-soft);line-height:1.5}
+.varrow{flex:0 0 34px;display:grid;place-items:center;color:var(--ink-mute);font-size:17px}
+.vdetail{
+  margin-top:14px;padding:14px 16px;background:#0f172a;border-radius:var(--r-md);
+  font-family:var(--mono);font-size:12.8px;color:#cbd5e1;line-height:1.75;min-height:56px;white-space:pre-wrap;
+}
+.vdetail .ok{color:#86efac}
+.vdetail .no{color:#fca5a5}
+.vdetail .hl{color:#fbbf24}
+
+/* SECTION: readview RV 判定器 */
+.rvcard{
+  background:#fff;border:2px solid var(--purple);border-radius:var(--r-md);padding:16px;
+  font-family:var(--mono);font-size:13.2px;
+}
+.rvcard .rvh{font-family:inherit;font-size:11.5px;font-weight:700;color:var(--purple);letter-spacing:.08em;margin-bottom:11px;text-transform:uppercase}
+.rvfield{display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-bottom:1px dashed #e9d5ff}
+.rvfield:last-child{border-bottom:0}
+.rvfield .k{color:var(--ink-soft)}
+.rvfield .v{font-weight:700;color:var(--ink);text-align:right}
+.judge{margin-top:14px}
+.jstep{
+  display:flex;gap:11px;padding:10px 13px;border-radius:var(--r-sm);margin-bottom:8px;
+  background:#f8fafc;border:1px solid var(--line);font-size:13.6px;color:var(--ink-mute);transition:.24s;
+}
+.jstep.on{background:var(--blue-soft);border-color:#9dc0fb;color:#1e3a5f;font-weight:600}
+.jstep.checked{background:#eef2f7;border-color:#cbd5e1;color:var(--ink-soft)}
+.jstep.pass{background:var(--green-soft);border-color:#b9e5d3;color:#0b6b4a;font-weight:600}
+.jstep.fail{background:var(--red-soft);border-color:#f3c4c4;color:#991b1b}
+.jstep .jn{flex:0 0 22px;height:22px;border-radius:50%;background:#e2e8f0;color:var(--ink-soft);
+  display:grid;place-items:center;font-size:11.5px;font-weight:700;font-family:var(--mono)}
+.jstep.on .jn{background:var(--blue);color:#fff}
+.jstep.checked .jn{background:#94a3b8;color:#fff}
+.jstep.pass .jn{background:var(--green);color:#fff}
+.jstep.fail .jn{background:var(--red);color:#fff}
+.verdict{
+  margin-top:12px;padding:14px 16px;border-radius:var(--r-md);font-size:14.6px;font-weight:700;
+  display:none;align-items:center;gap:9px;
+}
+.verdict.show{display:flex;animation:fade .3s ease}
+.verdict.v-visible{background:var(--green-soft);color:#0b6b4a;border:1px solid #b9e5d3}
+.verdict.v-hidden{background:var(--red-soft);color:#991b1b;border:1px solid #f3c4c4}
+
+/* SECTION: gapaxis 间隙锁数轴 */
+.axis{position:relative;min-width:640px;height:186px;padding:44px 8px 0}
+.axline{position:absolute;left:8px;right:8px;top:88px;height:3px;background:#cbd5e1;border-radius:2px}
+.axrec{position:absolute;top:74px;width:30px;height:30px;margin-left:-15px;border-radius:7px;
+  background:#fff;border:2px solid #94a3b8;display:grid;place-items:center;
+  font-family:var(--mono);font-size:12.4px;font-weight:700;color:var(--ink-soft);transition:.3s;z-index:2}
+.axrec.pk{background:var(--brand);border-color:var(--brand);color:#fff;transform:scale(1.14)}
+.axrec.target{background:var(--accent);border-color:#d97706;color:#fff;transform:scale(1.14)}
+.axrec .rlab{position:absolute;top:-25px;left:50%;transform:translateX(-50%);font-size:10.6px;
+  color:var(--ink-mute);white-space:nowrap;font-family:inherit;font-weight:600}
+.gapzone{position:absolute;top:112px;height:26px;border-radius:5px;transition:.34s;opacity:0;
+  display:grid;place-items:center;font-size:11px;font-weight:700;color:#fff;z-index:1}
+.gapzone.on{opacity:1}
+.gapzone.g{background:repeating-linear-gradient(45deg,#d97706,#d97706 6px,#b45309 6px,#b45309 12px)}
+.gapzone.nk{background:linear-gradient(180deg,#dc2626,#b91c1c)}
+.gapzone.gl{background:#d97706}
+.gapzone .zl{position:absolute;top:30px;left:50%;transform:translateX(-50%);color:var(--ink-soft);
+  font-size:11.4px;white-space:nowrap;font-family:inherit;font-weight:600}
+.axis-legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:12.4px;color:var(--ink-soft)}
+.axis-legend span{display:inline-flex;align-items:center;gap:6px}
+.lg-sw{width:22px;height:11px;border-radius:3px;display:inline-block}
+
+/* SECTION: flowline 关系流程 */
+.flow{display:flex;align-items:stretch;gap:0;flex-wrap:wrap;margin:16px 0}
+.fnode{
+  flex:1;min-width:150px;background:#fff;border:1.5px solid var(--line);border-radius:var(--r-md);
+  padding:14px;text-align:center;transition:.2s;
+}
+.fnode .fi{font-size:22px;display:block;margin-bottom:7px}
+.fnode .ft{font-size:14px;font-weight:700;margin-bottom:4px}
+.fnode .fd{font-size:12.4px;color:var(--ink-soft);line-height:1.55}
+.farrow{flex:0 0 30px;display:grid;place-items:center;color:var(--ink-mute);font-size:18px}
+
+/* SECTION: accordion 折叠 */
+.acc{border:1px solid var(--line);border-radius:var(--r-md);overflow:hidden;margin-bottom:10px;background:#fff}
+.acc-btn{
+  width:100%;text-align:left;font-family:inherit;font-size:14.6px;font-weight:600;color:var(--ink);
+  padding:14px 16px;background:#fbfcfe;border:0;cursor:pointer;display:flex;align-items:center;gap:10px;transition:.16s;
+}
+.acc-btn:hover{background:var(--brand-soft);color:var(--brand)}
+.acc-btn:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.acc-btn .arw{margin-left:auto;transition:.24s;color:var(--ink-mute);font-size:12px}
+.acc-btn[aria-expanded="true"] .arw{transform:rotate(180deg)}
+.acc-body{display:none;padding:0 16px 16px;font-size:14.6px;color:var(--ink-soft)}
+.acc-body.open{display:block;animation:fade .26s ease}
+
+/* SECTION: footer */
+footer{background:var(--bg-deep);color:#94a3b8;padding:28px 0;font-size:13.4px;text-align:center}
+footer .wrap{display:flex;flex-direction:column;gap:6px;align-items:center}
+footer b{color:#e2e8f0}
+
+/* ============================================================
+   SECTION: responsive 响应式
+   ============================================================ */
+@media (max-width:760px){
+  body{font-size:15.4px}
+  .wrap{padding:0 15px}
+  .topbar{padding:28px 0 24px}
+  .card{padding:18px}
+  .tabscroll{padding:9px 15px}
+  .tabbtn{padding:7px 13px;font-size:13.6px}
+  .tabbtn .txt{display:none}
+  .tabbtn .num{width:auto;height:auto;background:transparent;font-size:13.6px}
+  .tabbtn[aria-selected="true"] .num{background:transparent}
+  .tabbtn::after{content:attr(data-short);font-size:13.6px}
+  .summary{padding:20px}
+  .demo{padding:15px}
+  .grid.c2,.grid.c3,.grid.c4{grid-template-columns:1fr}
+  .stage{padding:13px}
+  .farrow{transform:rotate(90deg);flex-basis:100%;height:26px}
+  .ctrl .spacer{display:none}
+  .ctrl .btn{flex:1;justify-content:center}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}
+}
+@media print{
+  .tabbar,.ctrl,.demo-head{display:none}
+  .panel{display:block!important;page-break-before:always}
+  body{background:#fff}
+}
+</style>
+</head>
+<body>
+
+<!-- SECTION: topbar 页头 -->
+<header class="topbar">
+  <div class="wrap">
+    <span class="eyebrow">MySQL · InnoDB 存储引擎</span>
+    <h1>MVCC 与事务锁：底层原理图解</h1>
+    <p class="lede">从「事务是什么」讲起，一步步拆解 InnoDB 如何用版本链实现不加锁的读、如何用间隙锁挡住幻读，以及两套机制如何配合工作。全程配示意图、SQL 例子与可单步播放的并发时间线。</p>
+    <div class="meta-row">
+      <span class="chip">零基础友好</span>
+      <span class="chip">5 个模块</span>
+      <span class="chip">可交互演示</span>
+      <span class="chip">基于 MySQL 5.7 / 8.0 · InnoDB</span>
+    </div>
+  </div>
+</header>
+
+<!-- SECTION: tabbar 页签导航 -->
+<nav class="tabbar" aria-label="知识模块导航">
+  <div class="tabscroll" role="tablist" id="tablist">
+    <button class="tabbtn" role="tab" id="tb1" aria-controls="p1" aria-selected="true" data-tab="p1" data-short="事务"><span class="num">1</span><span class="txt">事务基础与隔离级别</span></button>
+    <button class="tabbtn" role="tab" id="tb2" aria-controls="p2" aria-selected="false" data-tab="p2" data-short="MVCC" tabindex="-1"><span class="num">2</span><span class="txt">MVCC 原理</span></button>
+    <button class="tabbtn" role="tab" id="tb3" aria-controls="p3" aria-selected="false" data-tab="p3" data-short="锁" tabindex="-1"><span class="num">3</span><span class="txt">事务锁体系</span></button>
+    <button class="tabbtn" role="tab" id="tb4" aria-controls="p4" aria-selected="false" data-tab="p4" data-short="配合" tabindex="-1"><span class="num">4</span><span class="txt">MVCC 与锁如何配合</span></button>
+    <button class="tabbtn" role="tab" id="tb5" aria-controls="p5" aria-selected="false" data-tab="p5" data-short="剧场" tabindex="-1"><span class="num">5</span><span class="txt">并发场景时间线</span></button>
+  </div>
+</nav>
+
+<main>
+<div class="wrap">
+
+<!-- ============================================================
+     SECTION: panel-1 事务基础与隔离级别
+     ============================================================ -->
+<section class="panel is-active" id="p1" role="tabpanel" aria-labelledby="tb1">
+
+  <div class="sec-head">
+    <div class="kicker">模块一 · 打底</div>
+    <h2>事务基础与隔离级别</h2>
+    <p class="sub">在理解 MVCC 和锁之前，先搞清楚一件事：数据库为什么需要「事务」？多个操作同时读写同一批数据时，会出什么乱子？</p>
+  </div>
+
+  <div class="card">
+    <h3>一、事务到底是什么</h3>
+    <p>事务（Transaction）就是<strong>一组必须「要么全做完、要么全不做」的数据库操作</strong>。它不是一条 SQL，而是一个有始有终的工作单元。</p>
+
+    <div class="analogy">
+      <div class="tag">生活化类比：银行转账</div>
+      <p>你要给朋友转 100 元。这背后其实是两个动作：① 你的账户减 100；② 朋友的账户加 100。如果做完第①步就断电了，钱凭空消失了 100 元——这是灾难。银行系统必须保证这两步捆在一起：要么都成功，要么都不发生。这个「捆绑起来的工作单元」就叫事务。</p>
+    </div>
+
+    <div class="sql">
+      <span class="sql-label">SQL 示例 · 一个最典型的事务</span>
+<pre><span class="cm">-- 开启事务</span>
+<span class="kw">BEGIN</span>;   <span class="cm">-- 或 START TRANSACTION</span>
+
+<span class="cm">-- 步骤1：A 扣款</span>
+<span class="kw">UPDATE</span> <span class="tbl">account</span> <span class="kw">SET</span> balance = balance - <span class="num">100</span> <span class="kw">WHERE</span> id = <span class="num">1</span>;
+
+<span class="cm">-- 步骤2：B 收款</span>
+<span class="kw">UPDATE</span> <span class="tbl">account</span> <span class="kw">SET</span> balance = balance + <span class="num">100</span> <span class="kw">WHERE</span> id = <span class="num">2</span>;
+
+<span class="cm">-- 全部成功 → 提交，永久生效</span>
+<span class="kw">COMMIT</span>;
+
+<span class="cm">-- 中途出错 → 回滚，像什么都没发生过</span>
+<span class="cm">-- ROLLBACK;</span></pre>
+    </div>
+
+    <p>在 <code>BEGIN</code> 和 <code>COMMIT</code> 之间的所有操作，对外界来说是一个不可分割的整体。执行到一半时，别的连接<strong>看不到</strong>这些还没提交的改动。</p>
+  </div>
+
+  <div class="card">
+    <h3>二、ACID：事务的四条承诺</h3>
+    <p>数据库对事务做了四个保证，简称 ACID。这四条也正是 MVCC 和锁存在的原因。</p>
+
+    <div class="grid c2">
+      <div style="background:var(--blue-soft);border-radius:var(--r-md);padding:16px">
+        <div style="font-weight:700;color:#1e40af;margin-bottom:6px">A · 原子性 Atomicity</div>
+        <p style="font-size:14.2px;color:#1e3a5f;margin:0">一组操作要么全成功，要么全撤销。<br><b>靠什么实现：</b>undo log（回滚日志）</p>
+      </div>
+      <div style="background:var(--green-soft);border-radius:var(--r-md);padding:16px">
+        <div style="font-weight:700;color:#0b6b4a;margin-bottom:6px">C · 一致性 Consistency</div>
+        <p style="font-size:14.2px;color:#0b6b4a;margin:0">事务前后数据都符合业务规则（比如总额不变）。<br><b>靠什么实现：</b>是最终目的，由 A、I、D 共同保证</p>
+      </div>
+      <div style="background:var(--amber-soft);border-radius:var(--r-md);padding:16px">
+        <div style="font-weight:700;color:#92400e;margin-bottom:6px">I · 隔离性 Isolation</div>
+        <p style="font-size:14.2px;color:#6b3a08;margin:0">多个事务并发时，彼此不互相干扰。<br><b>靠什么实现：</b>MVCC + 锁 ← <b>本篇主角</b></p>
+      </div>
+      <div style="background:var(--purple-soft);border-radius:var(--r-md);padding:16px">
+        <div style="font-weight:700;color:#5b21b6;margin-bottom:6px">D · 持久性 Durability</div>
+        <p style="font-size:14.2px;color:#4c1d95;margin:0">提交后的数据即使断电也不会丢。<br><b>靠什么实现：</b>redo log（重做日志）</p>
+      </div>
+    </div>
+
+    <div class="keypoint">
+      <div class="tag">划重点</div>
+      <p><strong>隔离性是四条里最难做的。</strong>原子性和持久性只关心「一个事务自己」，靠日志就够了；而隔离性要处理「多个事务同时动手」的冲突，这才需要 MVCC 和锁这两套机制出场。</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>三、并发会出什么乱子：三种「读异常」</h3>
+    <p>如果完全不做隔离，让事务们随意读写同一批数据，会出现三类经典问题。搞清楚这三种问题，才能理解隔离级别到底在防什么。</p>
+
+    <div class="acc">
+      <button class="acc-btn" aria-expanded="true">
+        <span class="badge b-red">问题 1</span> 脏读 Dirty Read：读到了别人还没提交的、可能被撤销的数据
+        <span class="arw">▼</span>
+      </button>
+      <div class="acc-body open">
+        <p>事务 B 修改了一行但<strong>还没提交</strong>，事务 A 就把这个中间值读了出来。随后 B 回滚了，A 手里的数据从来没真实存在过。</p>
+        <div class="tblwrap">
+          <table>
+            <thead><tr><th>时刻</th><th>事务 A</th><th>事务 B</th><th>问题</th></tr></thead>
+            <tbody>
+              <tr><td>T1</td><td></td><td><code>UPDATE user SET salary=9000 WHERE id=1</code><br><span class="badge b-gray">未提交</span></td><td>原值 5000 被改成 9000</td></tr>
+              <tr><td>T2</td><td><code>SELECT salary FROM user WHERE id=1</code><br>→ 读到 <strong style="color:var(--red)">9000</strong></td><td></td><td class="no">脏读发生</td></tr>
+              <tr><td>T3</td><td></td><td><code>ROLLBACK</code> → 工资恢复 5000</td><td>A 拿到的 9000 是幻影</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="analogy">
+          <div class="tag">类比</div>
+          <p>你在群里看到同事发了「我辞职了」，转头他跟你说「刚才打错字撤回了」。你已经按「他要走」安排了工作——这就是基于脏数据做的决策。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="acc">
+      <button class="acc-btn" aria-expanded="false">
+        <span class="badge b-amber">问题 2</span> 不可重复读 Non-Repeatable Read：同一个事务里，同一行读两次结果不一样
+        <span class="arw">▼</span>
+      </button>
+      <div class="acc-body">
+        <p>事务 A 在同一个事务内<strong>两次读同一行</strong>，中间事务 B 提交了一次 <code>UPDATE</code>，导致 A 两次读到的值不同。注意：这里 B 是<strong>已提交</strong>的，所以数据是真实的，问题在于 A 自己「不自洽」。</p>
+        <div class="tblwrap">
+          <table>
+            <thead><tr><th>时刻</th><th>事务 A</th><th>事务 B</th><th>说明</th></tr></thead>
+            <tbody>
+              <tr><td>T1</td><td><code>BEGIN</code></td><td></td><td></td></tr>
+              <tr><td>T2</td><td><code>SELECT salary...</code> → <strong>5000</strong></td><td></td><td>第一次读</td></tr>
+              <tr><td>T3</td><td></td><td><code>UPDATE ... SET salary=9000</code><br><code>COMMIT</code></td><td>B 合法提交</td></tr>
+              <tr><td>T4</td><td><code>SELECT salary...</code> → <strong style="color:var(--amber)">9000</strong></td><td></td><td class="mid">同一事务内值变了</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p><strong>与脏读的区别：</strong>脏读读到的是「未提交的假数据」；不可重复读读到的是「已提交的真数据」，只是前后不一致。</p>
+      </div>
+    </div>
+
+    <div class="acc">
+      <button class="acc-btn" aria-expanded="false">
+        <span class="badge b-purple">问题 3</span> 幻读 Phantom Read：同一个事务里，同一个范围查两次，行数变了
+        <span class="arw">▼</span>
+      </button>
+      <div class="acc-body">
+        <p>事务 A 按<strong>范围</strong>查询（比如 <code>WHERE salary &gt; 3000</code>），事务 B 在这个范围里 <code>INSERT</code> 了新行并提交。A 再查一次，凭空多出来几行——像幻觉一样，所以叫幻读。</p>
+        <div class="tblwrap">
+          <table>
+            <thead><tr><th>时刻</th><th>事务 A</th><th>事务 B</th><th>说明</th></tr></thead>
+            <tbody>
+              <tr><td>T1</td><td><code>SELECT COUNT(*) FROM user WHERE salary&gt;3000</code><br>→ <strong>3 行</strong></td><td></td><td>第一次统计</td></tr>
+              <tr><td>T2</td><td></td><td><code>INSERT INTO user VALUES(9,'小王',8000)</code><br><code>COMMIT</code></td><td>插入了符合条件的新行</td></tr>
+              <tr><td>T3</td><td><code>SELECT COUNT(*) ...</code><br>→ <strong style="color:var(--purple)">4 行</strong></td><td></td><td class="mid">多出一行「幻影」</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="keypoint">
+          <div class="tag">关键区分</div>
+          <p><strong>不可重复读针对「已存在的行被改值」，幻读针对「范围里多出/少了行」。</strong>前者用行锁就能挡住，后者必须锁住「行与行之间的空隙」——这正是间隙锁（Gap Lock）登场的理由，我们在模块三会详细讲。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>四、四种隔离级别：用「允许出什么问题」来定义</h3>
+    <p>SQL 标准定义了四个隔离级别。它们的本质区别不是「加了什么锁」，而是<strong>「允许上面三种读异常里的哪几种发生」</strong>。级别越高越安全，但并发性能越差。</p>
+
+    <!-- SECTION: iso-demo 隔离级别交互演示 -->
+    <div class="demo" id="isoDemo">
+      <div class="demo-head">
+        <div class="demo-title">交互演示：切换隔离级别，看哪些问题被挡住</div>
+        <div class="demo-hint">点击任一隔离级别</div>
+      </div>
+      <div class="segbar" id="isoSeg" role="group" aria-label="选择隔离级别">
+        <button class="seg" data-iso="0" aria-pressed="false">读未提交<br><small style="font-weight:400">READ UNCOMMITTED</small></button>
+        <button class="seg" data-iso="1" aria-pressed="false">读已提交<br><small style="font-weight:400">READ COMMITTED</small></button>
+        <button class="seg" data-iso="2" aria-pressed="true">可重复读<br><small style="font-weight:400">REPEATABLE READ ★</small></button>
+        <button class="seg" data-iso="3" aria-pressed="false">串行化<br><small style="font-weight:400">SERIALIZABLE</small></button>
+      </div>
+
+      <div class="stage">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;min-width:520px">
+          <div>
+            <div class="rv-title" id="isoName">当前级别</div>
+            <p style="font-size:14.4px;color:var(--ink-soft)" id="isoDesc">说明</p>
+            <div id="isoBadges" style="display:flex;flex-direction:column;gap:8px;margin-top:12px"></div>
+          </div>
+          <div>
+            <div class="rv-title">三种读异常是否会发生</div>
+            <div class="tblwrap" style="margin:0">
+              <table style="min-width:0">
+                <thead><tr><th>异常</th><th>是否发生</th></tr></thead>
+                <tbody>
+                  <tr><td>脏读</td><td id="isoDirty">—</td></tr>
+                  <tr><td>不可重复读</td><td id="isoNonRep">—</td></tr>
+                  <tr><td>幻读</td><td id="isoPhantom">—</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="sql" style="margin:12px 0 0">
+              <span class="sql-label">如何设置</span>
+<pre id="isoSql"><span class="cm">-- 查看与设置</span></pre>
+            </div>
+          </div>
+        </div>
+        <div class="stage-note" id="isoNote"></div>
+      </div>
+    </div>
+
+    <div class="keypoint">
+      <div class="tag">InnoDB 的默认与特别之处</div>
+      <p>MySQL InnoDB 的默认隔离级别是 <strong>可重复读（REPEATABLE READ，简称 RR）</strong>。而且 InnoDB 在 RR 级别下通过「MVCC + 间隙锁」的组合，<strong>在大多数场景下连幻读也一并解决了</strong>——这比 SQL 标准对 RR 的要求更严格。这套配合机制正是模块四的核心内容。</p>
+    </div>
+
+    <div class="sql">
+      <span class="sql-label">SQL · 查看和修改隔离级别</span>
+<pre><span class="cm">-- MySQL 8.0：查看当前会话的隔离级别</span>
+<span class="kw">SELECT</span> @@transaction_isolation;
+
+<span class="cm">-- 设置当前会话为可重复读</span>
+<span class="kw">SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ</span>;
+
+<span class="cm">-- MySQL 5.7 用的是 tx_isolation（8.0 已废弃）</span>
+<span class="kw">SELECT</span> @@tx_isolation;</pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>五、铺垫：为什么需要 MVCC 和锁</h3>
+    <p>看完上面四种级别，一个自然的问题是：<strong>数据库到底怎么做到「挡住」这些异常的？</strong>思路只有两条：</p>
+    <div class="flow">
+      <div class="fnode">
+        <span class="fi">🔒</span>
+        <div class="ft">思路一：加锁排队</div>
+        <div class="fd">写的时候锁住数据，别人只能等。简单直接，但读写互相阻塞，并发性能差。</div>
+      </div>
+      <div class="farrow">＋</div>
+      <div class="fnode">
+        <span class="fi">📸</span>
+        <div class="ft">思路二：多版本快照</div>
+        <div class="fd">给数据存多个历史版本，读的时候拿一份「老照片」看，不用等写事务。这就是 MVCC。</div>
+      </div>
+    </div>
+    <p>InnoDB 的高明之处在于<strong>两者都用，而且分工明确</strong>：普通的 <code>SELECT</code> 走 MVCC 快照，完全不加锁；只有 <code>UPDATE</code> / <code>DELETE</code> / <code>SELECT ... FOR UPDATE</code> 这类会改变或必须读到最新值的操作才加锁。这样「读不阻塞写、写不阻塞读」，并发性能大幅提升。</p>
+    <p>接下来的两个模块，我们分别拆开看这两套机制的内部构造。</p>
+  </div>
+
+  <!-- SECTION: summary-1 模块一小结 -->
+  <div class="summary">
+    <h3>模块一小结</h3>
+    <ol>
+      <li><strong>事务 = 一组不可分割的操作</strong>，通过 <code>BEGIN</code> / <code>COMMIT</code> / <code>ROLLBACK</code> 控制边界。</li>
+      <li><strong>ACID 四条承诺中，隔离性最难</strong>，因为它要处理多事务并发冲突；原子性靠 undo log，持久性靠 redo log，隔离性靠 MVCC + 锁。</li>
+      <li><strong>三种读异常层层递进</strong>：脏读（读到未提交的假数据）→ 不可重复读（同一行前后值变了）→ 幻读（同一范围行数变了）。</li>
+      <li><strong>四种隔离级别 = 允许哪几种异常发生</strong>。级别越高越安全，并发越差。</li>
+      <li><strong>InnoDB 默认 RR</strong>，且额外用间隙锁在多数场景下也解决了幻读。</li>
+      <li><strong>MVCC 与锁的分工</strong>：快照读不加锁，当前读才加锁 —— 这是理解后续一切内容的钥匙。</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ============================================================
+     SECTION: panel-2 MVCC 原理
+     ============================================================ -->
+<section class="panel" id="p2" role="tabpanel" aria-labelledby="tb2" hidden>
+
+  <div class="sec-head">
+    <div class="kicker">模块二 · 核心机制</div>
+    <h2>MVCC 原理：不加锁也能读到一致数据</h2>
+    <p class="sub">MVCC = Multi-Version Concurrency Control，多版本并发控制。它的核心思想一句话：<b>不去改原来那行数据，而是每次修改都留下旧版本，读的人自己挑一个合适的版本来看。</b></p>
+  </div>
+
+  <div class="card">
+    <h3>一、先建立一个直觉：老照片</h3>
+    <div class="analogy">
+      <div class="tag">生活化类比：装修前的老照片</div>
+      <p>你把客厅重新装修了，但你手里还留着装修前拍的照片。朋友问「你家客厅原来什么样」，你不用把装修拆掉，直接翻照片就行。<br><br>MVCC 就是这个思路：<strong>数据库改数据时，不会销毁旧值，而是把旧值存进「相册」（undo log）</strong>。别的事务想看旧样子，翻相册即可，完全不用等你装修完（不用等写事务提交）。这就是「读不阻塞写、写不阻塞读」的由来。</p>
+    </div>
+    <p>那么问题来了：数据库怎么知道「相册里的哪一张」才是某个事务该看的版本？答案分三步——<strong>隐藏列</strong>（给每个版本贴标签）、<strong>版本链</strong>（把版本串起来）、<strong>ReadView</strong>（判断哪个版本对我可见）。</p>
+  </div>
+
+  <div class="card">
+    <h3>二、第一步：隐藏列 —— 每行数据的「身份证」</h3>
+    <p>你建表时只写了 <code>id</code>、<code>name</code>、<code>salary</code> 三个字段，但 InnoDB 在磁盘上实际存储时，会<strong>偷偷给每一行加上几个你看不见的列</strong>。这就是隐藏列。</p>
+
+    <div class="tblwrap">
+      <table>
+        <caption>InnoDB 每行数据的隐藏列（也叫「行记录隐藏字段」）</caption>
+        <thead>
+          <tr><th>隐藏列名</th><th>占用</th><th>作用</th><th>通俗理解</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>DB_TRX_ID</code></td><td>6 字节</td>
+            <td>记录<b>最后一次修改这行的事务 ID</b>。每次 UPDATE / DELETE 都会更新它。</td>
+            <td>「这张照片是谁拍的」</td>
+          </tr>
+          <tr>
+            <td><code>DB_ROLL_PTR</code></td><td>7 字节</td>
+            <td>回滚指针，指向 undo log 中<b>这行的上一个版本</b>。版本链就是靠它串起来的。</td>
+            <td>「翻到相册的上一页」</td>
+          </tr>
+          <tr>
+            <td><code>DB_ROW_ID</code></td><td>6 字节</td>
+            <td>隐式主键。<b>仅当表没有主键、也没有非空唯一索引时</b>才由 InnoDB 自动生成。</td>
+            <td>「没有身份证就给个临时编号」</td>
+          </tr>
+          <tr>
+            <td><code>DB_DELETE_FLAG</code><br><span class="badge b-gray">聚簇索引记录头</span></td><td>1 bit</td>
+            <td>删除标记。<code>DELETE</code> 并不立刻物理删除，只是把这个标记位设为 true，真正的清理由后台 purge 线程完成。</td>
+            <td>「贴张作废标签，先不撕掉」</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="keypoint">
+      <div class="tag">为什么 DB_TRX_ID 是 MVCC 的地基</div>
+      <p>有了 <code>DB_TRX_ID</code>，每个数据版本就带上了「出生时间戳」。事务之间可以比大小：ID 小的说明开启得早。后面 ReadView 判定可见性，本质上就是在<strong>比事务 ID 的大小</strong>。</p>
+    </div>
+
+    <div class="sql">
+      <span class="sql-label">SQL · 建表语句 vs 实际存储</span>
+<pre><span class="cm">-- 你写的建表语句</span>
+<span class="kw">CREATE TABLE</span> <span class="tbl">employee</span> (
+  id     <span class="kw">INT PRIMARY KEY</span>,
+  name   <span class="kw">VARCHAR</span>(<span class="num">20</span>),
+  salary <span class="kw">INT</span>
+);
+
+<span class="cm">-- InnoDB 实际存储的「逻辑结构」（隐藏列无法用 SQL 查到）</span>
+<span class="cm">-- ┌────────┬────────┬──────────┬─────────────┬───────────────┐</span>
+<span class="cm">-- │   id   │  name  │  salary  │ DB_TRX_ID   │ DB_ROLL_PTR   │</span>
+<span class="cm">-- ├────────┼────────┼──────────┼─────────────┼───────────────┤</span>
+<span class="cm">-- │   1    │  张三  │   5000   │    90       │  → undo log   │</span>
+<span class="cm">-- └────────┴────────┴──────────┴─────────────┴───────────────┘</span>
+
+<span class="cm">-- 想间接看到版本信息，可以查这个内部视图（8.0）</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> information_schema.innodb_trx;   <span class="cm">-- 当前活跃事务及其 trx_id</span></pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>三、第二步：undo log 与版本链</h3>
+    <p>每次修改一行数据，InnoDB 会先把<strong>修改前的旧值</strong>写进 undo log（回滚日志）。然后通过 <code>DB_ROLL_PTR</code> 把「新值 → 旧值 → 更旧的值」串成一条链，这就是<strong>版本链</strong>。</p>
+
+    <div class="analogy">
+      <div class="tag">类比：串起来的相册页</div>
+      <p>相册第 1 页是最早的样子，每拍一张新照片就插在<b>最前面</b>，并在新照片背面写「上一页在相册第 N 页」。你想找某个时间点的样子，就从最新的一张往回翻，一直翻到符合你要求的那张为止。</p>
+    </div>
+
+    <!-- SECTION: chain-demo 版本链交互演示 -->
+    <div class="demo" id="chainDemo">
+      <div class="demo-head">
+        <div class="demo-title">交互演示：一行数据的版本链是怎么长出来的</div>
+        <div class="demo-hint">点「执行下一条 SQL」逐步推演，点任一版本节点可看详情</div>
+      </div>
+
+      <div class="stage">
+        <div class="lanes" style="min-width:0;grid-template-columns:1fr">
+          <div class="lane lane-a">
+            <div class="lane-head"><span>SQL 执行序列</span><span class="tid">employee WHERE id=1</span></div>
+            <div class="lane-body" id="chainOps"></div>
+          </div>
+        </div>
+
+        <div style="margin-top:18px">
+          <div class="rv-title">当前磁盘上的数据行（含隐藏列）</div>
+          <div class="rowview" style="min-width:0">
+            <div class="rv" id="chainRow" style="grid-template-columns:repeat(5,1fr)">
+              <div class="hd">id</div><div class="hd">name</div><div class="hd">salary</div>
+              <div class="hd">DB_TRX_ID</div><div class="hd">DB_ROLL_PTR</div>
+              <div>1</div><div>张三</div><div id="cvSalary">—</div>
+              <div id="cvTrx">—</div><div id="cvPtr">—</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:18px">
+          <div class="rv-title">版本链（最新在左，沿 DB_ROLL_PTR 向右回溯）</div>
+          <div class="chain" id="chainViz"></div>
+        </div>
+
+        <div class="vdetail" id="chainDetail">点击上方任一版本节点，或执行 SQL，这里会显示该版本的完整信息与可见性说明。</div>
+
+        <div class="ctrl">
+          <button class="btn primary" id="chainNext" data-primary-action>执行下一条 SQL ▸</button>
+          <button class="btn" id="chainReset">↺ 重置</button>
+          <span class="spacer"></span>
+          <span class="stepcount" id="chainCount">0 / 0</span>
+        </div>
+        <div class="stage-note" id="chainNote">准备就绪：初始状态是一行 salary=5000 的记录，由事务 80 插入。</div>
+      </div>
+    </div>
+
+    <div class="keypoint">
+      <div class="tag">undo log 的两个身份</div>
+      <p><strong>身份一（回滚用）</strong>：事务执行 <code>ROLLBACK</code> 时，靠 undo log 把数据还原——这实现了 ACID 的<b>原子性</b>。<br>
+      <strong>身份二（MVCC 用）</strong>：别的事务通过版本链读取历史版本——这实现了 ACID 的<b>隔离性</b>。<br>
+      同一份日志，干了两件事。</p>
+    </div>
+
+    <div class="warn">
+      <div class="tag">注意 · 长事务为什么是性能杀手</div>
+      <p>只要还有一个老事务没提交，它可能需要读的所有旧版本就<strong>都不能被 purge 清理</strong>。长事务会导致 undo log 无限膨胀、版本链越来越长，每次读都要顺着链翻很多层，性能急剧下降。生产环境中「未提交的长事务」是常见的故障源，可以用 <code>SELECT * FROM information_schema.innodb_trx ORDER BY trx_started</code> 排查。</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>四、第三步：ReadView —— 决定「哪个版本对我可见」</h3>
+    <p>版本链上有一堆版本，读的时候到底该拿哪一个？InnoDB 的答案是：事务在做快照读时，先给自己生成一个<strong>ReadView（一致性视图）</strong>，用它来判断链上每个版本的可见性。</p>
+
+    <h4>ReadView 里的四个字段</h4>
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>字段</th><th>含义</th><th>怎么得到</th></tr></thead>
+        <tbody>
+          <tr><td><code>m_ids</code></td><td><b>生成 ReadView 时，当前还「活跃」（未提交）的事务 ID 列表</b></td><td>扫一遍事务链表，把没提交的都记下来</td></tr>
+          <tr><td><code>min_trx_id</code></td><td>m_ids 里的<b>最小值</b></td><td>最小的活跃事务 ID</td></tr>
+          <tr><td><code>max_trx_id</code></td><td><b>系统即将分配给下一个事务的 ID</b>（不是 m_ids 最大值！）</td><td>当前全局最大事务 ID + 1</td></tr>
+          <tr><td><code>creator_trx_id</code></td><td><b>创建这个 ReadView 的事务自己的 ID</b></td><td>自己是谁</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h4>可见性判定算法（核心中的核心）</h4>
+    <p>拿到版本链上某个版本的 <code>DB_TRX_ID</code>（下面记作 <code>trx_id</code>），按顺序问四个问题：</p>
+
+    <div class="flow" style="flex-direction:column;gap:0">
+      <div class="fnode" style="text-align:left;display:flex;gap:14px;align-items:flex-start;border-color:#c7d8fb">
+        <span class="badge b-green" style="flex:0 0 auto;margin-top:2px">① 可见</span>
+        <div><div class="ft" style="margin:0">trx_id == creator_trx_id</div>
+        <div class="fd">这个版本是我自己改的 → 当然可见。</div></div>
+      </div>
+      <div class="farrow" style="flex-basis:24px;transform:rotate(90deg)">↓</div>
+      <div class="fnode" style="text-align:left;display:flex;gap:14px;align-items:flex-start;border-color:#c7d8fb">
+        <span class="badge b-green" style="flex:0 0 auto;margin-top:2px">② 可见</span>
+        <div><div class="ft" style="margin:0">trx_id &lt; min_trx_id</div>
+        <div class="fd">这个版本在我创建视图<b>之前</b>就已经提交了 → 可见。</div></div>
+      </div>
+      <div class="farrow" style="flex-basis:24px;transform:rotate(90deg)">↓</div>
+      <div class="fnode" style="text-align:left;display:flex;gap:14px;align-items:flex-start;border-color:#f3c4c4">
+        <span class="badge b-red" style="flex:0 0 auto;margin-top:2px">③ 不可见</span>
+        <div><div class="ft" style="margin:0">trx_id ≥ max_trx_id</div>
+        <div class="fd">这个版本是在我创建视图<b>之后</b>才开启的事务改的 → 太新了，不可见。</div></div>
+      </div>
+      <div class="farrow" style="flex-basis:24px;transform:rotate(90deg)">↓</div>
+      <div class="fnode" style="text-align:left;display:flex;gap:14px;align-items:flex-start;border-color:#f2dcae">
+        <span class="badge b-amber" style="flex:0 0 auto;margin-top:2px">④ 看情况</span>
+        <div><div class="ft" style="margin:0">min_trx_id ≤ trx_id &lt; max_trx_id</div>
+        <div class="fd">落在中间地带，就看 <code>trx_id</code> 在不在 <code>m_ids</code> 里：<br>
+        <span class="no">在 m_ids 里</span> → 说明生成视图时它还没提交 → <b>不可见</b>；<br>
+        <span class="yes">不在 m_ids 里</span> → 说明它已经提交了 → <b>可见</b>。</div></div>
+      </div>
+    </div>
+
+    <p>如果某个版本判定为「不可见」，就<strong>顺着 <code>DB_ROLL_PTR</code> 取上一个版本，重新走一遍这四步</strong>，直到找到一个可见的版本为止。找到的那个，就是这次 SELECT 的结果。</p>
+
+    <!-- SECTION: rv-demo ReadView 判定器 -->
+    <div class="demo" id="rvDemo">
+      <div class="demo-head">
+        <div class="demo-title">交互演示：ReadView 可见性判定器</div>
+        <div class="demo-hint">左侧是视图，右侧选一个版本，看它如何被逐步判定</div>
+      </div>
+
+      <div class="stage">
+        <div style="display:grid;grid-template-columns:minmax(240px,1fr) minmax(300px,1.6fr);gap:20px;min-width:600px">
+          <div>
+            <div class="rvcard">
+              <div class="rvh">ReadView（事务 105 生成）</div>
+              <div class="rvfield"><span class="k">creator_trx_id</span><span class="v">105</span></div>
+              <div class="rvfield"><span class="k">m_ids</span><span class="v">[100, 102]</span></div>
+              <div class="rvfield"><span class="k">min_trx_id</span><span class="v">100</span></div>
+              <div class="rvfield"><span class="k">max_trx_id</span><span class="v">106</span></div>
+            </div>
+            <div style="margin-top:14px">
+              <div class="rv-title">选择要判定的版本</div>
+              <div class="segbar" id="rvPick" style="flex-direction:column;align-items:stretch">
+                <button class="seg" data-trx="80" data-val="5000" aria-pressed="true" style="text-align:left">版本 A · trx_id=<b>80</b> · salary=5000</button>
+                <button class="seg" data-trx="100" data-val="6000" aria-pressed="false" style="text-align:left">版本 B · trx_id=<b>100</b> · salary=6000</button>
+                <button class="seg" data-trx="102" data-val="7000" aria-pressed="false" style="text-align:left">版本 C · trx_id=<b>102</b> · salary=7000</button>
+                <button class="seg" data-trx="105" data-val="7500" aria-pressed="false" style="text-align:left">版本 D · trx_id=<b>105</b> · salary=7500</button>
+                <button class="seg" data-trx="108" data-val="9000" aria-pressed="false" style="text-align:left">版本 E · trx_id=<b>108</b> · salary=9000</button>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div class="rv-title">四步判定过程</div>
+            <div class="judge" id="rvJudge" style="margin-top:0"></div>
+            <div class="verdict" id="rvVerdict"></div>
+          </div>
+        </div>
+        <div class="ctrl">
+          <button class="btn primary" id="rvStep" data-primary-action>下一步判定 ▸</button>
+          <button class="btn" id="rvAuto">▶ 自动演示</button>
+          <button class="btn ghost" id="rvReset">↺ 重置</button>
+        </div>
+        <div class="stage-note" id="rvNote">当前视图由事务 105 创建，此时事务 100 和 102 仍未提交。</div>
+      </div>
+    </div>
+
+    <h4>ReadView 什么时候生成？—— RR 与 RC 的分水岭</h4>
+    <p>这是最容易被问到的面试题，也是 RR 和 RC 唯一的行为差异来源：</p>
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>隔离级别</th><th>ReadView 生成时机</th><th>直接后果</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><span class="badge b-green">RR 可重复读</span></td>
+            <td><b>事务内第一次快照读</b>时生成，之后<b>整个事务复用同一个</b></td>
+            <td>不管别人提交了多少次，我读到的永远是那一刻的世界 → <b>可重复读</b></td>
+          </tr>
+          <tr>
+            <td><span class="badge b-blue">RC 读已提交</span></td>
+            <td><b>每次快照读</b>都重新生成一个新的 ReadView</td>
+            <td>每次读都能看到别人最新提交的值 → 必然出现<b>不可重复读</b></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="keypoint">
+      <div class="tag">一句话记住</div>
+      <p><strong>RR 和 RC 用的是同一套 MVCC 机制、同一套判定算法，唯一的区别就是 ReadView 是「生成一次用到底」还是「每次读都重新生成」。</strong>这一个改动，同时决定了它们各自能挡住哪些读异常。</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>五、redo log：和 MVCC 无关，但必须一起讲清</h3>
+    <p>很多人会把 undo log 和 redo log 搞混。它们名字像，作用完全相反：</p>
+
+    <div class="grid c2">
+      <div style="background:var(--red-soft);border:1px solid #f3c4c4;border-radius:var(--r-md);padding:18px">
+        <div style="font-weight:700;color:#991b1b;margin-bottom:8px;font-size:15.4px">undo log · 回滚日志</div>
+        <ul style="font-size:14.2px;color:#6b2020;margin:0;padding-left:20px">
+          <li>记录<b>修改前的旧值</b>（逻辑日志）</li>
+          <li>作用：事务回滚 + <b>MVCC 版本链</b></li>
+          <li>保证：<b>原子性</b>（A）与<b>隔离性</b>（I）</li>
+          <li>什么时候能删：没有任何事务再需要它时，由 purge 线程清理</li>
+        </ul>
+      </div>
+      <div style="background:var(--green-soft);border:1px solid #b9e5d3;border-radius:var(--r-md);padding:18px">
+        <div style="font-weight:700;color:#0b6b4a;margin-bottom:8px;font-size:15.4px">redo log · 重做日志</div>
+        <ul style="font-size:14.2px;color:#0b6b4a;margin:0;padding-left:20px">
+          <li>记录<b>「在某个数据页做了什么改动」</b>（物理日志）</li>
+          <li>作用：崩溃恢复，把已提交但没落盘的数据补回来</li>
+          <li>保证：<b>持久性</b>（D）</li>
+          <li>循环写：写满就覆盖，靠 checkpoint 推进</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="analogy">
+      <div class="tag">类比：装修队的两本本子</div>
+      <p><b>undo log</b> 是「原样记录本」：砸墙前先写下「墙在这里、厚 24cm」，业主反悔时能照着砌回去。<br>
+      <b>redo log</b> 是「施工流水本」：随手记下「3 号房刷了 2 遍漆」。工地突然停电，工人回来照着流水本把没干完的活补上，不用从头再来。<br><br>
+      为什么需要 redo log？因为 InnoDB 以 16KB 的数据页为单位管理磁盘，改一行只动了页里几个字节，但要把整页写回磁盘太慢。所以采用 <strong>WAL（Write-Ahead Logging，预写日志）</strong>：先把改动顺序写进小小的 redo log 并刷盘（顺序写，快），数据页稍后再慢慢刷（随机写，慢）。<b>只要 redo log 落盘了，即使数据页丢了也能恢复。</b></p>
+    </div>
+
+    <div class="sql">
+      <span class="sql-label">SQL · redo log 相关参数</span>
+<pre><span class="cm">-- 控制 redo log 刷盘时机（8.0）</span>
+<span class="kw">SHOW VARIABLES LIKE</span> <span class="str">'innodb_flush_log_at_trx_commit'</span>;
+
+<span class="cm">-- 0：每秒刷一次，事务提交时不刷     → 最快，宕机可能丢 1 秒数据</span>
+<span class="cm">-- 1：每次提交都刷盘（默认值）        → 最安全，不丢已提交事务</span>
+<span class="cm">-- 2：提交时只写到 OS 缓存，每秒刷盘  → 折中，MySQL 挂不丢、系统挂可能丢</span>
+
+<span class="cm">-- binlog 刷盘参数（注意：binlog 属于 Server 层，不是 InnoDB 的 redo log）</span>
+<span class="kw">SHOW VARIABLES LIKE</span> <span class="str">'sync_binlog'</span>;</pre>
+    </div>
+
+    <div class="warn">
+      <div class="tag">别搞混：redo log vs binlog</div>
+      <p><strong>redo log</strong> 是 InnoDB 存储引擎层独有的、物理的、循环写的崩溃恢复日志；<strong>binlog</strong> 是 MySQL Server 层的、逻辑的、追加写的归档日志，用于主从复制和数据恢复。两者通过「两阶段提交」保持一致，但职责完全不同。</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>六、快照读 vs 当前读：MVCC 的适用边界</h3>
+    <p>MVCC 不是万能的，它<strong>只管「快照读」</strong>。InnoDB 里的读分两类，这是理解模块三、四的关键前提。</p>
+
+    <div class="tblwrap">
+      <table>
+        <caption>两种读的根本区别</caption>
+        <thead>
+          <tr><th>维度</th><th><span class="badge b-green">快照读 Snapshot Read</span></th><th><span class="badge b-red">当前读 Current Read</span></th></tr>
+        </thead>
+        <tbody>
+          <tr><td>读什么</td><td>读<b>历史版本</b>（沿版本链找可见的那一版）</td><td>读<b>最新已提交版本</b>，且必须读最新值</td></tr>
+          <tr><td>加不加锁</td><td class="yes">完全不加锁</td><td class="no">必须加锁（记录锁 / 间隙锁）</td></tr>
+          <tr><td>典型语句</td><td><code>SELECT ...</code>（普通查询，不带 FOR UPDATE / LOCK IN SHARE MODE）</td><td><code>UPDATE</code>、<code>DELETE</code>、<code>INSERT</code>、<code>SELECT ... FOR UPDATE</code>、<code>SELECT ... LOCK IN SHARE MODE</code>（8.0 也写作 <code>FOR SHARE</code>）</td></tr>
+          <tr><td>靠什么实现</td><td>MVCC（隐藏列 + 版本链 + ReadView）</td><td>锁机制（模块三）</td></tr>
+          <tr><td>为什么这样设计</td><td>读操作占绝大多数，不加锁才能高并发</td><td>写操作必须基于最新值，否则会「改错版本」（丢失更新）</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="analogy">
+      <div class="tag">类比：看照片 vs 现场改</div>
+      <p><b>快照读</b>就像看老照片——你翻相册里的某一页，不需要打扰正在装修的工人，也不影响他干活。<br>
+      <b>当前读</b>就像你要亲自动手改这面墙——你<em>必须</em>看到它此刻的真实状态（不能照着三年前的照片砸墙），而且改的时候得把现场围起来（加锁），不然别人同时来改会撞车。</p>
+    </div>
+
+    <div class="sql">
+      <span class="sql-label">SQL · 一眼分辨两种读</span>
+<pre><span class="cm">-- ✅ 快照读：不加锁，走 MVCC 版本链</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">employee</span> <span class="kw">WHERE</span> id = <span class="num">1</span>;
+
+<span class="cm">-- ✅ 当前读：加共享锁 S Lock，其他事务能读但不能改</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">employee</span> <span class="kw">WHERE</span> id = <span class="num">1</span> <span class="kw">LOCK IN SHARE MODE</span>;
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">employee</span> <span class="kw">WHERE</span> id = <span class="num">1</span> <span class="kw">FOR SHARE</span>;      <span class="cm">-- MySQL 8.0 新写法</span>
+
+<span class="cm">-- ✅ 当前读：加排他锁 X Lock，其他事务既不能改也不能加锁读</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">employee</span> <span class="kw">WHERE</span> id = <span class="num">1</span> <span class="kw">FOR UPDATE</span>;
+
+<span class="cm">-- ✅ 当前读：DML 天然就是当前读，必须基于最新值修改</span>
+<span class="kw">UPDATE</span> <span class="tbl">employee</span> <span class="kw">SET</span> salary = salary + <span class="num">1000</span> <span class="kw">WHERE</span> id = <span class="num">1</span>;
+<span class="kw">DELETE FROM</span> <span class="tbl">employee</span> <span class="kw">WHERE</span> id = <span class="num">1</span>;
+<span class="kw">INSERT INTO</span> <span class="tbl">employee</span> <span class="kw">VALUES</span> (<span class="num">2</span>, <span class="str">'李四'</span>, <span class="num">6000</span>);</pre>
+    </div>
+
+    <div class="warn">
+      <div class="tag">易错点：UPDATE 里的 WHERE 也是当前读</div>
+      <p>执行 <code>UPDATE employee SET salary=9000 WHERE id=1</code> 时，定位这行的 <code>WHERE</code> 走的是<strong>当前读</strong>（读最新值 + 加锁），而不是 MVCC 快照。这就是为什么「事务 A 快照读看到的旧值」和「事务 A 执行 UPDATE 实际改的那行」可能不一致——经典面试题「UPDATE 之后 SELECT 结果变了」的根源就在这里。</p>
+    </div>
+  </div>
+
+  <!-- SECTION: summary-2 模块二小结 -->
+  <div class="summary">
+    <h3>模块二小结</h3>
+    <ol>
+      <li><strong>MVCC 的核心思想</strong>：不销毁旧数据，而是保留多版本，让读者自己挑一个合适的版本，从而实现「读写不互相阻塞」。</li>
+      <li><strong>三个隐藏列</strong>是地基：<code>DB_TRX_ID</code>（谁改的）、<code>DB_ROLL_PTR</code>（上一版在哪）、<code>DB_ROW_ID</code>（无主键时的隐式主键）；<code>DELETE</code> 只打删除标记，物理清理交给 purge。</li>
+      <li><strong>版本链</strong>由 undo log + <code>DB_ROLL_PTR</code> 串成，最新版本在链头，读取时沿链回溯。</li>
+      <li><strong>ReadView 四字段</strong>：<code>m_ids</code>（活跃事务列表）、<code>min_trx_id</code>、<code>max_trx_id</code>（下一个待分配 ID）、<code>creator_trx_id</code>。</li>
+      <li><strong>可见性四步判定</strong>：等于自己 → 可见；小于 min → 可见；≥ max → 不可见；落在中间则看是否在 <code>m_ids</code> 里（在=未提交=不可见）。</li>
+      <li><strong>RR 与 RC 的唯一区别</strong>：ReadView 是「首次快照读生成一次、全程复用」还是「每次快照读重新生成」。</li>
+      <li><strong>undo log 管回滚与 MVCC，redo log 管崩溃恢复（WAL）</strong>，两者不可混淆；redo log 属于引擎层，binlog 属于 Server 层。</li>
+      <li><strong>MVCC 只服务快照读</strong>；普通 <code>SELECT</code> 是快照读不加锁，<code>UPDATE/DELETE/INSERT/...FOR UPDATE</code> 都是当前读，必须加锁。</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ============================================================
+     SECTION: panel-3 事务锁体系
+     ============================================================ -->
+<section class="panel" id="p3" role="tabpanel" aria-labelledby="tb3" hidden>
+
+  <div class="sec-head">
+    <div class="kicker">模块三 · 核心机制</div>
+    <h2>事务锁体系：从全局锁到临键锁</h2>
+    <p class="sub">MVCC 解决了「读」的并发，但「写」必须有排他性。InnoDB 提供了一整套粒度不同的锁，理解它们的<b>加锁范围</b>是搞懂幻读与死锁的前提。</p>
+  </div>
+
+  <div class="card">
+    <h3>一、先建立全局地图：锁的分类维度</h3>
+    <p>锁看起来种类很多，其实是从三个不同维度切出来的。先看清这张地图，后面就不会乱。</p>
+
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>分类维度</th><th>成员</th><th>关心什么</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><b>按粒度</b><br>（锁多大范围）</td>
+            <td>全局锁 → 表级锁 → <b>行级锁</b></td>
+            <td>影响多少数据、并发度高不高</td>
+          </tr>
+          <tr>
+            <td><b>按模式</b><br>（能不能共存）</td>
+            <td>共享锁 S（读锁）、排他锁 X（写锁）、意向锁 IS/IX</td>
+            <td>多个事务能否同时持有</td>
+          </tr>
+          <tr>
+            <td><b>按范围</b><br>（行级锁细分）</td>
+            <td>记录锁 Record、间隙锁 Gap、<b>临键锁 Next-Key</b>、插入意向锁</td>
+            <td>锁住的是「行」还是「行之间的空隙」</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="keypoint">
+      <div class="tag">最重要的前提</div>
+      <p><strong>InnoDB 的行锁是加在「索引」上的，不是加在「行」上的。</strong>这句话决定了后面所有的加锁范围：走什么索引、索引上匹配到哪些区间，就锁哪些区间。如果 SQL 没走任何索引，InnoDB 只能退化成锁全表所有记录（效果等同表锁）。</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>二、S 锁与 X 锁：能不能共存的根源</h3>
+    <p>共享锁（Shared，S）和排他锁（Exclusive，X）的兼容关系，是所有加锁行为的基础。记住这张表，其余锁的冲突都是它的延伸。</p>
+
+    <div class="tblwrap">
+      <table>
+        <caption>锁兼容矩阵：<span class="yes">✓ 可共存</span> ／ <span class="no">✗ 冲突需等待</span></caption>
+        <thead><tr><th>已持有 ↓ ／ 请求 →</th><th>S 共享锁</th><th>X 排他锁</th></tr></thead>
+        <tbody>
+          <tr><td><b>S 共享锁</b></td><td class="yes">✓ 兼容</td><td class="no">✗ 冲突</td></tr>
+          <tr><td><b>X 排他锁</b></td><td class="no">✗ 冲突</td><td class="no">✗ 冲突</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="analogy">
+      <div class="tag">类比：图书馆的书</div>
+      <p><b>S 锁 = 借阅证</b>：一本书可以同时发多张借阅证，大家都能看（多人可同时持有 S 锁）。<br>
+      <b>X 锁 = 独占借出</b>：有人把书借走了要在上面做笔记，这时候其他人既不能借走、也不能拿借阅证看（X 与 S、X 与 X 都冲突）。<br>
+      但注意：<strong>如果只是普通地「翻一下」（快照读），连借阅证都不用办</strong>——图书馆有复印本（MVCC 历史版本）。这就是为什么普通 SELECT 不加任何锁。</p>
+    </div>
+
+    <div class="sql">
+      <span class="sql-label">SQL · 显式加 S 锁 / X 锁</span>
+<pre><span class="cm">-- 加 S 锁：我要读，且不允许别人在我读期间修改它</span>
+<span class="kw">BEGIN</span>;
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">employee</span> <span class="kw">WHERE</span> id = <span class="num">1</span> <span class="kw">LOCK IN SHARE MODE</span>;
+<span class="cm">-- 此时别的事务：SELECT 可以（快照读不加锁）；LOCK IN SHARE MODE 也可以（S+S 兼容）</span>
+<span class="cm">--            但 UPDATE / DELETE / FOR UPDATE 会阻塞（S 与 X 冲突）</span>
+<span class="kw">COMMIT</span>;
+
+<span class="cm">-- 加 X 锁：我要改，独占它</span>
+<span class="kw">BEGIN</span>;
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">employee</span> <span class="kw">WHERE</span> id = <span class="num">1</span> <span class="kw">FOR UPDATE</span>;
+<span class="cm">-- 此时别的事务：SELECT 仍然可以（走 MVCC）</span>
+<span class="cm">--            但任何加锁读和写操作全部阻塞</span>
+<span class="kw">COMMIT</span>;
+
+<span class="cm">-- MySQL 8.0 新增：NOWAIT（立即报错不等待）/ SKIP LOCKED（跳过被锁行）</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">employee</span> <span class="kw">WHERE</span> id = <span class="num">1</span> <span class="kw">FOR UPDATE NOWAIT</span>;
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">employee</span> <span class="kw">WHERE</span> salary &gt; <span class="num">3000</span> <span class="kw">FOR UPDATE SKIP LOCKED</span>;</pre>
+    </div>
+
+    <div class="warn">
+      <div class="tag">高频踩坑：S 锁导致的死锁</div>
+      <p>两个事务同时对同一行加 <code>LOCK IN SHARE MODE</code>（S+S 兼容，都成功），然后各自想 <code>UPDATE</code> 这行（都需要 X 锁）。A 等 B 释放 S，B 等 A 释放 S，互相等待 → <strong>死锁</strong>。InnoDB 会自动检测并回滚代价较小的那个事务，报错 <code>Deadlock found when trying to get lock</code>。所以「先查再改」的场景应直接用 <code>FOR UPDATE</code>，不要用 <code>LOCK IN SHARE MODE</code>。</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>三、表级锁：粒度最大的几种</h3>
+
+    <div class="acc">
+      <button class="acc-btn" aria-expanded="false">
+        <span class="badge b-gray">表锁</span> 表锁 Table Lock：锁住整张表
+        <span class="arw">▼</span>
+      </button>
+      <div class="acc-body">
+        <p>开销最小、加锁最快、并发度最低。分 S 表和 X 表两种。</p>
+        <div class="sql" style="margin-top:8px">
+<pre><span class="kw">LOCK TABLES</span> <span class="tbl">employee</span> <span class="kw">READ</span>;    <span class="cm">-- 表级读锁，自己只能读不能写，别人只能读</span>
+<span class="kw">LOCK TABLES</span> <span class="tbl">employee</span> <span class="kw">WRITE</span>;   <span class="cm">-- 表级写锁，自己可读写，别人全部阻塞</span>
+<span class="kw">UNLOCK TABLES</span>;                 <span class="cm">-- 释放（事务提交时也会自动释放）</span></pre>
+        </div>
+        <p><strong>实际很少手动用。</strong>但有一种情况会「被动」触发：SQL 无法命中任何索引时，InnoDB 的行锁会退化成锁住扫描到的全部记录，效果接近表锁——这是慢 SQL 拖垮并发的常见原因。</p>
+      </div>
+    </div>
+
+    <div class="acc">
+      <button class="acc-btn" aria-expanded="false">
+        <span class="badge b-gray">元数据锁</span> MDL 元数据锁：保护表结构不被偷偷改
+        <span class="arw">▼</span>
+      </button>
+      <div class="acc-body">
+        <p>MySQL 5.5 引入，<strong>不需要显式声明，访问表时自动加上</strong>。增删改查加 MDL 读锁，<code>ALTER TABLE</code> 加 MDL 写锁，读写互斥。</p>
+        <div class="keypoint" style="margin-top:8px">
+          <div class="tag">经典生产事故</div>
+          <p>事务 A 开了个查询但忘记提交（持有 MDL 读锁）→ DBA 执行 <code>ALTER TABLE</code> 加字段（要 MDL 写锁，被阻塞）→ <strong>之后所有对这张表的普通查询也全被阻塞</strong>（MDL 写锁申请排在队列里，后续读锁都要等它）→ 整张表瞬间不可用，连接池打满。<br>
+          <b>预防：</b>DDL 前先查 <code>information_schema.innodb_trx</code> 确认没有长事务；给 DDL 加 <code>lock_wait_timeout</code>；变更走 gh-ost / pt-online-schema-change。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="acc">
+      <button class="acc-btn" aria-expanded="true">
+        <span class="badge b-blue">意向锁</span> 意向锁 Intention Lock：表级的「预约牌」
+        <span class="arw">▼</span>
+      </button>
+      <div class="acc-body">
+        <p>意向锁是<strong>表级锁</strong>，但它不是用来锁数据的，而是一个<strong>声明标记</strong>：事务在给某行加 S / X 锁之前，必须先给这张表挂上对应的意向锁。</p>
+        <ul>
+          <li><code>IS</code>（意向共享锁）：我准备给表里<b>某些行</b>加 S 锁</li>
+          <li><code>IX</code>（意向排他锁）：我准备给表里<b>某些行</b>加 X 锁</li>
+        </ul>
+
+        <div class="analogy">
+          <div class="tag">类比：餐厅门口的牌子</div>
+          <p>一家餐厅有 100 个包间。如果有人在 3 号包间用餐，门口的牌子上就挂一个「今日有客」的标记。<br>
+          现在老板想<b>把整栋楼包下来</b>（加表锁）。他不需要挨个推开 100 个包间去看有没有人（那样代价太大），<strong>只要看一眼门口的牌子</strong>就知道能不能包。意向锁就是这块牌子——它让「表锁 vs 行锁」的冲突判断从 <em>O(行数)</em> 降到 <em>O(1)</em>。</p>
+        </div>
+
+        <div class="tblwrap">
+          <table>
+            <caption>意向锁兼容矩阵（注意：IS 与 IX 彼此<b>完全兼容</b>）</caption>
+            <thead><tr><th>已持有 ↓ ／ 请求 →</th><th>IS</th><th>IX</th><th>S（表锁）</th><th>X（表锁）</th></tr></thead>
+            <tbody>
+              <tr><td><b>IS</b></td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">✗</td></tr>
+              <tr><td><b>IX</b></td><td class="yes">✓</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td></tr>
+              <tr><td><b>S</b></td><td class="yes">✓</td><td class="no">✗</td><td class="yes">✓</td><td class="no">✗</td></tr>
+              <tr><td><b>X</b></td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="keypoint">
+          <div class="tag">为什么 IS 和 IX 之间不冲突</div>
+          <p>因为意向锁只是「声明我要去锁某些行」，两个事务声明的<b>可能是完全不同的行</b>，所以表级别上没有理由互斥。真正的冲突会在<b>行级别</b>去判断。意向锁的存在，纯粹是为了让「申请整张表的 S/X 锁」这个动作能快速失败，而不必逐行检查。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="acc">
+      <button class="acc-btn" aria-expanded="false">
+        <span class="badge b-gray">AUTO-INC</span> 自增锁 AUTO-INC Lock：保证主键连续递增
+        <span class="arw">▼</span>
+      </button>
+      <div class="acc-body">
+        <p>一种特殊的表级锁，用于 <code>AUTO_INCREMENT</code> 列。插入时获取，语句执行完即释放（不是事务结束）。由 <code>innodb_autoinc_lock_mode</code> 控制行为：</p>
+        <div class="tblwrap" style="margin-top:8px">
+          <table>
+            <thead><tr><th>值</th><th>模式</th><th>行为</th></tr></thead>
+            <tbody>
+              <tr><td>0</td><td>传统模式</td><td>语句级锁，最保守，自增值严格连续</td></tr>
+              <tr><td>1</td><td>连续模式</td><td>简单插入用轻量互斥量，批量插入用表锁（MySQL 5.7 默认）</td></tr>
+              <tr><td>2</td><td>交错模式</td><td>全部用轻量互斥量，并发最好，但批量插入时自增值可能不连续（<b>MySQL 8.0 默认</b>，因为 binlog 已支持 row 格式）</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>四、行级锁的三种范围：记录锁、间隙锁、临键锁</h3>
+    <p>这是本篇最需要「看图理解」的部分。三种锁的区别只在于<strong>锁住的范围</strong>。</p>
+
+    <div class="grid c3">
+      <div style="background:#fff;border:2px solid var(--blue);border-radius:var(--r-md);padding:16px">
+        <div style="font-weight:700;color:#1e40af;margin-bottom:6px">记录锁 Record Lock</div>
+        <div style="font-family:var(--mono);font-size:12.6px;background:var(--blue-soft);padding:6px 10px;border-radius:6px;margin-bottom:9px">锁住：单条索引记录</div>
+        <p style="font-size:14px;color:var(--ink-soft);margin:0">只锁「这一行本身」。别人不能改这行，但可以在它前后<b>插入新行</b>。</p>
+      </div>
+      <div style="background:#fff;border:2px solid var(--amber);border-radius:var(--r-md);padding:16px">
+        <div style="font-weight:700;color:#92400e;margin-bottom:6px">间隙锁 Gap Lock</div>
+        <div style="font-family:var(--mono);font-size:12.6px;background:var(--amber-soft);padding:6px 10px;border-radius:6px;margin-bottom:9px">锁住：(a, b) 开区间</div>
+        <p style="font-size:14px;color:var(--ink-soft);margin:0">只锁「两行之间的空隙」，<b>不锁记录本身</b>。作用是阻止别人往这个空隙里 INSERT —— 专为防幻读而生。</p>
+      </div>
+      <div style="background:#fff;border:2px solid var(--red);border-radius:var(--r-md);padding:16px">
+        <div style="font-weight:700;color:#991b1b;margin-bottom:6px">临键锁 Next-Key Lock</div>
+        <div style="font-family:var(--mono);font-size:12.6px;background:var(--red-soft);padding:6px 10px;border-radius:6px;margin-bottom:9px">锁住：(a, b] 左开右闭</div>
+        <p style="font-size:14px;color:var(--ink-soft);margin:0">= 记录锁 + 间隙锁。<b>InnoDB 在 RR 级别下加行锁的默认单位</b>，既锁住记录又锁住它前面的空隙。</p>
+      </div>
+    </div>
+
+    <div class="keypoint">
+      <div class="tag">区间记法（务必分清开闭）</div>
+      <p>假设索引上有值 <code>10、20、30</code>，那么整条索引被划分成这些区间：<br>
+      <code>(-∞,10]</code>、<code>(10,20]</code>、<code>(20,30]</code>、<code>(30,+∞)</code>（最后一个叫 supremum 伪记录，代表「无穷大」）。<br>
+      <b>临键锁锁的是「左开右闭」区间</b>，比如锁 <code>(10,20]</code> 意味着：20 这条记录被锁，且 11~19 之间的空隙不允许插入。</p>
+    </div>
+
+    <!-- SECTION: gap-demo 加锁范围可视化 -->
+    <div class="demo" id="gapDemo">
+      <div class="demo-head">
+        <div class="demo-title">交互演示：不同 SQL 在索引上锁住的范围</div>
+        <div class="demo-hint">点击按钮切换 SQL，观察数轴上高亮的加锁区间</div>
+      </div>
+
+      <div class="segbar" id="gapSeg" role="group" aria-label="选择加锁场景" style="margin-bottom:6px"></div>
+
+      <div class="stage">
+        <div class="sql" style="margin:0 0 6px">
+          <span class="sql-label">当前 SQL（RR 隔离级别，id 为主键）</span>
+          <pre id="gapSql"></pre>
+        </div>
+        <div class="rv-title" style="margin-top:16px">索引 id 上的加锁范围（现有记录：5, 10, 15, 20, 25）</div>
+        <div class="axis" id="gapAxis">
+          <div class="axline"></div>
+        </div>
+        <div class="axis-legend">
+          <span><i class="lg-sw" style="background:#0f6e8c"></i> 主键记录</span>
+          <span><i class="lg-sw" style="background:linear-gradient(180deg,#dc2626,#b91c1c)"></i> 临键锁 (a, b]</span>
+          <span><i class="lg-sw" style="background:repeating-linear-gradient(45deg,#d97706,#d97706 4px,#b45309 4px,#b45309 8px)"></i> 间隙锁 (a, b)</span>
+          <span><i class="lg-sw" style="background:#2563eb"></i> 记录锁</span>
+        </div>
+        <div id="gapLocks" style="margin-top:26px;display:flex;flex-direction:column;gap:7px"></div>
+        <div class="stage-note" id="gapNote"></div>
+      </div>
+    </div>
+
+    <h4>加锁范围的判定规则（RR 级别下）</h4>
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>场景</th><th>加什么锁</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr><td>唯一索引 · 等值查询 · <b>记录存在</b></td><td class="yes">退化为<b>记录锁</b></td><td>唯一值已确定不可能有第二条，锁间隙没意义，InnoDB 会主动优化掉</td></tr>
+          <tr><td>唯一索引 · 等值查询 · <b>记录不存在</b></td><td>退化为<b>间隙锁</b>（左右相邻记录之间）</td><td>没有记录可锁，但要防止别人把这个值插进来</td></tr>
+          <tr><td>普通（非唯一）索引 · 等值查询</td><td><b>临键锁</b> + 向后遍历到第一个不满足值时的<b>间隙锁</b></td><td>非唯一索引可能有重复值，必须连空隙一起锁</td></tr>
+          <tr><td>范围查询（<code>&gt;</code> / <code>&lt;</code> / <code>BETWEEN</code>）</td><td><b>临键锁</b>覆盖整个范围</td><td>锁住区间内所有记录及其间隙</td></tr>
+          <tr><td>无索引可用</td><td class="no">锁住<b>全表所有记录</b>及间隙</td><td>等价于表锁效果，务必避免</td></tr>
+          <tr><td><code>INSERT</code></td><td>插入意向锁 + 记录锁</td><td>插入意向锁是一种<b>特殊的间隙锁</b>，多个事务往同一间隙的<b>不同位置</b>插入时互不阻塞</td></tr>
+          <tr><td>RC 隔离级别下</td><td>只有<b>记录锁</b>，间隙锁基本关闭</td><td>所以 RC 无法防幻读（外键与唯一性检查除外）</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>五、死锁：并发写不可避免的代价</h3>
+    <p>两个事务各自持有对方需要的锁，互相等待，谁也走不动 —— 这就是死锁。</p>
+
+    <div class="analogy">
+      <div class="tag">类比：狭窄走廊里的两个人</div>
+      <p>A 从东边进走廊走到中间，B 从西边进也走到中间，两人面对面，谁也不肯退。这就是死锁。<br>
+      InnoDB 的做法是：<strong>有个「保安」（死锁检测机制）不断巡视，一旦发现有人僵住了，就把「行李少的那个人」请出去（回滚代价较小的事务）</strong>，让另一个人先走完。被请出去的人会收到 <code>ERROR 1213: Deadlock found</code>。</p>
+    </div>
+
+    <div class="grid c2">
+      <div style="background:#fff;border:1px solid var(--line);border-radius:var(--r-md);padding:16px">
+        <div style="font-weight:700;margin-bottom:8px;color:var(--red)">最常见的死锁模式</div>
+        <div class="sql" style="margin:0">
+<pre><span class="cm">-- 事务A          -- 事务B</span>
+<span class="kw">BEGIN</span>;            <span class="kw">BEGIN</span>;
+<span class="kw">UPDATE</span> id=<span class="num">1</span>;  <span class="cm">✔  </span><span class="kw">UPDATE</span> id=<span class="num">2</span>;  <span class="cm">✔</span>
+<span class="kw">UPDATE</span> id=<span class="num">2</span>;  <span class="cm">⏳ </span><span class="kw">UPDATE</span> id=<span class="num">1</span>;  <span class="cm">⏳</span>
+<span class="cm">-- 互相等待 → 死锁，一方被回滚</span></pre>
+        </div>
+      </div>
+      <div style="background:#fff;border:1px solid var(--line);border-radius:var(--r-md);padding:16px">
+        <div style="font-weight:700;margin-bottom:8px;color:var(--green)">四种预防手段</div>
+        <ol style="font-size:14px;margin:0;padding-left:19px">
+          <li><b>固定加锁顺序</b>：所有业务都按 id 从小到大更新，破坏「循环等待」条件</li>
+          <li><b>缩小事务范围</b>：事务越短、锁持有时间越少，撞车概率越低</li>
+          <li><b>让 SQL 走索引</b>：避免行锁退化成全表锁</li>
+          <li><b>一次锁定所需资源</b>：用 <code>FOR UPDATE</code> 一次锁够，别分多次</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="sql">
+      <span class="sql-label">SQL · 排查死锁与锁等待</span>
+<pre><span class="cm">-- 查看最近一次死锁的详细信息（最常用）</span>
+<span class="kw">SHOW ENGINE INNODB STATUS</span>\G   <span class="cm">-- 看 LATEST DETECTED DEADLOCK 段</span>
+
+<span class="cm">-- MySQL 8.0：查当前谁在等锁、被谁挡住</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> performance_schema.data_locks;          <span class="cm">-- 当前持有的锁</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> performance_schema.data_lock_waits;     <span class="cm">-- 锁等待关系</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> sys.innodb_lock_waits;                  <span class="cm">-- 可读性最好的视图</span>
+
+<span class="cm">-- MySQL 5.7 用这几个（8.0 已移除）</span>
+<span class="cm">-- information_schema.INNODB_LOCKS / INNODB_LOCK_WAITS / INNODB_TRX</span>
+
+<span class="cm">-- 锁等待超时时间（默认 50 秒，超时不是死锁，报 1205 Lock wait timeout）</span>
+<span class="kw">SHOW VARIABLES LIKE</span> <span class="str">'innodb_lock_wait_timeout'</span>;
+
+<span class="cm">-- 死锁检测开关（高并发热点行场景可关闭，改为依赖超时，需评估）</span>
+<span class="kw">SHOW VARIABLES LIKE</span> <span class="str">'innodb_deadlock_detect'</span>;</pre>
+    </div>
+
+    <div class="warn">
+      <div class="tag">区分两种报错</div>
+      <p><code>ERROR 1213 Deadlock found</code> = 死锁，InnoDB <strong>主动检测并立刻回滚</strong>一方；<br>
+      <code>ERROR 1205 Lock wait timeout exceeded</code> = 锁等待<strong>超时</strong>（默认等 50 秒还没等到），不是死锁，只是排队太久。两者的排查思路完全不同。</p>
+    </div>
+  </div>
+
+  <!-- SECTION: summary-3 模块三小结 -->
+  <div class="summary">
+    <h3>模块三小结</h3>
+    <ol>
+      <li><strong>三个分类维度</strong>：按粒度（全局锁 / 表锁 / 行锁）、按模式（S / X / 意向锁）、按范围（记录锁 / 间隙锁 / 临键锁）。</li>
+      <li><strong>InnoDB 行锁加在索引上</strong>，不是加在行上。没有索引可用时会退化成锁全表记录。</li>
+      <li><strong>S 与 S 兼容，S 与 X、X 与 X 都冲突</strong>；但普通 <code>SELECT</code> 是快照读，连 S 锁都不加。</li>
+      <li><strong>意向锁（IS/IX）是表级声明标记</strong>，让表锁与行锁的冲突判断从逐行检查降为 O(1)；IS 与 IX 彼此完全兼容。</li>
+      <li><strong>MDL 元数据锁自动加</strong>，长事务 + DDL 是典型生产事故来源。</li>
+      <li><strong>三种行锁范围</strong>：记录锁锁单行、间隙锁锁开区间 <code>(a,b)</code> 只挡 INSERT、临键锁 <code>(a,b]</code> = 记录锁 + 间隙锁，是 RR 下的默认加锁单位。</li>
+      <li><strong>加锁范围会退化</strong>：唯一索引等值命中 → 记录锁；唯一索引等值未命中 → 间隙锁；RC 级别 → 基本只有记录锁。</li>
+      <li><strong>死锁由 InnoDB 自动检测并回滚代价小的一方</strong>；预防靠固定加锁顺序、缩短事务、走索引。</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ============================================================
+     SECTION: panel-4 MVCC 与锁如何配合
+     ============================================================ -->
+<section class="panel" id="p4" role="tabpanel" aria-labelledby="tb4" hidden>
+
+  <div class="sec-head">
+    <div class="kicker">模块四 · 融会贯通</div>
+    <h2>MVCC 与锁的关联：两套机制如何分工协作</h2>
+    <p class="sub">前两个模块分开讲了 MVCC 和锁，这一模块回答最关键的问题：它们各自负责什么？为什么快照读不加锁？RR 级别下幻读到底是怎么被解决的？</p>
+  </div>
+
+  <div class="card">
+    <h3>一、总体分工：一张图看清两套机制的边界</h3>
+
+    <div class="flow">
+      <div class="fnode" style="border-color:#b9e5d3;background:var(--green-soft)">
+        <span class="fi">📖</span>
+        <div class="ft" style="color:#0b6b4a">快照读 · 普通 SELECT</div>
+        <div class="fd">走 <b>MVCC</b>：沿版本链找可见版本<br><span class="yes">不加任何锁</span></div>
+      </div>
+      <div class="farrow">／</div>
+      <div class="fnode" style="border-color:#f3c4c4;background:var(--red-soft)">
+        <span class="fi">✏️</span>
+        <div class="ft" style="color:#991b1b">当前读 · UPDATE/DELETE/INSERT/FOR UPDATE</div>
+        <div class="fd">走 <b>锁机制</b>：记录锁 + 间隙锁<br><span class="no">必须加锁</span></div>
+      </div>
+    </div>
+
+    <div class="tblwrap">
+      <table>
+        <caption>两套机制的职责划分</caption>
+        <thead><tr><th>维度</th><th><span class="badge b-green">MVCC</span></th><th><span class="badge b-red">锁</span></th></tr></thead>
+        <tbody>
+          <tr><td>解决什么</td><td>读与写的<b>并发</b>问题（不用等）</td><td>写与写的<b>互斥</b>问题（必须排队）</td></tr>
+          <tr><td>服务对象</td><td>快照读（普通 SELECT）</td><td>当前读（DML + 加锁读）</td></tr>
+          <tr><td>时间维度</td><td>让读者看到<b>过去某个时刻</b>的一致数据</td><td>保证写者操作<b>此刻最新</b>的数据</td></tr>
+          <tr><td>防住的异常</td><td>脏读、不可重复读（+ RR 下快照读的幻读）</td><td>丢失更新、幻读（写入部分）、并发写冲突</td></tr>
+          <tr><td>底层依赖</td><td>隐藏列 + undo log 版本链 + ReadView</td><td>索引上的锁结构 + 锁等待队列</td></tr>
+          <tr><td>性能代价</td><td>版本链变长、undo log 膨胀</td><td>阻塞等待、死锁</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="keypoint">
+      <div class="tag">一句话总结关系</div>
+      <p><strong>MVCC 负责「让读不用等」，锁负责「让写不打架」。</strong>它们不是二选一的替代关系，而是<b>互补共存</b>：同一条 <code>UPDATE</code> 语句里，两者甚至会同时出现——用锁保证独占，用 undo log 生成新版本供别的快照读使用。</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>二、为什么快照读不需要加锁？</h3>
+    <p>这是理解 MVCC 价值的关键一问。答案藏在「读操作到底需要什么保证」里。</p>
+
+    <h4>推理链条</h4>
+    <div class="flow" style="flex-direction:column;gap:0">
+      <div class="fnode" style="text-align:left">
+        <div class="ft">① 读操作的需求是「看到一个自洽的数据状态」</div>
+        <div class="fd">它不要求「看到此刻绝对最新的值」，只要求「我看到的这一份内部不矛盾、且是某个真实存在过的状态」。</div>
+      </div>
+      <div class="farrow" style="flex-basis:22px;transform:rotate(90deg)">↓</div>
+      <div class="fnode" style="text-align:left">
+        <div class="ft">② undo log 里恰好保存了所有历史状态</div>
+        <div class="fd">每次修改都留下旧版本，这些旧版本都是「真实存在过的自洽状态」。</div>
+      </div>
+      <div class="farrow" style="flex-basis:22px;transform:rotate(90deg)">↓</div>
+      <div class="fnode" style="text-align:left">
+        <div class="ft">③ ReadView 能精确定位「我该看哪个版本」</div>
+        <div class="fd">通过比较事务 ID，判断哪些版本在我开始前已提交。</div>
+      </div>
+      <div class="farrow" style="flex-basis:22px;transform:rotate(90deg)">↓</div>
+      <div class="fnode" style="text-align:left;border-color:#b9e5d3;background:var(--green-soft)">
+        <div class="ft" style="color:#0b6b4a">④ 既然能直接读到满足要求的历史版本，就没必要阻塞写事务</div>
+        <div class="fd">读操作对旧版本的访问，与写操作对新版本的修改，作用在<b>不同的数据版本</b>上，天然无冲突 → 不需要锁。</div>
+      </div>
+    </div>
+
+    <div class="analogy">
+      <div class="tag">类比：Google Docs 的历史版本</div>
+      <p>同事正在文档里大改第 3 章（写事务持有 X 锁）。你想看这份文档，<strong>不需要等他改完</strong>——你打开「历史版本」，选昨天的快照来看（快照读）。你们操作的是不同的版本副本，谁也不影响谁。<br>
+      但如果你要<b>亲自上手改第 3 章</b>，那就必须先等他改完并保存（当前读 + 加锁），否则你俩的修改会互相覆盖。<br><br>
+      <b>本质：读旧版本 = 无冲突；写最新版本 = 有冲突。</b>这就是 MVCC 能实现「读不阻塞写、写不阻塞读」的全部原因。</p>
+    </div>
+
+    <h4>反过来：为什么当前读必须加锁？</h4>
+    <p>设想 <code>UPDATE account SET balance = balance - 100 WHERE id = 1</code> 不加锁会发生什么：</p>
+    <div class="tblwrap">
+      <table>
+        <caption>不加锁的后果 —— 丢失更新（Lost Update）</caption>
+        <thead><tr><th>时刻</th><th>事务 A</th><th>事务 B</th><th>balance</th></tr></thead>
+        <tbody>
+          <tr><td>T1</td><td>读到 balance = <b>1000</b></td><td></td><td>1000</td></tr>
+          <tr><td>T2</td><td></td><td>读到 balance = <b>1000</b></td><td>1000</td></tr>
+          <tr><td>T3</td><td>计算 1000−100=900，写回</td><td></td><td>900</td></tr>
+          <tr><td>T4</td><td></td><td>计算 1000−200=800，写回</td><td class="no"><b>800</b> ✗</td></tr>
+          <tr><td>结果</td><td colspan="3" class="no">正确值应是 700，A 扣的 100 元凭空消失了 —— <b>B 基于过期数据覆盖写入</b></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>根源在于：<strong>写操作必须基于「最新值」计算，而 MVCC 提供的是「历史值」。</strong>所以当前读必须绕过版本链读最新数据，并用 X 锁保证「从我读到、到我写回」这段时间里没人能插进来改。这就是 <code>FOR UPDATE</code> 的意义。</p>
+  </div>
+
+  <div class="card">
+    <h3>三、核心问题：RR 级别下幻读是怎么被解决的？</h3>
+    <p>SQL 标准说「RR 不解决幻读，要靠 SERIALIZABLE」。但 <strong>InnoDB 在 RR 下用「MVCC + 间隙锁」的组合，把幻读基本解决了</strong>。关键在于要分清「哪种读发生的幻读」——因为两种读的解决手段完全不同。</p>
+
+    <!-- SECTION: phantom-demo 幻读解决路径 -->
+    <div class="demo" id="phantomDemo">
+      <div class="demo-head">
+        <div class="demo-title">交互演示：两种幻读场景与对应的解决机制</div>
+        <div class="demo-hint">点击场景，再逐步播放时间线</div>
+      </div>
+
+      <div class="segbar" id="phSeg" role="group" aria-label="选择幻读场景">
+        <button class="seg" data-ph="0" aria-pressed="true">场景一：快照读的幻读<br><small style="font-weight:400">→ 由 MVCC 解决</small></button>
+        <button class="seg" data-ph="1" aria-pressed="false">场景二：当前读的幻读<br><small style="font-weight:400">→ 由间隙锁解决</small></button>
+        <button class="seg" data-ph="2" aria-pressed="false">场景三：RR 仍存在的破口<br><small style="font-weight:400">→ 快照读混当前读</small></button>
+      </div>
+
+      <div class="stage">
+        <div style="margin-bottom:14px">
+          <div class="sql" style="margin:0">
+            <span class="sql-label">场景说明</span>
+            <pre id="phSql"></pre>
+          </div>
+        </div>
+
+        <div class="lanes">
+          <div class="lane lane-a">
+            <div class="lane-head"><span>事务 A</span><span class="tid">trx_id=200</span></div>
+            <div class="lane-body" id="phLaneA"></div>
+          </div>
+          <div class="lane lane-b">
+            <div class="lane-head"><span>事务 B</span><span class="tid">trx_id=201</span></div>
+            <div class="lane-body" id="phLaneB"></div>
+          </div>
+        </div>
+
+        <div class="ctrl">
+          <button class="btn primary" id="phNext" data-primary-action>下一步 ▸</button>
+          <button class="btn" id="phAuto">▶ 自动播放</button>
+          <button class="btn ghost" id="phReset">↺ 重置</button>
+          <span class="spacer"></span>
+          <span class="stepcount" id="phCount">0 / 0</span>
+        </div>
+        <div class="stage-note" id="phNote"></div>
+      </div>
+    </div>
+
+    <h4>路径一：快照读的幻读 —— MVCC 直接免疫</h4>
+    <p>RR 下，事务 A 只在<strong>第一次快照读</strong>时生成 ReadView，之后全程复用。事务 B 后续插入的新行，其 <code>DB_TRX_ID</code> 必然 <code>≥ A 的 max_trx_id</code>，根据可见性判定第三步，<strong>直接判为不可见</strong>。</p>
+    <div class="keypoint">
+      <div class="tag">机制解释</div>
+      <p>所以在 RR 下，A 无论查多少次，看到的永远是首次快照那一刻的世界，<strong>B 插入的新行对 A 永远隐身</strong>。快照读的幻读被 MVCC 天然挡住，压根不需要加锁。</p>
+    </div>
+
+    <h4>路径二：当前读的幻读 —— 间隙锁出手</h4>
+    <p>但如果 A 用的是 <code>SELECT ... FOR UPDATE</code> 或直接 <code>UPDATE ... WHERE 范围条件</code>，那就是当前读，MVCC 不介入，必须靠锁。此时 InnoDB 会加<strong>临键锁</strong>，不仅锁住范围内已存在的记录，还锁住记录之间以及范围边界的<strong>间隙</strong>。B 想 <code>INSERT</code> 到这个间隙里，会立刻被阻塞，直到 A 提交。</p>
+    <div class="sql">
+      <span class="sql-label">SQL · 间隙锁挡住幻读插入</span>
+<pre><span class="cm">-- 表 employee，id 为主键，现有 id = 5, 10, 15</span>
+
+<span class="cm">-- 事务 A</span>
+<span class="kw">BEGIN</span>;
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">employee</span> <span class="kw">WHERE</span> id &gt; <span class="num">7</span> <span class="kw">AND</span> id &lt; <span class="num">14</span> <span class="kw">FOR UPDATE</span>;
+<span class="cm">-- 加锁范围：临键锁 (5,10] + (10,15]</span>
+<span class="cm">-- 意味着 id 在 6~14 之间的任何新记录都无法插入</span>
+
+<span class="cm">-- 事务 B（此时执行）</span>
+<span class="kw">BEGIN</span>;
+<span class="kw">INSERT INTO</span> <span class="tbl">employee</span> <span class="kw">VALUES</span> (<span class="num">12</span>, <span class="str">'王五'</span>, <span class="num">7000</span>);
+<span class="cm">-- ⏳ 阻塞！插入意向锁与 A 的间隙锁冲突</span>
+<span class="cm">-- 一直等到 A 提交或回滚；若超过 innodb_lock_wait_timeout 则报 1205</span>
+
+<span class="cm">-- 事务 A</span>
+<span class="kw">COMMIT</span>;   <span class="cm">-- 释放锁，B 的 INSERT 才得以完成</span></pre>
+    </div>
+
+    <div class="warn">
+      <div class="tag">RR 下幻读仍可能发生的破口（高频面试点）</div>
+      <p><strong>InnoDB 的 RR 并没有 100% 消灭幻读。</strong>当一个事务里<b>快照读和当前读混用</b>时，破口就出现了：</p>
+      <ol style="margin-top:8px">
+        <li>事务 A 先做快照读 <code>SELECT * FROM employee WHERE id=12</code> → 没有这行，生成 ReadView</li>
+        <li>事务 B <code>INSERT</code> id=12 并 <code>COMMIT</code>（A 没有加锁，所以 B 不会被阻塞）</li>
+        <li>事务 A 再快照读 → 仍然看不到（MVCC 挡住了）</li>
+        <li>事务 A 执行 <code>UPDATE employee SET salary=1 WHERE id=12</code> → <b>当前读！读到了 B 插入的行并成功修改</b></li>
+        <li>事务 A 再快照读 → <b>这行现在出现了</b>（因为 trx_id 变成了 A 自己，判定第一步即可见）→ <span class="no">幻读发生</span></li>
+      </ol>
+      <p style="margin-top:8px"><b>结论：</b>MVCC 只能保证「快照读之间」不出现幻读；一旦掺入当前读，就可能看到「新出现的行」。<strong>真正要彻底防幻读，必须在事务一开始就用 <code>SELECT ... FOR UPDATE</code> 加锁读，把间隙锁住。</strong></p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>四、MVCC 与锁在同一条语句里的协作</h3>
+    <p>最容易被忽略的一点：<strong>一条 <code>UPDATE</code> 语句，MVCC 和锁是同时参与的。</strong></p>
+
+    <div class="flow" style="flex-direction:column;gap:0">
+      <div class="fnode" style="text-align:left;display:flex;gap:12px;align-items:flex-start">
+        <span class="badge b-red" style="flex:0 0 auto">Step 1</span>
+        <div><div class="ft" style="margin:0">当前读定位目标行 + 加 X 锁</div>
+        <div class="fd">按索引找到要改的行，读<b>最新版本</b>，加排他锁；RR 下还会加上间隙锁防止范围内插入。</div></div>
+      </div>
+      <div class="farrow" style="flex-basis:20px;transform:rotate(90deg)">↓</div>
+      <div class="fnode" style="text-align:left;display:flex;gap:12px;align-items:flex-start">
+        <span class="badge b-amber" style="flex:0 0 auto">Step 2</span>
+        <div><div class="ft" style="margin:0">把旧值写入 undo log，生成新版本</div>
+        <div class="fd"><b>MVCC 在这里介入</b>：旧值不销毁，而是存进 undo log；行记录的 <code>DB_TRX_ID</code> 更新为当前事务 ID，<code>DB_ROLL_PTR</code> 指向刚写入的 undo 记录。</div></div>
+      </div>
+      <div class="farrow" style="flex-basis:20px;transform:rotate(90deg)">↓</div>
+      <div class="fnode" style="text-align:left;display:flex;gap:12px;align-items:flex-start">
+        <span class="badge b-green" style="flex:0 0 auto">Step 3</span>
+        <div><div class="ft" style="margin:0">写 redo log（prepare）→ 更新内存数据页</div>
+        <div class="fd">WAL 机制保证崩溃可恢复。</div></div>
+      </div>
+      <div class="farrow" style="flex-basis:20px;transform:rotate(90deg)">↓</div>
+      <div class="fnode" style="text-align:left;display:flex;gap:12px;align-items:flex-start">
+        <span class="badge b-blue" style="flex:0 0 auto">Step 4</span>
+        <div><div class="ft" style="margin:0">COMMIT：redo log 标记 commit，但<b>锁不一定立刻全放</b></div>
+        <div class="fd">提交后 X 锁释放；但 undo log 不能马上删——只要还有老事务的 ReadView 可能需要这个版本，就得留着，等 purge 线程后续清理。</div></div>
+      </div>
+    </div>
+
+    <div class="keypoint">
+      <div class="tag">关键洞察</div>
+      <p><strong>锁保护的是「写的那一刻」，MVCC 服务的是「写之后的所有读者」。</strong>写事务加锁期间，别的快照读照样能跑（读旧版本）；写事务提交后，锁没了，但它留下的 undo 版本还在为老事务的 ReadView 服务。两套机制在时间上是<b>接力</b>关系，不是竞争关系。</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>五、RC vs RR：该选哪个</h3>
+    <p>既然 RR 更强，为什么很多互联网大厂反而把线上库改成 RC？因为间隙锁是把双刃剑。</p>
+
+    <div class="tblwrap">
+      <table>
+        <thead><tr><th>对比项</th><th><span class="badge b-blue">RC 读已提交</span></th><th><span class="badge b-green">RR 可重复读（默认）</span></th></tr></thead>
+        <tbody>
+          <tr><td>ReadView 生成</td><td>每次快照读重新生成</td><td>首次快照读生成，全程复用</td></tr>
+          <tr><td>间隙锁</td><td class="yes">基本不加（除唯一性检查、外键）</td><td class="no">大量使用临键锁</td></tr>
+          <tr><td>幻读</td><td class="no">会发生</td><td class="yes">快照读免疫；当前读靠间隙锁；混用时仍有破口</td></tr>
+          <tr><td>并发度</td><td class="yes">高（锁范围小）</td><td class="mid">相对低（锁范围大）</td></tr>
+          <tr><td>死锁概率</td><td class="yes">低</td><td class="no">高（间隙锁容易交叉等待）</td></tr>
+          <tr><td>binlog 格式要求</td><td class="no">必须用 ROW 格式（STATEMENT 下主从可能不一致）</td><td class="yes">STATEMENT / ROW 均可</td></tr>
+          <tr><td>适用场景</td><td>高并发 OLTP、互联网业务（阿里等大厂常见选择）</td><td>需要严格可重复语义、报表统计、默认保守配置</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="analogy">
+      <div class="tag">类比：小区门禁的两种策略</div>
+      <p><b>RR</b> 像「整层楼连走廊一起封锁」：你在一户施工，整层楼道都不许别人进（临键锁锁了记录也锁了间隙）。绝对安全，但邻居都被挡在外面，还容易两人在楼道口对撞（死锁）。<br>
+      <b>RC</b> 像「只锁你家的门」：别人照常走楼道，可以去看看隔壁（只加记录锁）。通行效率高，但偶尔会有人突然出现在你意想不到的地方（幻读）。<br>
+      选哪个取决于你更怕「撞车」还是更怕「看到意外的人」。</p>
+    </div>
+  </div>
+
+  <!-- SECTION: summary-4 模块四小结 -->
+  <div class="summary">
+    <h3>模块四小结</h3>
+    <ol>
+      <li><strong>分工</strong>：MVCC 让「读不用等」，锁让「写不打架」；两者互补共存，不是替代关系。</li>
+      <li><strong>快照读不加锁的根本原因</strong>：读者访问的是<b>旧版本</b>，写者修改的是<b>新版本</b>，作用在不同数据上，天然无冲突。</li>
+      <li><strong>当前读必须加锁的根本原因</strong>：写必须基于最新值计算，若基于 MVCC 的历史值会造成<b>丢失更新</b>。</li>
+      <li><strong>RR 解决幻读的两条路径</strong>：快照读的幻读由 MVCC（ReadView 复用）免疫；当前读的幻读由临键锁 / 间隙锁阻止 INSERT。</li>
+      <li><strong>破口</strong>：快照读与当前读混用时仍可能幻读——<code>UPDATE</code> 改了 B 新插入的行后，A 的快照读就能看见它了。要彻底防幻读须一开始就 <code>FOR UPDATE</code>。</li>
+      <li><strong>一条 UPDATE 里两者协作</strong>：先当前读加 X 锁定位 → 旧值写 undo log 生成新版本（MVCC 介入）→ redo log 保持久 → 提交后锁释放但 undo 版本继续服务老事务。</li>
+      <li><strong>RC 与 RR 的取舍</strong>：RC 并发高、死锁少，但需 ROW binlog 且不防幻读；RR 语义强但间隙锁易致死锁。</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ============================================================
+     SECTION: panel-5 并发场景时间线剧场
+     ============================================================ -->
+<section class="panel" id="p5" role="tabpanel" aria-labelledby="tb5" hidden>
+
+  <div class="sec-head">
+    <div class="kicker">模块五 · 实战推演</div>
+    <h2>并发场景时间线：两个事务同时动手会发生什么</h2>
+    <p class="sub">前面四个模块的原理，在这里全部串起来。每个场景都可以<b>单步播放</b>，观察事务 ID、锁状态、数据行和 ReadView 在每一步的真实变化。</p>
+  </div>
+
+  <div class="card">
+    <h3>场景选择</h3>
+    <p>五个场景由浅入深，覆盖了 MVCC 与锁交互的所有典型情况。建议按顺序看。</p>
+    <div class="grid c2" id="scList"></div>
+  </div>
+
+  <!-- SECTION: theater 时间线剧场 -->
+  <div class="card" id="theater">
+    <h3 id="scTitle">场景一：两个事务并发读同一行（快照读，互不阻塞）</h3>
+    <p style="color:var(--ink-soft);font-size:14.8px" id="scIntro"></p>
+
+    <div class="demo" style="margin:16px 0 0;background:#fff;border:0;padding:0">
+      <div class="stage" style="margin-top:0">
+        <!-- 隔离级别与状态条 -->
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center">
+          <span class="badge b-gray" id="scIso">RR 可重复读</span>
+          <span class="badge b-gray" id="scTable">表 employee(id 主键)</span>
+          <span class="spacer" style="flex:1"></span>
+          <span class="stepcount" id="scCount">步骤 0 / 0</span>
+        </div>
+
+        <!-- 数据行实时状态 -->
+        <div style="margin-bottom:18px">
+          <div class="rv-title">数据行实时状态（id = 1）</div>
+          <div class="rowview" style="min-width:0">
+            <div class="rv" style="grid-template-columns:repeat(3,1fr);max-width:420px">
+              <div class="hd">id</div><div class="hd">name</div><div class="hd">salary</div>
+              <div>1</div><div>张三</div><div id="thSalary">5000</div>
+            </div>
+            <div class="rv" style="grid-template-columns:repeat(3,1fr);max-width:420px;margin-top:6px">
+              <div class="hd">DB_TRX_ID</div><div class="hd">DB_ROLL_PTR</div><div class="hd">DELETE_FLAG</div>
+              <div id="thTrx">80</div><div id="thPtr">null</div><div id="thDel">false</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;max-width:520px">
+            <div class="lockbox none" id="thLockA"><span>🔓</span> 事务 A 持锁：无</div>
+            <div class="lockbox none" id="thLockB"><span>🔓</span> 事务 B 持锁：无</div>
+          </div>
+          <div class="rvcard" id="thRv" style="display:none;margin-top:12px;max-width:420px"></div>
+        </div>
+
+        <!-- 双泳道时间线 -->
+        <div class="rv-title">执行时间线</div>
+        <div class="lanes">
+          <div class="lane lane-a">
+            <div class="lane-head"><span>事务 A</span><span class="tid" id="thTidA">trx_id = —</span></div>
+            <div class="lane-body" id="thLaneA"></div>
+          </div>
+          <div class="lane lane-b">
+            <div class="lane-head"><span>事务 B</span><span class="tid" id="thTidB">trx_id = —</span></div>
+            <div class="lane-body" id="thLaneB"></div>
+          </div>
+        </div>
+
+        <!-- 版本链快照 -->
+        <div style="margin-top:18px">
+          <div class="rv-title">undo log 版本链当前状态</div>
+          <div class="chain" id="thChain" style="min-width:0;flex-wrap:wrap;gap:8px"></div>
+        </div>
+
+        <!-- 控制条 -->
+        <div class="ctrl">
+          <button class="btn primary" id="thPrev">◂ 上一步</button>
+          <button class="btn primary" id="thNext" data-primary-action>下一步 ▸</button>
+          <button class="btn" id="thPlay">▶ 自动播放</button>
+          <button class="btn ghost" id="thReset">↺ 重新开始</button>
+        </div>
+
+        <div class="stage-note" id="thNote">点击「下一步」开始推演。</div>
+
+        <!-- 深度解析 -->
+        <div id="thExplain" style="margin-top:16px"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>五个场景横向对比：一眼看懂谁在起作用</h3>
+    <div class="tblwrap">
+      <table>
+        <thead>
+          <tr><th>场景</th><th>读类型</th><th>是否阻塞</th><th>起作用的机制</th><th>关键结论</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>① 并发快照读同一行</td>
+            <td><span class="badge b-green">快照读</span></td>
+            <td class="yes">完全不阻塞</td>
+            <td>MVCC（各自的 ReadView）</td>
+            <td>读操作之间永不冲突，连锁都不生成</td>
+          </tr>
+          <tr>
+            <td>② A 改 / B 读（RR vs RC）</td>
+            <td><span class="badge b-green">快照读</span></td>
+            <td class="yes">不阻塞</td>
+            <td>MVCC + undo log 版本链</td>
+            <td>RR 看旧值（可重复读），RC 提交后看新值</td>
+          </tr>
+          <tr>
+            <td>③ 两个事务改同一行</td>
+            <td><span class="badge b-red">当前读</span></td>
+            <td class="no">B 阻塞等待</td>
+            <td>X 记录锁</td>
+            <td>写写必须串行，否则丢失更新</td>
+          </tr>
+          <tr>
+            <td>④ 范围查询 + 插入（幻读）</td>
+            <td><span class="badge b-red">当前读</span></td>
+            <td class="no">B 的 INSERT 阻塞</td>
+            <td>临键锁 / 间隙锁</td>
+            <td>锁住「空隙」才能挡住幻影行</td>
+          </tr>
+          <tr>
+            <td>⑤ 交叉更新两行（死锁）</td>
+            <td><span class="badge b-red">当前读</span></td>
+            <td class="no">互相等待 → 一方被回滚</td>
+            <td>X 锁 + 死锁检测</td>
+            <td>固定加锁顺序是最有效的预防手段</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="keypoint">
+      <div class="tag">贯穿五个场景的一条主线</div>
+      <p>看这五行对比会发现一个清晰规律：<strong>只要涉及的操作里有「快照读」，就一定不阻塞，靠的是 MVCC；只要两边都是「当前读」，就可能阻塞甚至死锁，靠的是锁来仲裁。</strong>所以判断一个并发场景会不会卡住，第一步永远是：<b>先分清这两条 SQL 各是快照读还是当前读。</b></p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>动手验证：在本地 MySQL 上复现这些场景</h3>
+    <p>上面的推演都可以在自己的 MySQL 上验证。<strong>开两个终端窗口</strong>（或两个客户端连接），分别作为事务 A 和事务 B。</p>
+
+    <div class="sql">
+      <span class="sql-label">准备：建表与初始数据</span>
+<pre><span class="kw">DROP TABLE IF EXISTS</span> <span class="tbl">employee</span>;
+<span class="kw">CREATE TABLE</span> <span class="tbl">employee</span> (
+  id     <span class="kw">INT PRIMARY KEY</span>,
+  name   <span class="kw">VARCHAR</span>(<span class="num">20</span>),
+  salary <span class="kw">INT</span>,
+  <span class="kw">KEY</span> idx_salary (salary)          <span class="cm">-- 普通索引，用于演示非唯一索引加锁</span>
+) <span class="kw">ENGINE</span>=InnoDB;
+
+<span class="kw">INSERT INTO</span> <span class="tbl">employee</span> <span class="kw">VALUES</span>
+  (<span class="num">1</span>,  <span class="str">'张三'</span>, <span class="num">5000</span>),
+  (<span class="num">5</span>,  <span class="str">'李四'</span>, <span class="num">6000</span>),
+  (<span class="num">10</span>, <span class="str">'王五'</span>, <span class="num">8000</span>),
+  (<span class="num">15</span>, <span class="str">'赵六'</span>, <span class="num">9000</span>),
+  (<span class="num">20</span>, <span class="str">'钱七'</span>, <span class="num">12000</span>);
+
+<span class="cm">-- 确认隔离级别</span>
+<span class="kw">SELECT</span> @@transaction_isolation;      <span class="cm">-- 期望 REPEATABLE-READ</span>
+
+<span class="cm">-- 查看当前活跃事务的 trx_id（另开窗口执行 SQL 前先记下）</span>
+<span class="kw">SELECT</span> trx_id, trx_state, trx_started, trx_mysql_thread_id, trx_query
+<span class="kw">FROM</span> information_schema.innodb_trx;</pre>
+    </div>
+
+    <div class="sql">
+      <span class="sql-label">验证场景 ②：RR 下的可重复读</span>
+<pre><span class="cm">/* ---- 窗口 A ---- */</span>              <span class="cm">/* ---- 窗口 B ---- */</span>
+<span class="kw">BEGIN</span>;
+<span class="kw">SELECT</span> salary <span class="kw">FROM</span> <span class="tbl">employee</span>
+  <span class="kw">WHERE</span> id=<span class="num">1</span>;   <span class="cm">-- 5000</span>
+                                     <span class="kw">BEGIN</span>;
+                                     <span class="kw">UPDATE</span> <span class="tbl">employee</span>
+                                       <span class="kw">SET</span> salary=<span class="num">9000</span> <span class="kw">WHERE</span> id=<span class="num">1</span>;
+                                     <span class="kw">COMMIT</span>;
+<span class="kw">SELECT</span> salary <span class="kw">FROM</span> <span class="tbl">employee</span>
+  <span class="kw">WHERE</span> id=<span class="num">1</span>;   <span class="cm">-- 仍是 5000 ✔</span>
+<span class="kw">COMMIT</span>;
+<span class="kw">SELECT</span> salary <span class="kw">FROM</span> <span class="tbl">employee</span>
+  <span class="kw">WHERE</span> id=<span class="num">1</span>;   <span class="cm">-- 变成 9000（新事务、新 ReadView）</span></pre>
+    </div>
+
+    <div class="sql">
+      <span class="sql-label">验证场景 ④：间隙锁挡住 INSERT</span>
+<pre><span class="cm">/* ---- 窗口 A ---- */</span>              <span class="cm">/* ---- 窗口 B ---- */</span>
+<span class="kw">BEGIN</span>;
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">employee</span>
+  <span class="kw">WHERE</span> id &gt; <span class="num">5</span> <span class="kw">AND</span> id &lt; <span class="num">15</span>
+  <span class="kw">FOR UPDATE</span>;
+<span class="cm">-- 加临键锁 (5,10] (10,15]</span>
+                                     <span class="kw">BEGIN</span>;
+                                     <span class="kw">INSERT INTO</span> <span class="tbl">employee</span>
+                                       <span class="kw">VALUES</span>(<span class="num">12</span>,<span class="str">'新人'</span>,<span class="num">7000</span>);
+                                     <span class="cm">-- ⏳ 卡住，一直等待…</span>
+
+<span class="cm">/* 第三个窗口查锁等待 */</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> sys.innodb_lock_waits\G   <span class="cm">-- 8.0</span>
+
+<span class="kw">COMMIT</span>;                              <span class="cm">-- B 的 INSERT 立刻返回成功</span></pre>
+    </div>
+
+    <div class="sql">
+      <span class="sql-label">验证场景 ⑤：制造一次死锁</span>
+<pre><span class="cm">/* ---- 窗口 A ---- */</span>              <span class="cm">/* ---- 窗口 B ---- */</span>
+<span class="kw">BEGIN</span>;                               <span class="kw">BEGIN</span>;
+<span class="kw">UPDATE</span> <span class="tbl">employee</span> <span class="kw">SET</span> salary=salary+<span class="num">1</span>
+  <span class="kw">WHERE</span> id=<span class="num">1</span>;   <span class="cm">-- 拿到 id=1 的 X 锁</span>
+                                     <span class="kw">UPDATE</span> <span class="tbl">employee</span> <span class="kw">SET</span> salary=salary+<span class="num">1</span>
+                                       <span class="kw">WHERE</span> id=<span class="num">5</span>;  <span class="cm">-- 拿到 id=5 的 X 锁</span>
+<span class="kw">UPDATE</span> <span class="tbl">employee</span> <span class="kw">SET</span> salary=salary+<span class="num">1</span>
+  <span class="kw">WHERE</span> id=<span class="num">5</span>;   <span class="cm">-- ⏳ 等 B</span>
+                                     <span class="kw">UPDATE</span> <span class="tbl">employee</span> <span class="kw">SET</span> salary=salary+<span class="num">1</span>
+                                       <span class="kw">WHERE</span> id=<span class="num">1</span>;  <span class="cm">-- ⏳ 等 A → 死锁！</span>
+
+<span class="cm">-- 其中一个窗口立刻报错：</span>
+<span class="cm">-- ERROR 1213 (40001): Deadlock found when trying to get lock; try restarting transaction</span>
+
+<span class="cm">-- 查看死锁详情</span>
+<span class="kw">SHOW ENGINE INNODB STATUS</span>\G   <span class="cm">-- 找 LATEST DETECTED DEADLOCK 段</span></pre>
+    </div>
+
+    <div class="warn">
+      <div class="tag">验证提示</div>
+      <p>两个终端必须<strong>同时保持事务开启</strong>（<code>BEGIN</code> 后不要急着 <code>COMMIT</code>），否则锁一释放就看不到阻塞现象了。命令行客户端可以用 <code>mysql -u root -p -t</code> 让输出以表格形式显示，更易读。</p>
+    </div>
+  </div>
+
+  <!-- SECTION: summary-5 模块五小结 -->
+  <div class="summary">
+    <h3>模块五小结 · 也是全篇总结</h3>
+    <ol>
+      <li><strong>判断并发行为的第一步</strong>：分清每条 SQL 是<b>快照读</b>（普通 SELECT）还是<b>当前读</b>（DML / FOR UPDATE / LOCK IN SHARE MODE）。</li>
+      <li><strong>快照读永不阻塞</strong>：走 MVCC，各自用 ReadView 沿版本链找可见版本，连锁结构都不生成。</li>
+      <li><strong>当前读之间会阻塞</strong>：X 锁互斥，后来者进入等待队列，超过 <code>innodb_lock_wait_timeout</code>（默认 50 秒）报 1205。</li>
+      <li><strong>间隙锁是 RR 防幻读的关键</strong>：锁住索引记录之间的空隙，让 INSERT 无法凭空造出「幻影行」。</li>
+      <li><strong>死锁无法完全避免，只能降低概率</strong>：固定加锁顺序、缩短事务、让 SQL 走索引；真发生了由 InnoDB 自动检测并回滚代价小的一方。</li>
+      <li><strong>MVCC 与锁是接力而非竞争</strong>：写事务用锁保证独占，同时通过 undo log 生成新版本；提交后锁释放，旧版本继续服务还没结束的老事务。</li>
+      <li><strong>一句话记住整篇</strong>：<em>读看老照片（MVCC），写要独占现场（锁）；RR 把「现场周围的空地」也围起来（间隙锁），所以别人没法凭空塞东西进来（幻读）。</em></li>
+    </ol>
+  </div>
+</section>
+
+</div>
+</main>
+
+<!-- SECTION: footer 页脚 -->
+<footer>
+  <div class="wrap">
+    <div><b>MySQL 底层原理图解</b> · MVCC 与事务锁</div>
+    <div>内容基于 MySQL 5.7 / 8.0 InnoDB 存储引擎的公开行为整理，具体加锁细节可能随版本与优化器决策略有差异</div>
+  </div>
+</footer>
+
+<script>
+/* ============================================================
+   SECTION: data-iso 隔离级别数据
+   ============================================================ */
+var ISO_DATA = [
+  {
+    name: '读未提交 READ UNCOMMITTED',
+    desc: '最低级别。事务可以读到别的事务尚未提交的修改，等于完全不隔离。',
+    dirty: 'yes', nonrep: 'yes', phantom: 'yes',
+    sql: '<span class="kw">SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED</span>;',
+    badges: [
+      { c: 'b-red', t: '实现方式：几乎不隔离' },
+      { c: 'b-gray', t: '快照读直接读最新版本，不走 MVCC' },
+      { c: 'b-gray', t: '实际生产中几乎不用' }
+    ],
+    note: '<b>脏读、不可重复读、幻读全部会发生。</b>这个级别下，普通 SELECT 读的是「最新版本」而不是历史版本，等于绕过了 MVCC。因为脏读危害太大（可能读到最终被回滚的数据），实际项目里基本不会使用。'
+  },
+  {
+    name: '读已提交 READ COMMITTED（RC）',
+    desc: '只能读到别的事务已经提交的修改。Oracle、SQL Server 的默认级别。',
+    dirty: 'no', nonrep: 'yes', phantom: 'yes',
+    sql: '<span class="kw">SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED</span>;',
+    badges: [
+      { c: 'b-green', t: '挡住：脏读' },
+      { c: 'b-amber', t: '仍有：不可重复读、幻读' },
+      { c: 'b-blue', t: 'MVCC：每次快照读都重新生成 ReadView' }
+    ],
+    note: '<b>每次 SELECT 都重新生成一个 ReadView</b>，所以总能看到别人最新提交的值 —— 这正是「不可重复读」的成因。好处是几乎不加间隙锁，锁范围小、并发高、死锁少，因此很多互联网大厂把线上库设为 RC（但必须配合 ROW 格式的 binlog）。'
+  },
+  {
+    name: '可重复读 REPEATABLE READ（RR）★ InnoDB 默认',
+    desc: '同一事务内多次读同一行，结果始终一致。MySQL InnoDB 的默认级别。',
+    dirty: 'no', nonrep: 'no', phantom: 'mid',
+    sql: '<span class="kw">SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ</span>;',
+    badges: [
+      { c: 'b-green', t: '挡住：脏读、不可重复读' },
+      { c: 'b-purple', t: '幻读：快照读免疫 + 间隙锁拦截（混用时仍有破口）' },
+      { c: 'b-blue', t: 'MVCC：首次快照读生成 ReadView，全程复用' }
+    ],
+    note: '<b>整个事务只在第一次快照读时生成 ReadView，之后一直复用</b>，所以看到的世界被「冻结」在那一刻 —— 这就是「可重复读」。<br>SQL 标准认为 RR 不解决幻读，但 <b>InnoDB 额外用临键锁 / 间隙锁在当前读时锁住范围空隙</b>，把幻读也基本挡住了。唯一破口是「快照读与当前读混用」，详见模块四。'
+  },
+  {
+    name: '串行化 SERIALIZABLE',
+    desc: '最高级别。强制事务串行执行，所有普通 SELECT 都会自动加 S 锁。',
+    dirty: 'no', nonrep: 'no', phantom: 'no',
+    sql: '<span class="kw">SET SESSION TRANSACTION ISOLATION LEVEL SERIALIZABLE</span>;',
+    badges: [
+      { c: 'b-green', t: '挡住：全部三种读异常' },
+      { c: 'b-red', t: '代价：普通 SELECT 也会加共享锁' },
+      { c: 'b-gray', t: '并发度最低，读写互相阻塞' }
+    ],
+    note: '<b>这个级别下 MVCC 基本退场，全靠锁。</b>普通的 <code>SELECT</code> 会被隐式改写成 <code>SELECT ... LOCK IN SHARE MODE</code>，读与写、读与读之间都可能互相阻塞，并发性能大幅下降。只在极少数对一致性要求压倒一切的场景使用。'
+  }
+];
+
+/* ============================================================
+   SECTION: data-chain 版本链推演步骤（模块二）
+   ============================================================ */
+var CHAIN_STEPS = [
+  {
+    sql: '<span class="cm">-- 初始状态</span>\n<span class="kw">INSERT INTO</span> <span class="tbl">employee</span> <span class="kw">VALUES</span>(<span class="num">1</span>, <span class="str">\'张三\'</span>, <span class="num">5000</span>);  <span class="cm">-- 由事务 80 提交</span>',
+    salary: '5000', trx: '80', ptr: 'null',
+    versions: [
+      { tag: '最新版本（磁盘上的行）', val: 'salary = 5000', meta: 'DB_TRX_ID = 80\nDB_ROLL_PTR = null', cls: 'is-newest' }
+    ],
+    note: '初始状态：这行数据由事务 80 插入，<code>DB_ROLL_PTR</code> 为 null，说明它还没有更早的历史版本。版本链只有它自己一个节点。'
+  },
+  {
+    sql: '<span class="cm">-- 事务 90 开始</span>\n<span class="kw">BEGIN</span>;   <span class="cm">-- 分配到 trx_id = 90</span>\n<span class="kw">UPDATE</span> <span class="tbl">employee</span> <span class="kw">SET</span> salary = <span class="num">6000</span> <span class="kw">WHERE</span> id = <span class="num">1</span>;',
+    salary: '6000', trx: '90', ptr: '→ undo①',
+    versions: [
+      { tag: '最新版本', val: 'salary = 6000', meta: 'DB_TRX_ID = 90\nDB_ROLL_PTR → undo①', cls: 'is-newest' },
+      { tag: 'undo log ①', val: 'salary = 5000', meta: 'DB_TRX_ID = 80\nDB_ROLL_PTR = null' }
+    ],
+    note: '<b>关键动作：</b>UPDATE 之前，InnoDB 先把旧值 <code>5000</code> 抄写进 undo log（图中 undo①）。然后把行记录改成 6000，<code>DB_TRX_ID</code> 更新为 90，<code>DB_ROLL_PTR</code> 指向 undo①。<b>版本链的第一个环节就此建立。</b>'
+  },
+  {
+    sql: '<span class="kw">COMMIT</span>;   <span class="cm">-- 事务 90 提交，salary=6000 对外可见</span>',
+    salary: '6000', trx: '90', ptr: '→ undo①',
+    versions: [
+      { tag: '最新版本', val: 'salary = 6000', meta: 'DB_TRX_ID = 90 ✅已提交\nDB_ROLL_PTR → undo①', cls: 'is-newest' },
+      { tag: 'undo log ①', val: 'salary = 5000', meta: 'DB_TRX_ID = 80\n暂不能被 purge 清理' }
+    ],
+    note: '事务 90 提交。<b>注意 undo① 并没有被删除</b> —— 因为可能还有比 90 更早开启的事务需要读 5000 这个版本。undo log 的清理时机由 purge 线程根据「系统里是否还有事务需要它」决定，而不是提交即删。'
+  },
+  {
+    sql: '<span class="cm">-- 事务 95 接着改</span>\n<span class="kw">BEGIN</span>;   <span class="cm">-- trx_id = 95</span>\n<span class="kw">UPDATE</span> <span class="tbl">employee</span> <span class="kw">SET</span> salary = <span class="num">7000</span> <span class="kw">WHERE</span> id = <span class="num">1</span>;\n<span class="kw">COMMIT</span>;',
+    salary: '7000', trx: '95', ptr: '→ undo②',
+    versions: [
+      { tag: '最新版本', val: 'salary = 7000', meta: 'DB_TRX_ID = 95\nDB_ROLL_PTR → undo②', cls: 'is-newest' },
+      { tag: 'undo log ②', val: 'salary = 6000', meta: 'DB_TRX_ID = 90\nDB_ROLL_PTR → undo①' },
+      { tag: 'undo log ①', val: 'salary = 5000', meta: 'DB_TRX_ID = 80\nDB_ROLL_PTR = null' }
+    ],
+    note: '版本链长到 3 个节点了。每个 undo 记录都通过 <code>DB_ROLL_PTR</code> 指向更早的一版，形成一条<b>单向链表</b>。链头永远是磁盘上的当前值，链尾的 <code>DB_ROLL_PTR</code> 为 null。'
+  },
+  {
+    sql: '<span class="cm">-- 事务 100 再改一次，但【不提交】</span>\n<span class="kw">BEGIN</span>;   <span class="cm">-- trx_id = 100</span>\n<span class="kw">UPDATE</span> <span class="tbl">employee</span> <span class="kw">SET</span> salary = <span class="num">8000</span> <span class="kw">WHERE</span> id = <span class="num">1</span>;\n<span class="cm">-- 尚未 COMMIT，事务仍然活跃</span>',
+    salary: '8000', trx: '100', ptr: '→ undo③',
+    versions: [
+      { tag: '最新版本', val: 'salary = 8000', meta: 'DB_TRX_ID = 100 ⚠️未提交\nDB_ROLL_PTR → undo③', cls: 'is-newest' },
+      { tag: 'undo log ③', val: 'salary = 7000', meta: 'DB_TRX_ID = 95\nDB_ROLL_PTR → undo②' },
+      { tag: 'undo log ②', val: 'salary = 6000', meta: 'DB_TRX_ID = 90\nDB_ROLL_PTR → undo①' },
+      { tag: 'undo log ①', val: 'salary = 5000', meta: 'DB_TRX_ID = 80\nDB_ROLL_PTR = null' }
+    ],
+    note: '事务 100 改了数据但<b>没有提交</b>。此时磁盘上的最新版本是 8000，<code>DB_TRX_ID = 100</code>，而 100 仍在活跃事务列表里。链上现在有 4 个版本 —— <b>接下来正是考验 ReadView 的时刻。</b>'
+  },
+  {
+    sql: '<span class="cm">-- 此时新事务 105 执行快照读</span>\n<span class="kw">BEGIN</span>;   <span class="cm">-- trx_id = 105</span>\n<span class="kw">SELECT</span> salary <span class="kw">FROM</span> <span class="tbl">employee</span> <span class="kw">WHERE</span> id = <span class="num">1</span>;\n<span class="cm">-- 生成 ReadView：m_ids=[100], min=100, max=106, creator=105</span>',
+    salary: '8000', trx: '100', ptr: '→ undo③',
+    pick: 1,
+    versions: [
+      { tag: '最新版本', val: 'salary = 8000', meta: 'DB_TRX_ID = 100\n在 m_ids 里 → 不可见', cls: 'hidden-v' },
+      { tag: 'undo log ③', val: 'salary = 7000', meta: 'DB_TRX_ID = 95\n95 &lt; min(100) → ✅可见', cls: 'visible' },
+      { tag: 'undo log ②', val: 'salary = 6000', meta: 'DB_TRX_ID = 90\n无需再往前找', cls: 'hidden-v' },
+      { tag: 'undo log ①', val: 'salary = 5000', meta: 'DB_TRX_ID = 80\n无需再往前找', cls: 'hidden-v' }
+    ],
+    note: '<b>完整的 MVCC 读取过程：</b>事务 105 生成 ReadView（此时只有 100 未提交，所以 <code>m_ids=[100]</code>、<code>min=100</code>、<code>max=106</code>）。<br>① 先看链头 <code>8000</code>，其 trx_id=100 落在 <code>[100,106)</code> 且在 m_ids 里 → <b>未提交，不可见</b>；<br>② 顺着 <code>DB_ROLL_PTR</code> 取上一版 <code>7000</code>，其 trx_id=95 <code>&lt; min_trx_id(100)</code> → <b>已提交，可见！</b><br>③ 停止回溯，返回 <b>7000</b>。整个过程<b>没有加任何锁，也没有等待事务 100</b> —— 这就是 MVCC 的威力。'
+  }
+];
+
+/* ============================================================
+   SECTION: data-rv ReadView 判定用例（模块二）
+   ============================================================ */
+var RV_VIEW = { creator: 105, m_ids: [100, 102], min: 100, max: 106 };
+
+/* ============================================================
+   SECTION: data-gap 加锁范围场景（模块三）
+   ============================================================ */
+/* 数轴锚点：0=-∞(sup伪), 1..5=记录 5/10/15/20/25, 6=+∞(supremum) */
+var GAP_POINTS = ['−∞', '5', '10', '15', '20', '25', '+∞'];
+var GAP_CASES = [
+  {
+    label: '唯一索引 · 等值 · 命中',
+    sql: '<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">employee</span> <span class="kw">WHERE</span> id = <span class="num">10</span> <span class="kw">FOR UPDATE</span>;\n<span class="cm">-- id 是主键（唯一索引），且 id=10 这行确实存在</span>',
+    recs: [2],
+    zones: [],
+    locks: [{ c: 's', t: '记录锁 Record Lock：id = 10 这一行' }],
+    note: '<b>退化为记录锁。</b>因为 id 是唯一索引且等值命中，最多只可能有一条记录，锁住两侧间隙毫无意义 —— InnoDB 会主动把临键锁<b>优化（退化）成记录锁</b>。所以此时别的事务仍然可以 <code>INSERT id=8</code> 或 <code>id=12</code>，不会被阻塞。'
+  },
+  {
+    label: '唯一索引 · 等值 · 未命中',
+    sql: '<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">employee</span> <span class="kw">WHERE</span> id = <span class="num">12</span> <span class="kw">FOR UPDATE</span>;\n<span class="cm">-- id=12 这行不存在（现有 5,10,15,20,25）</span>',
+    recs: [],
+    zones: [{ from: 2, to: 3, type: 'g', label: '间隙锁 (10, 15)' }],
+    locks: [{ c: 'gap', t: '间隙锁 Gap Lock：开区间 (10, 15)' }],
+    note: '<b>退化为间隙锁。</b>目标记录不存在，没有「行」可锁，但 InnoDB 仍要防止别的事务把 id=12 插进来（否则这个 FOR UPDATE 的语义就被破坏了）。于是锁住 10 和 15 之间的空隙。此时 <code>INSERT id=12</code> 会被阻塞，但 <code>INSERT id=25</code> 之后、或 <code>id=8</code> 都不受影响。'
+  },
+  {
+    label: '范围查询（临键锁）',
+    sql: '<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">employee</span> <span class="kw">WHERE</span> id &gt;= <span class="num">10</span> <span class="kw">AND</span> id &lt; <span class="num">18</span> <span class="kw">FOR UPDATE</span>;\n<span class="cm">-- 范围扫描：从 id=10 一直扫到第一个不满足条件的 id=20</span>',
+    recs: [2, 3],
+    zones: [
+      { from: 1, to: 2, type: 'nk', label: '(5,10]' },
+      { from: 2, to: 3, type: 'nk', label: '(10,15]' },
+      { from: 3, to: 4, type: 'g', label: '间隙锁 (15,20)' }
+    ],
+    locks: [
+      { c: 'x', t: '临键锁 Next-Key Lock：(5, 10]' },
+      { c: 'x', t: '临键锁 Next-Key Lock：(10, 15]' },
+      { c: 'gap', t: '间隙锁 Gap Lock：(15, 20) ← 扫到 20 不满足条件，锁住它前面的空隙' }
+    ],
+    note: '<b>这是 RR 下范围查询的标准加锁形态。</b>InnoDB 从 id=10 开始向后扫描，每扫到一条记录就加一个临键锁 <code>(前一条, 当前条]</code>；一直扫到 id=20 发现不满足 <code>id&lt;18</code>，于是停止，并对 <code>(15,20)</code> 加间隙锁。<br>结果：<b>id 在 6~19 之间的任何新记录都无法插入</b>，幻读被彻底挡住。代价是锁范围比实际需要的大不少。'
+  },
+  {
+    label: 'INSERT（插入意向锁）',
+    sql: '<span class="kw">INSERT INTO</span> <span class="tbl">employee</span> <span class="kw">VALUES</span>(<span class="num">12</span>, <span class="str">\'新同事\'</span>, <span class="num">7000</span>);\n<span class="cm">-- 要插入的位置落在间隙 (10, 15) 内</span>',
+    recs: [],
+    zones: [{ from: 2, to: 3, type: 'gl', label: '插入意向锁 (10,15)' }],
+    locks: [
+      { c: 'gap', t: '插入意向锁 Insert Intention Lock：声明「我要往 (10,15) 里插」' },
+      { c: 's', t: '插入完成后：对新记录 id=12 加记录锁' }
+    ],
+    note: '<b>插入意向锁是一种特殊的间隙锁。</b>它并不阻塞别的插入 —— 两个事务同时往 <code>(10,15)</code> 里插不同的值（一个插 12、一个插 13），<b>彼此不冲突</b>，因为它们的位置不重叠。<br>它真正的作用是<b>与别人的间隙锁冲突</b>：如果已有事务对 <code>(10,15)</code> 持有间隙锁，这个插入意向锁就得等待。<b>这正是间隙锁能防幻读的实现原理。</b>'
+  },
+  {
+    label: '扫描到末尾（supremum）',
+    sql: '<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">employee</span> <span class="kw">WHERE</span> id &gt; <span class="num">20</span> <span class="kw">FOR UPDATE</span>;\n<span class="cm">-- 一直扫到索引末尾的 supremum 伪记录</span>',
+    recs: [5],
+    zones: [
+      { from: 4, to: 5, type: 'nk', label: '(20,25]' },
+      { from: 5, to: 6, type: 'nk', label: '(25,+∞]' }
+    ],
+    locks: [
+      { c: 'x', t: '临键锁：(20, 25]' },
+      { c: 'x', t: '临键锁：(25, +∞) ← 锁到 supremum 伪记录' }
+    ],
+    note: '<b>supremum 是每个索引页里的一条「伪记录」，代表无穷大。</b>当范围查询扫到索引末尾时，最后会对 supremum 加临键锁，等价于<b>锁住「比 25 大的所有值」这个开区间</b>。所以此后任何 <code>INSERT id=100</code> 都会被阻塞。这也是为什么「查最大的几条并加锁」会意外阻塞所有插入。'
+  },
+  {
+    label: '无索引 → 锁全表',
+    sql: '<span class="kw">UPDATE</span> <span class="tbl">employee</span> <span class="kw">SET</span> salary = <span class="num">1</span> <span class="kw">WHERE</span> name = <span class="str">\'张三\'</span>;\n<span class="cm">-- name 上没有索引，只能全表扫描</span>',
+    recs: [1, 2, 3, 4, 5],
+    zones: [
+      { from: 0, to: 1, type: 'nk', label: '' },
+      { from: 1, to: 2, type: 'nk', label: '' },
+      { from: 2, to: 3, type: 'nk', label: '' },
+      { from: 3, to: 4, type: 'nk', label: '' },
+      { from: 4, to: 5, type: 'nk', label: '' },
+      { from: 5, to: 6, type: 'nk', label: '全部记录 + 全部间隙' }
+    ],
+    locks: [{ c: 'x', t: '对扫描到的每一条记录都加临键锁 → 效果等同锁全表' }],
+    note: '<b>最需要警惕的情况。</b>InnoDB 的行锁加在<b>索引</b>上，而 <code>name</code> 没有索引，只能全表扫描。扫描过程中<b>每经过一条记录就加一个临键锁</b>，最终整张表的所有记录和所有间隙都被锁住，并发直接归零。<br>很多人以为「InnoDB 用行锁所以不怕」，结果一条没走索引的 UPDATE 就把线上库锁死了。<b>务必给 WHERE / ORDER BY 涉及的列建合适的索引，并养成 EXPLAIN 的习惯。</b>'
+  }
+];
+
+/* ============================================================
+   SECTION: data-scenes 并发时间线剧场（模块五）
+   ============================================================ */
+var SCENES = [
+  {
+    id: 0,
+    icon: '📖',
+    title: '场景一：两个事务并发读同一行',
+    short: '快照读 · 完全不阻塞',
+    intro: '最基础也最能体现 MVCC 价值的场景：两个事务同时读同一行数据。结论是<b>谁也不用等谁</b>，连锁结构都不会生成。',
+    iso: 'RR 可重复读', tidA: 'trx_id = 200', tidB: 'trx_id = 201',
+    steps: [
+      {
+        lane: 'a', sql: 'BEGIN;', rs: '✔', tid: 200,
+        note: '事务 A 开启，被分配 <code>trx_id = 200</code>。注意：<b>BEGIN 本身不做任何事</b>，InnoDB 是「懒启动」的，直到第一条 SQL 才真正建立事务上下文。',
+        explain: '<b>为什么 BEGIN 不生成 ReadView？</b><br>ReadView 是在<b>第一次快照读</b>时才创建的，不是 BEGIN 时。这个细节很重要：如果你在 BEGIN 之后、第一条 SELECT 之前有别的事务提交了修改，那次修改对你<b>是可见的</b>。事务的「时间起点」是第一次读，不是 BEGIN。'
+      },
+      {
+        lane: 'b', sql: 'BEGIN;', rs: '✔', tid: 201,
+        note: '事务 B 开启，<code>trx_id = 201</code>。此时系统里有两个活跃事务，但都还没读任何数据，所以还没有任何 ReadView，也没有任何锁。'
+      },
+      {
+        lane: 'a', sql: "SELECT salary FROM employee WHERE id=1;", rs: '→ 5000',
+        rv: { creator: 200, m_ids: [201], min: 201, max: 202 },
+        note: '<b>事务 A 执行第一次快照读，此刻生成 ReadView。</b>生成时系统里活跃（未提交）的事务只有 B（201），所以 <code>m_ids = [201]</code>、<code>min_trx_id = 201</code>、<code>max_trx_id = 202</code>（下一个待分配的 ID）、<code>creator_trx_id = 200</code>。<br>沿版本链找：链头 <code>salary=5000</code> 的 <code>DB_TRX_ID = 80</code>，<code>80 &lt; min(201)</code> → 判定第二步命中，<b>可见</b>，直接返回 5000。<b>整个过程没有加任何锁。</b>',
+        explain: '<b>关键点：A 的读操作没有产生任何锁结构。</b>你可以在另一个窗口执行 <code>SELECT * FROM performance_schema.data_locks</code> 验证 —— 表里不会有关于这个事务的行锁记录。这就是「快照读不加锁」的字面含义：不是加了一个很轻的锁，而是<b>压根没有锁</b>。'
+      },
+      {
+        lane: 'b', sql: "SELECT salary FROM employee WHERE id=1;", rs: '→ 5000',
+        rv: { creator: 201, m_ids: [200], min: 200, max: 202 },
+        note: '<b>事务 B 也执行快照读，生成自己的 ReadView</b>（注意和 A 的不同：<code>creator=201</code>、<code>m_ids=[200]</code>）。<br>两个事务各看各的版本，<b>互不干扰、互不等待</b>。B 同样读到 5000。',
+        explain: '<b>每个事务都有自己独立的 ReadView，这是 MVCC 的「多版本」在事务维度的体现。</b>同一份数据，在不同事务眼里可能是不同版本 —— 因为它们各自的可见性判定基准不同。<br><br>设想此时 A 是 5 分钟前开启的老事务，B 是刚开启的新事务，中间已经有 100 次修改提交。A 依然看到 5 分钟前的世界，B 看到最新的世界。<b>两者同时读同一行，没有任何冲突。</b>'
+      },
+      {
+        lane: 'a', sql: "SELECT salary FROM employee WHERE id=1;", rs: '→ 5000',
+        note: 'A 再读一次，<b>复用步骤 3 生成的那个 ReadView</b>（RR 的特性），结果依然是 5000。即使这期间 B 改了数据并提交，A 也看不到 —— 这正是「可重复读」名字的由来。'
+      },
+      {
+        lane: 'b', sql: "SELECT salary FROM employee WHERE id=1;", rs: '→ 5000',
+        note: 'B 同样复用步骤 4 的 ReadView，读到 5000。<b>整个场景结束，两个事务从未产生任何锁等待。</b>'
+      },
+      {
+        lane: null, sql: null,
+        note: '<b>场景总结：</b>快照读之间永远不会互相阻塞。数据库的绝大多数负载都是读，MVCC 让这部分负载完全并行化 —— 这是 InnoDB 高并发的根本来源。',
+        explain: '<b>把 RC 换进来会怎样？</b><br>这个场景下 RC 和 RR 的表现<b>完全一样</b>，因为没有别的修改提交。差别要在场景二里才能看出来。<br><br><b>那 SERIALIZABLE 呢？</b><br>SERIALIZABLE 下这两条普通 SELECT 会被隐式加上 S 锁。S+S 兼容，所以仍然不阻塞 —— 但如果是「A 读 + B 写」，就会直接卡住了。这也是 SERIALIZABLE 并发差的体现。'
+      }
+    ]
+  },
+  {
+    id: 1,
+    icon: '⚡',
+    title: '场景二：A 修改数据，B 同时读（MVCC 的核心价值）',
+    short: '读不阻塞写 · RR vs RC 对比',
+    intro: '一边在改、一边在读。这是 MVCC 真正发挥作用的场景：<b>B 的读完全不用等 A 提交</b>。同时 RR 与 RC 的差异在这里彻底暴露。',
+    iso: 'RR 可重复读（步骤中对比 RC）', tidA: 'trx_id = 201', tidB: 'trx_id = 200',
+    steps: [
+      {
+        lane: 'b', sql: 'BEGIN;', rs: '✔', tid: 200,
+        note: '<b>本场景里 B 先开启</b>，所以 B 拿到更小的 <code>trx_id = 200</code>，A 后开启拿到 <code>201</code>。事务 ID 是按 <code>BEGIN</code> 后首条 SQL 的先后顺序递增分配的，与「A/B」的字母无关。'
+      },
+      {
+        lane: 'b', sql: 'SELECT salary FROM employee WHERE id=1;', rs: '→ 5000',
+        salary: 5000, trx: 80, ptr: 'null',
+        rv: { creator: 200, m_ids: [], min: 201, max: 201 },
+        note: '<b>B 的第一次快照读，此刻生成 ReadView，并将在整个事务里复用它。</b>生成时系统里没有其他活跃事务，所以 <code>m_ids = []</code>（空列表）、<code>min_trx_id = max_trx_id = 201</code>（下一个待分配的 ID）、<code>creator_trx_id = 200</code>。<br>沿版本链看链头：<code>salary=5000</code> 的 <code>DB_TRX_ID = 80</code>，命中判定第二步 <code>80 &lt; min(201)</code> → <b>可见</b>，读到 <b>5000</b>。',
+        explain: '<b>请把这个 ReadView 记牢：<code>min = max = 201</code>。</b><br>它意味着「在 B 眼中，凡是 <code>trx_id ≥ 201</code> 的事务，全都是我创建视图之后才出现的，一律不可见」。<br><br>这条判定线是本场景后面所有现象的根源 —— A 稍后拿到的正是 <code>201</code>。'
+      },
+      {
+        lane: 'a', sql: 'BEGIN;', rs: '✔', tid: 201,
+        note: '事务 A 后开启，被分配 <code>trx_id = 201</code>。<b>注意这个数字恰好等于 B 的 <code>max_trx_id</code></b> —— 也就是说，A 属于「B 创建视图之后才出现的事务」。这个事实决定了后面 A 的所有修改对 B 都不可见。'
+      },
+      {
+        lane: 'a', sql: 'UPDATE employee SET salary=9000 WHERE id=1;', rs: '✔ 加 X 锁',
+        salary: 9000, trx: 201, ptr: '→ undo①', lockA: { c: 'x', t: 'X 记录锁：id = 1' },
+        chain: [
+          { tag: '最新版本', val: 'salary = 9000', meta: 'DB_TRX_ID = 201 ⚠️未提交', cls: 'is-newest' },
+          { tag: 'undo log ①', val: 'salary = 5000', meta: 'DB_TRX_ID = 80', cls: '' }
+        ],
+        note: '<b>A 执行 UPDATE，这是当前读。</b>三件事同时发生：<br>① 用<b>当前读</b>定位到 id=1，读到最新值 5000，并加上 <b>X 记录锁</b>；<br>② 把旧值 <code>5000</code> 写入 undo log；<br>③ 行记录改为 9000，<code>DB_TRX_ID</code> 更新为 200，<code>DB_ROLL_PTR</code> 指向 undo①。<br>此时数据尚未提交，只有 A 自己能看到 9000。',
+        explain: '<b>为什么 UPDATE 必须走当前读？</b><br>假设 A 用 MVCC 快照去定位这行，它可能读到一个很旧的版本（比如半年前的值），然后基于那个旧值计算 <code>salary + 1000</code> 并写回 —— 这就把别人这半年里的所有修改全部覆盖了，即<b>丢失更新</b>。<br><br>所以 InnoDB 规定：<b>所有写操作定位数据时都必须读最新版本</b>，并用锁保证「读到写回」这段时间没人插进来。这是当前读存在的唯一理由。'
+      },
+      {
+        lane: 'b', sql: 'SELECT salary FROM employee WHERE id=1;', rs: '→ 5000 ✔ 未阻塞',
+        note: '<b>核心时刻：A 正持有 X 锁且未提交，B 依然能顺利读到数据，读的是 5000。</b><br>B 复用步骤 2 生成的 ReadView（<code>min = max = 201</code>）沿链判定：<br>① 链头 <code>salary=9000</code>，其 <code>trx_id = 201</code>。是否等于 <code>creator(200)</code>？否。是否 <code>&lt; min(201)</code>？<code>201 &lt; 201</code> 不成立。是否 <code>≥ max(201)</code>？<b>成立 → 判定第三步命中，不可见。</b><br>② 顺着 <code>DB_ROLL_PTR</code> 回溯到 undo①，<code>salary=5000</code>，其 <code>trx_id = 80 &lt; min(201)</code> → <b>可见</b>，返回 <b>5000</b>。<br><b>B 全程没有申请任何锁，也没有等待 A。</b>',
+        explain: '<b>这一步同时证明了两件事：</b><br>① <b>写不阻塞读</b>：A 持有 X 锁，B 的 SELECT 照样秒回，完全没有等待；<br>② <b>脏读被挡住了</b>：B 读到的是已提交的旧值 5000，而不是 A 未提交的 9000。<br><br><b>注意判定路径：</b>挡住 A 的修改靠的是第三步 <code>trx_id ≥ max_trx_id</code>，而不是「去查它提交了没」。因为 B 生成 ReadView 时 A 还不存在，A 的 ID 必然 <code>≥ B 的 max_trx_id</code> —— <b>ReadView 一旦生成，就划出了一条时间线，线之后出现的所有事务对 B 永久隐身，无论它们提不提交。</b><br><br><b>如果换成 RC 会怎样？</b><br>这一步的表现<b>完全一样</b>（RC 也不允许脏读，也走 MVCC 不加锁）。差别要到 A 提交之后才显现 —— 继续往下看。'
+      },
+      {
+        lane: 'a', sql: 'COMMIT;', rs: '✔ 释放 X 锁', lockA: { c: 'none', t: '无（已释放）' },
+        chain: [
+          { tag: '最新版本', val: 'salary = 9000', meta: 'DB_TRX_ID = 201 ✅已提交', cls: 'is-newest' },
+          { tag: 'undo log ①', val: 'salary = 5000', meta: 'DB_TRX_ID = 80（B 仍需要它，暂不清理）', cls: '' }
+        ],
+        note: 'A 提交，X 锁释放，<code>salary=9000</code> 成为已提交的最新值。<br><b>但 undo① 里的旧值 5000 不会被立即删除</b> —— 因为事务 B 还没结束，它的 ReadView 仍需要这个版本。要等 B 提交后，purge 线程才会清理它。'
+      },
+      {
+        lane: 'b', sql: 'SELECT salary FROM employee WHERE id=1;', rs: 'RR: 5000 / RC: 9000',
+        note: '<b>RR 与 RC 的分水岭就在这一刻。</b><br><span class="badge b-green">RR</span> B 复用步骤 2 的 ReadView（<code>max = 201</code>）。A 虽然已提交，但它的 <code>trx_id = 201</code> 依然满足 <code>≥ max(201)</code> → <b>仍然不可见</b>。B 回溯到 undo①，读到 <b>5000</b> → <b>可重复读成立</b>。<br><span class="badge b-blue">RC</span> B 会<b>丢弃旧 ReadView、重新生成一个</b>。新视图的 <code>m_ids</code> 里没有已提交的 A，链头 <code>salary=9000</code>（<code>trx_id=201</code>）判定为可见，读到 <b>9000</b> → <b>不可重复读发生</b>。',
+        explain: '<b>一句话概括 RR 与 RC 的全部区别：</b><br>两者用的是<b>同一套 MVCC 机制、同一套版本链、同一套可见性判定算法</b>，唯一的差别是 ReadView 的生命周期：<br><ul style="margin:8px 0 0;padding-left:20px"><li><b>RR</b>：首次快照读生成，整个事务复用 → 世界被冻结在那一刻</li><li><b>RC</b>：每次快照读重新生成 → 每次都能看到最新提交的世界</li></ul>这一个改动，同时决定了「能不能重复读」和「间隙锁加不加」（RC 下不需要靠间隙锁保证可重复读语义，所以基本关闭间隙锁）。'
+      },
+      {
+        lane: 'b', sql: 'COMMIT;', rs: '✔', lockB: { c: 'none', t: '无' },
+        note: 'B 提交。此时系统里再没有事务需要 <code>salary=5000</code> 这个旧版本了，purge 线程会在后续把它从 undo log 中清理掉，版本链缩短为只剩链头。'
+      },
+      {
+        lane: 'b', sql: 'BEGIN; SELECT salary FROM employee WHERE id=1;', rs: '→ 9000',
+        salary: 9000,
+        note: 'B 开启一个<b>全新事务</b>再查，这次会生成全新的 ReadView，链头 <code>salary=9000</code>（<code>trx_id = 201</code>，已提交）直接可见 → 读到 <b>9000</b>。<br><b>「可重复读」的边界是事务，不是连接。</b>一旦提交并开启新事务，就能看到最新数据。',
+        explain: '<b>常见误解澄清：</b>很多人以为 RR 下「永远看不到别人的修改」，于是担心数据会一直陈旧。实际上：<br>① 只有<b>在同一个事务内</b>才会重复读到老值；<br>② 事务一提交，下次开启新事务就能看到最新数据；<br>③ 而 Web 应用里大多数请求都是「自动提交」的短事务（<code>autocommit=1</code>），每条 SELECT 都是独立事务，所以<b>实际上每次都能看到最新值</b>。<br><br>RR 的可重复读语义，只在你显式 <code>BEGIN</code> 并把多次查询包在一个事务里时才真正体现。'
+      }
+    ]
+  },
+  {
+    id: 2,
+    icon: '🔒',
+    title: '场景三：两个事务修改同一行（写写冲突）',
+    short: '当前读 · X 锁互斥 · 避免丢失更新',
+    intro: '两个事务都要改同一行。这次<b>必须有一方等待</b> —— 这正是锁不可替代的地方，MVCC 帮不上忙。',
+    iso: 'RR 可重复读', tidA: 'trx_id = 200', tidB: 'trx_id = 201',
+    steps: [
+      {
+        lane: 'a', sql: 'BEGIN;', rs: '✔', tid: 200, note: '事务 A 开启。'
+      },
+      {
+        lane: 'b', sql: 'BEGIN;', rs: '✔', tid: 201, note: '事务 B 开启。'
+      },
+      {
+        lane: 'a', sql: 'UPDATE employee SET salary=9000 WHERE id=1;', rs: '✔ 持有 X 锁',
+        salary: 9000, trx: 200, ptr: '→ undo①', lockA: { c: 'x', t: 'X 记录锁：id = 1' },
+        chain: [
+          { tag: '最新版本', val: 'salary = 9000', meta: 'DB_TRX_ID = 200 ⚠️未提交', cls: 'is-newest' },
+          { tag: 'undo log ①', val: 'salary = 5000', meta: 'DB_TRX_ID = 80', cls: '' }
+        ],
+        note: 'A 抢先一步，当前读定位到 id=1，加上 <b>X 记录锁</b>，把值改成 9000（未提交）。'
+      },
+      {
+        lane: 'b', sql: 'UPDATE employee SET salary=8000 WHERE id=1;', rs: '⏳ 阻塞等待', blocked: true,
+        lockB: { c: 'wait', t: '等待 X 锁（被 A 持有）…' },
+        note: '<b>B 也要当前读这一行，申请 X 锁 —— 但 A 已经持有 X 锁，X 与 X 冲突，B 进入锁等待队列，被挂起。</b><br>B 会一直阻塞，直到 A 提交/回滚释放锁，或超过 <code>innodb_lock_wait_timeout</code>（默认 50 秒）后报错 <code>ERROR 1205 Lock wait timeout exceeded</code>。',
+        explain: '<b>为什么这里 MVCC 救不了 B？</b><br>MVCC 的能力是「让读者看到历史版本」，但 B 不是读者，<b>B 是写者</b>。写者必须基于最新值计算，看历史版本毫无意义（甚至是有害的 —— 会导致丢失更新）。<br><br>所以写写冲突<b>只能靠锁来串行化</b>，没有别的办法。这就是 MVCC 与锁的分工边界：<b>MVCC 解决读写并发，锁解决写写互斥。</b><br><br><b>顺带一提：</b>如果 B 执行的是普通 <code>SELECT</code>（快照读），它<b>不会阻塞</b>，会直接读到旧值 5000（见场景二）。阻塞只发生在「B 也要写」的时候。'
+      },
+      {
+        lane: 'a', sql: 'SELECT salary FROM employee WHERE id=1;', rs: '→ 9000',
+        note: 'A 自己读一下，看到 9000。<b>注意这是 A 自己的修改</b>，ReadView 判定第一步 <code>trx_id == creator_trx_id</code> 命中 → 可见。<br><span class="badge b-gray">细节</span> 严格说 A 读自己未提交的修改，走的是「读己之写」，不需要经过完整的 ReadView 回溯。'
+      },
+      {
+        lane: 'a', sql: 'COMMIT;', rs: '✔ 释放 X 锁', lockA: { c: 'none', t: '无（已释放）' },
+        chain: [
+          { tag: '最新版本', val: 'salary = 9000', meta: 'DB_TRX_ID = 200 ✅已提交', cls: 'is-newest' },
+          { tag: 'undo log ①', val: 'salary = 5000', meta: 'DB_TRX_ID = 80', cls: '' }
+        ],
+        note: 'A 提交，X 锁释放。<b>InnoDB 立刻唤醒锁等待队列里的 B。</b>'
+      },
+      {
+        lane: 'b', sql: 'UPDATE employee SET salary=8000 WHERE id=1;', rs: '✔ 获得锁并执行',
+        salary: 8000, trx: 201, ptr: '→ undo②', lockB: { c: 'x', t: 'X 记录锁：id = 1' },
+        chain: [
+          { tag: '最新版本', val: 'salary = 8000', meta: 'DB_TRX_ID = 201 ⚠️未提交', cls: 'is-newest' },
+          { tag: 'undo log ②', val: 'salary = 9000', meta: 'DB_TRX_ID = 200', cls: '' },
+          { tag: 'undo log ①', val: 'salary = 5000', meta: 'DB_TRX_ID = 80', cls: '' }
+        ],
+        note: '<b>关键：B 被唤醒后，会重新执行「当前读」，读到的是 A 已提交的最新值 9000，而不是它阻塞前可能读到的旧值。</b>然后基于 9000 所在的那一行写入 8000，并生成新的 undo 版本。版本链现在有 3 层。',
+        explain: '<b>这就是锁避免「丢失更新」的完整机制。</b><br>回顾模块四里那张「不加锁会怎样」的表：如果 B 不等待、直接用旧值计算，A 的修改就会被覆盖掉。<br><br>而 InnoDB 的处理是：<b>B 阻塞 → A 提交 → B 被唤醒 → B 重新做当前读，拿到 A 的最新结果 → 再基于最新值写入</b>。整个过程严格串行，谁的修改都不会凭空消失。<br><br><b>但要注意一个语义陷阱：</b>如果 B 的语句是 <code>SET salary=8000</code>（绝对赋值），那 A 的 9000 确实被「合法地」覆盖了 —— 这不是丢失更新，这是业务逻辑本来就要覆盖。真正的丢失更新防护要靠 <code>SET salary = salary + 1000</code> 这种<b>相对运算</b>，或者乐观锁（<code>WHERE version=?</code>）。'
+      },
+      {
+        lane: 'b', sql: 'COMMIT;', rs: '✔', salary: 8000, lockB: { c: 'none', t: '无（已释放）' },
+        chain: [
+          { tag: '最新版本', val: 'salary = 8000', meta: 'DB_TRX_ID = 201 ✅已提交', cls: 'is-newest' },
+          { tag: 'undo log ②', val: 'salary = 9000', meta: 'DB_TRX_ID = 200', cls: '' },
+          { tag: 'undo log ①', val: 'salary = 5000', meta: 'DB_TRX_ID = 80', cls: '' }
+        ],
+        note: '<b>场景总结：</b>最终值是 8000。两个写事务被锁强制串行化，中间 B 阻塞了 A 提交前的那段时间。<br><b>写写必然串行，这是数据库一致性的底线，没有任何机制能绕过。</b>优化的方向只能是「缩短持锁时间」和「减少冲突范围」。',
+        explain: '<b>实战优化建议（按性价比排序）：</b><br>① <b>把 UPDATE 尽量放到事务末尾</b> —— 加锁越晚，持锁时间越短；<br>② <b>不要在事务里夹带 RPC / HTTP 调用</b> —— 网络耗时会让锁一直不放，这是线上锁等待告警的头号原因；<br>③ <b>热点行考虑拆分</b> —— 比如库存扣减拆成多个分桶行，把单点冲突打散；<br>④ <b>用队列削峰</b> —— 秒杀类场景让请求先排队，数据库层面就不存在并发写同一行；<br>⑤ <b>必要时用乐观锁</b> —— <code>UPDATE ... SET v=v+1 WHERE id=? AND version=?</code>，靠重试代替阻塞。'
+      }
+    ]
+  },
+  {
+    id: 3,
+    icon: '👻',
+    title: '场景四：范围查询遇上插入（幻读与间隙锁）',
+    short: '当前读 · 临键锁 · 挡住幻影行',
+    intro: 'A 锁住一个范围，B 想往这个范围里插数据。这是<b>间隙锁唯一的用武之地</b>，也是 RR 防幻读的核心现场。表中现有 id = 5, 10, 15, 20。',
+    iso: 'RR 可重复读', tidA: 'trx_id = 200', tidB: 'trx_id = 201',
+    table: '表 employee，现有 id = 5, 10, 15, 20',
+    steps: [
+      {
+        lane: 'a', sql: 'BEGIN;', rs: '✔', tid: 200, note: '事务 A 开启。'
+      },
+      {
+        lane: 'a', sql: 'SELECT * FROM employee WHERE id>5 AND id<15 FOR UPDATE;', rs: '→ 命中 id=10，加临键锁',
+        lockA: { c: 'x', t: '临键锁 (5,10] + (10,15]' },
+        note: '<b>A 执行加锁的范围查询（当前读）。</b>InnoDB 从 id=10 开始扫描，加临键锁 <code>(5,10]</code>；继续往后扫到 id=15，发现 <code>15 &lt; 15</code> 不成立，停止扫描，并对 <code>(10,15)</code> 这段间隙加锁。<br><b>最终锁住的范围是 (5, 15) 这一整段开区间，外加 id=10 这条记录本身。</b>',
+        explain: '<b>加锁范围是怎么算出来的？</b><br>InnoDB 的扫描逻辑是「从第一个满足条件的记录开始，扫到第一个不满足的记录为止」：<br>① <code>id&gt;5</code>：从 id=10 开始（5 不满足 &gt;5）；<br>② 扫到 id=10，满足 → 加临键锁 <code>(5,10]</code>；<br>③ 扫到 id=15，<code>15&lt;15</code> 不满足 → 停止，但<b>仍要对 (10,15) 加间隙锁</b>，否则别人插入 id=12 就会破坏这次查询的语义。<br><br><b>为什么 RR 要这么做？</b>因为 A 声明了「我要基于这个范围做后续操作」，如果 B 能随意往范围里塞数据，A 的整个事务逻辑就不成立了。间隙锁就是把「这个范围内的空地」也一并圈起来。'
+      },
+      {
+        lane: 'b', sql: 'BEGIN;', rs: '✔', tid: 201, note: '事务 B 开启。'
+      },
+      {
+        lane: 'b', sql: "INSERT INTO employee VALUES(12,'新人',7000);", rs: '⏳ 阻塞！', blocked: true,
+        lockB: { c: 'wait', t: '插入意向锁 (10,15) 与 A 的间隙锁冲突，等待中…' },
+        note: '<b>B 想插入 id=12，正好落在 A 锁住的 (10,15) 间隙里。</b>INSERT 需要先申请<b>插入意向锁</b>，而插入意向锁与间隙锁冲突 → <b>B 被阻塞</b>，一直等到 A 提交或回滚。<br><span class="badge b-green">这就是间隙锁防幻读的机制现场</span> 幻影行根本插不进来。',
+        explain: '<b>插入意向锁 vs 间隙锁的冲突关系（容易搞反）：</b><br>· <b>间隙锁 vs 间隙锁：兼容</b>。两个事务可以同时锁住同一段间隙（因为间隙锁只挡插入，不挡别的间隙锁）；<br>· <b>间隙锁 vs 插入意向锁：冲突</b>。这是间隙锁唯一起作用的场合；<br>· <b>插入意向锁 vs 插入意向锁：兼容</b>（只要插入位置不同）。<br><br>所以间隙锁是一种<b>非常「窄」的锁</b> —— 它只干一件事：阻止别人往这段空隙里 INSERT。它不阻止读、不阻止改已有的行、不阻止别人也来锁这段间隙。'
+      },
+      {
+        lane: 'b', sql: "INSERT INTO employee VALUES(18,'另一个',7500);", rs: '✔ 成功！',
+        lockB: { c: 'gap', t: '插入意向锁 (15,20) → 未被锁，成功' },
+        note: '<b>换个连接插入 id=18 —— 成功了！</b>因为 18 落在间隙 <code>(15,20)</code>，而 A 并没有锁这段（A 的扫描在 15 处就停了）。<br><b>这个对比最能说明间隙锁的「精确性」</b>：它不是锁整张表，而是精确锁住扫描经过的那几段区间。'
+      },
+      {
+        lane: 'a', sql: 'SELECT * FROM employee WHERE id>5 AND id<15 FOR UPDATE;', rs: '→ 仍然只有 id=10',
+        note: '<b>A 再查一次同样的范围，结果和第一次完全一致，只有 id=10。</b>幻读被挡住了。<br><span class="badge b-amber">对比 RC</span> 如果是 RC 级别，A 这一步不会加间隙锁，B 的 id=12 早就插进去了，A 这次查就会看到 10 和 12 两条 → <b>幻读发生</b>。'
+      },
+      {
+        lane: 'a', sql: 'COMMIT;', rs: '✔ 释放全部锁', lockA: { c: 'none', t: '无（已释放）' },
+        note: 'A 提交，临键锁与间隙锁全部释放。<b>被阻塞的 B 立刻被唤醒</b>，它那条 <code>INSERT id=12</code> 随即执行成功。'
+      },
+      {
+        lane: 'b', sql: 'COMMIT;', rs: '✔ id=12 与 id=18 都已写入', lockB: { c: 'none', t: '无（已释放）' },
+        note: 'B 提交。现在表里有 id = 5, 10, <b>12</b>, 15, <b>18</b>, 20。两条新记录都成功落库，只是 id=12 多等了一会儿。'
+      },
+      {
+        lane: null, sql: null,
+        note: '<b>场景总结：</b>间隙锁成功阻止了「A 事务期间范围内的新行出现」，实现了 RR 下当前读的防幻读。代价是 B 的插入被阻塞了一段时间。',
+        explain: '<b>间隙锁的代价与 RC 的取舍：</b><br>间隙锁把「记录之间的空隙」也纳入锁范围，锁的粒度显著变大，带来两个问题：<br>① <b>并发下降</b>：本来不冲突的插入操作会被阻塞；<br>② <b>死锁概率上升</b>：两个事务各自持有不同间隙锁、又都想往对方的间隙里插入，是间隙锁死锁的经典形态。<br><br>这正是很多高并发互联网业务把隔离级别调成 <b>RC</b> 的核心原因 —— RC 下基本不加间隙锁，只加记录锁，锁范围小、死锁少。<b>但前提是业务能容忍幻读</b>，并且 binlog 必须用 ROW 格式。<br><br><b>选择建议：</b><br>· 默认用 RR，除非有明确的并发瓶颈或死锁问题；<br>· 需要「读取范围内的数据后基于它做决策」时，<b>必须显式 FOR UPDATE</b>，光靠快照读是防不住幻读的（见模块四的破口分析）。'
+      }
+    ]
+  },
+  {
+    id: 4,
+    icon: '💥',
+    title: '场景五：交叉更新两行导致死锁',
+    short: '写写冲突升级 · InnoDB 自动检测并回滚一方',
+    intro: '最典型的线上死锁形态：两个事务以<b>相反的顺序</b>更新同样两行数据。这个场景会展示死锁如何形成、InnoDB 如何处置，以及如何预防。',
+    iso: 'RR 可重复读', tidA: 'trx_id = 200', tidB: 'trx_id = 201',
+    table: '表 employee，关注 id = 1 与 id = 5 两行',
+    steps: [
+      {
+        lane: 'a', sql: 'BEGIN;', rs: '✔', tid: 200, note: '事务 A 开启。'
+      },
+      {
+        lane: 'b', sql: 'BEGIN;', rs: '✔', tid: 201, note: '事务 B 开启。'
+      },
+      {
+        lane: 'a', sql: 'UPDATE employee SET salary=salary+100 WHERE id=1;', rs: '✔ 持有 id=1 的 X 锁',
+        lockA: { c: 'x', t: 'X 记录锁：id = 1' },
+        note: 'A 更新 id=1，成功拿到该行的 <b>X 记录锁</b>。'
+      },
+      {
+        lane: 'b', sql: 'UPDATE employee SET salary=salary+200 WHERE id=5;', rs: '✔ 持有 id=5 的 X 锁',
+        lockB: { c: 'x', t: 'X 记录锁：id = 5' },
+        note: 'B 更新 id=5（<b>注意：和 A 相反的顺序</b>），也成功拿到 <b>X 记录锁</b>。<br>此时两把锁分属不同事务、不同行，<b>还没有任何冲突</b>。'
+      },
+      {
+        lane: 'a', sql: 'UPDATE employee SET salary=salary+100 WHERE id=5;', rs: '⏳ 等待 B 释放 id=5', blocked: true,
+        lockA: { c: 'wait', t: '持有 id=1；等待 id=5 的 X 锁…' },
+        note: 'A 接着要改 id=5 → 需要 id=5 的 X 锁，但被 B 持有 → <b>A 阻塞，进入等待</b>。<br>注意 A <b>不会释放已经拿到的 id=1 锁</b>（事务内的锁要到提交才释放），这就为死锁埋下了条件。'
+      },
+      {
+        lane: 'b', sql: 'UPDATE employee SET salary=salary+200 WHERE id=1;', rs: '💥 死锁！B 被回滚', blocked: true,
+        lockB: { c: 'wait', t: '持有 id=5；等待 id=1 的 X 锁… → 检测到死锁' },
+        note: 'B 接着要改 id=1 → 需要 id=1 的 X 锁，但被 A 持有 → B 也要等待。<br><b>此时形成循环等待：A 等 B，B 等 A，谁都无法前进 —— 死锁成立。</b>',
+        explain: '<b>死锁的四个必要条件（Coffman 条件），这里全部满足：</b><br>① <b>互斥</b>：X 锁不能被两个事务同时持有；<br>② <b>持有并等待</b>：A 持有 id=1 的锁，同时等待 id=5；<br>③ <b>不可剥夺</b>：事务持有的锁不能被强行抢走，只能等它自己提交/回滚；<br>④ <b>循环等待</b>：A → B → A 形成环。<br><br><b>破坏任意一条即可预防死锁。</b>实践中最容易破坏的是第 ④ 条：<b>让所有事务按同一顺序加锁</b>（比如永远按 id 升序），环就永远形不成。'
+      },
+      {
+        lane: null, sql: null,
+        lockB: { c: 'x', t: '⚠ 已被 InnoDB 回滚，锁全部释放' },
+        note: '<b>InnoDB 的死锁检测机制介入。</b>它内部维护一张「谁在等谁」的等待图（wait-for graph），一旦发现图中出现环，立即判定死锁，然后选择<b>回滚代价较小的那个事务</b>（undo 量小、修改行数少的），让它报错退出，从而打破循环。<br>本例中 B 被选中回滚，收到：<br><code>ERROR 1213 (40001): Deadlock found when trying to get lock; try restarting transaction</code>',
+        explain: '<b>InnoDB 怎么选「牺牲品」？</b><br>默认策略是<b>回滚 undo 量最小的事务</b>（即改动最少、重来成本最低的那个），而不是「后来者」或「优先级低的」。<br><br>可以用 <code>innodb_deadlock_detect</code>（默认 ON）控制检测开关；<code>innodb_lock_wait_timeout</code>（默认 50 秒）则是兜底的超时机制。<br><br><b>死锁 ≠ 锁等待超时，两者报错不同：</b><br>· <code>ERROR 1213 Deadlock found</code> → InnoDB <b>主动检测</b>，<b>立刻</b>回滚一方，不用等 50 秒；<br>· <code>ERROR 1205 Lock wait timeout exceeded</code> → 只是排队太久，<b>不是死锁</b>，对方 eventually 会释放。<br>排查思路完全不同：1213 要看 <code>SHOW ENGINE INNODB STATUS</code> 的死锁段找加锁顺序问题；1205 要找那个长时间不提交的「罪魁祸首」事务。'
+      },
+      {
+        lane: 'a', sql: 'UPDATE employee SET salary=salary+100 WHERE id=5;', rs: '✔ 成功（B 已释放锁）',
+        lockA: { c: 'x', t: 'X 记录锁：id = 1 与 id = 5' },
+        note: 'B 被回滚、锁全部释放后，<b>A 的等待立刻结束，UPDATE id=5 顺利执行成功</b>。A 现在同时持有 id=1 和 id=5 两把 X 锁。'
+      },
+      {
+        lane: 'a', sql: 'COMMIT;', rs: '✔ 事务 A 完整成功', lockA: { c: 'none', t: '无（已释放）' },
+        note: '<b>场景总结：</b>A 完整执行成功（两次 UPDATE 都生效），B 被回滚（两次 UPDATE 都没生效，需要业务层重试）。<br><b>死锁不是数据库的 bug，而是并发写的固有代价。</b>InnoDB 的职责是「快速发现并打破」，业务层的职责是「重试 + 预防」。',
+        explain: '<b>完整的应对方案：</b><br><br><b>① 业务层必须实现重试</b><br>捕获错误码 1213，自动重试该事务（通常重试 1~3 次即可成功）。这是<b>必需的</b>，不是可选的 —— 死锁无法百分百避免。<br><br><b>② 固定加锁顺序（最有效的预防）</b><br>把上面的 SQL 改成两个事务都按 id 升序更新：<br><code>A: UPDATE id=1 → UPDATE id=5</code><br><code>B: UPDATE id=1 → UPDATE id=5</code><br>这样 B 在第一步就会阻塞等 A，而不是各自持有一把锁再互相等 → <b>循环等待条件被破坏，死锁不会发生</b>。<br><br><b>③ 缩短事务、减少持锁时间</b><br>事务越短，两个事务「同时持有对方所需锁」的时间窗口越小。<br><br><b>④ 一次锁定全部资源</b><br>用 <code>SELECT ... WHERE id IN (1,5) FOR UPDATE</code> 一次性锁够，再开始更新，避免分批加锁。<br><br><b>⑤ 事后排查</b><br><code>SHOW ENGINE INNODB STATUS\\G</code> 的 <code>LATEST DETECTED DEADLOCK</code> 段会打印出两个事务各自持有和等待的锁、以及被回滚的是哪个 —— 这是定位死锁的第一手资料，<b>只保留最近一次</b>，出问题要及时抓取。'
+      }
+    ]
+  }
+];
+
+/* ============================================================
+   SECTION: data-sc-cards 场景卡片文案
+   ============================================================ */
+var SC_CARDS = SCENES.map(function (s, i) {
+  return {
+    icon: s.icon,
+    no: '场景 ' + ['一', '二', '三', '四', '五'][i],
+    title: s.title.replace(/^场景[一二三四五]：/, ''),
+    short: s.short,
+    steps: s.steps.length
+  };
+});
+
+</script>
+<script>
+/* ============================================================
+   MySQL MVCC 与事务锁图解 · 交互脚本
+   ============================================================ */
+(function () {
+  'use strict';
+
+  /* SECTION: util 工具函数 */
+  function $(sel, root) { return (root || document).querySelector(sel); }
+  function $$(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  function setText(el, v) { if (el) el.textContent = v; }
+  function setHTML(el, v) { if (el) el.innerHTML = v; }
+
+  /* ============================================================
+     SECTION: tabs 页签切换
+     ============================================================ */
+  var TAB_IDS = ['p1', 'p2', 'p3', 'p4', 'p5'];
+  var tabBtns = $$('.tabbtn');
+
+  function activateTab(id, focus) {
+    tabBtns.forEach(function (b) {
+      var on = b.getAttribute('data-tab') === id;
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+      b.tabIndex = on ? 0 : -1;
+      if (on && focus) b.focus();
+    });
+    TAB_IDS.forEach(function (pid) {
+      var panel = document.getElementById(pid);
+      if (!panel) return;
+      var on = pid === id;
+      panel.classList.toggle('is-active', on);
+      if (on) { panel.removeAttribute('hidden'); } else { panel.setAttribute('hidden', ''); }
+    });
+    var bar = $('.tabbar');
+    if (bar && window.scrollY > bar.offsetTop + 10) {
+      window.scrollTo({ top: bar.offsetTop - 2, behavior: 'smooth' });
+    }
+  }
+
+  tabBtns.forEach(function (b) {
+    b.addEventListener('click', function () { activateTab(b.getAttribute('data-tab'), false); });
+    b.addEventListener('keydown', function (e) {
+      var i = tabBtns.indexOf(b), n = tabBtns.length, t = -1;
+      if (e.key === 'ArrowRight') t = (i + 1) % n;
+      else if (e.key === 'ArrowLeft') t = (i - 1 + n) % n;
+      else if (e.key === 'Home') t = 0;
+      else if (e.key === 'End') t = n - 1;
+      if (t >= 0) { e.preventDefault(); activateTab(tabBtns[t].getAttribute('data-tab'), true); }
+    });
+  });
+
+  /* ============================================================
+     SECTION: accordion 折叠面板
+     ============================================================ */
+  $$('.acc-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var open = btn.getAttribute('aria-expanded') === 'true';
+      btn.setAttribute('aria-expanded', open ? 'false' : 'true');
+      var body = btn.nextElementSibling;
+      if (body) body.classList.toggle('open', !open);
+    });
+  });
+
+  /* ============================================================
+     SECTION: iso-demo 隔离级别演示（模块一）
+     ============================================================ */
+  function markVerdict(el, v) {
+    if (!el) return;
+    if (v === 'yes') el.innerHTML = '<span class="no">✗ 会发生</span>';
+    else if (v === 'no') el.innerHTML = '<span class="yes">✓ 被挡住</span>';
+    else el.innerHTML = '<span class="mid">◐ 大部分被挡住</span>';
+  }
+
+  function renderIso(i) {
+    var d = ISO_DATA[i];
+    if (!d) return;
+    setText($('#isoName'), d.name);
+    setText($('#isoDesc'), d.desc);
+    markVerdict($('#isoDirty'), d.dirty);
+    markVerdict($('#isoNonRep'), d.nonrep);
+    markVerdict($('#isoPhantom'), d.phantom);
+    setHTML($('#isoSql'), d.sql);
+    setHTML($('#isoNote'), d.note);
+    var bw = $('#isoBadges');
+    if (bw) {
+      bw.innerHTML = d.badges.map(function (b) {
+        return '<span class="badge ' + esc(b.c) + '" style="align-self:flex-start;white-space:normal;text-align:left;line-height:1.5">' + b.t + '</span>';
+      }).join('');
+    }
+    $$('#isoSeg .seg').forEach(function (s) {
+      s.setAttribute('aria-pressed', String(Number(s.getAttribute('data-iso')) === i));
+    });
+  }
+
+  var isoSeg = $('#isoSeg');
+  if (isoSeg) {
+    $$('.seg', isoSeg).forEach(function (s) {
+      s.addEventListener('click', function () { renderIso(Number(s.getAttribute('data-iso'))); });
+    });
+    renderIso(2);
+  }
+
+  /* ============================================================
+     SECTION: chain-demo 版本链推演（模块二）
+     ============================================================ */
+  var chainIdx = 0;
+
+  function renderChain() {
+    var st = CHAIN_STEPS[chainIdx];
+    if (!st) return;
+
+    /* SQL 序列累积显示 */
+    var ops = $('#chainOps');
+    if (ops) {
+      ops.innerHTML = CHAIN_STEPS.slice(0, chainIdx + 1).map(function (s, i) {
+        var cls = i === chainIdx ? 'op active' : 'op done';
+        return '<div class="' + cls + '"><span class="ic">' + (i === chainIdx ? '▶' : '✓') + '</span>' +
+          '<span style="flex:1"><span class="sql" style="display:block;margin:0;padding:0;background:transparent;border:0">' +
+          '<pre style="font-size:12.2px;line-height:1.6;color:inherit">' + s.sql + '</pre></span></span></div>';
+      }).join('');
+    }
+
+    /* 当前数据行 */
+    var row = $('#chainRow');
+    if (row) {
+      setText($('#cvSalary'), st.salary);
+      setText($('#cvTrx'), st.trx);
+      setText($('#cvPtr'), st.ptr);
+      ['#cvSalary', '#cvTrx', '#cvPtr'].forEach(function (sel) {
+        var el = $(sel);
+        if (!el) return;
+        el.classList.remove('hl');
+        void el.offsetWidth;
+        el.classList.add('hl');
+      });
+    }
+
+    /* 版本链 */
+    var viz = $('#chainViz');
+    if (viz) {
+      viz.innerHTML = st.versions.map(function (v, i) {
+        var arrow = i < st.versions.length - 1 ? '<div class="varrow">⟵</div>' : '';
+        return '<button type="button" class="vnode ' + esc(v.cls) + '" data-vi="' + i + '">' +
+          '<span class="vtag">' + esc(v.tag) + '</span>' +
+          '<span class="vval">' + esc(v.val) + '</span>' +
+          '<span class="vmeta">' + esc(v.meta) + '</span></button>' + arrow;
+      }).join('');
+      $$('.vnode', viz).forEach(function (n) {
+        n.addEventListener('click', function () { showVersionDetail(Number(n.getAttribute('data-vi'))); });
+      });
+    }
+
+    setHTML($('#chainNote'), st.note);
+    setText($('#chainCount'), (chainIdx + 1) + ' / ' + CHAIN_STEPS.length);
+    var nb = $('#chainNext');
+    if (nb) {
+      nb.disabled = chainIdx >= CHAIN_STEPS.length - 1;
+      nb.textContent = chainIdx >= CHAIN_STEPS.length - 1 ? '✓ 推演完成' : '执行下一条 SQL ▸';
+    }
+    if (st.pick != null) showVersionDetail(st.pick);
+    else showVersionDetail(0);
+  }
+
+  function showVersionDetail(i) {
+    var st = CHAIN_STEPS[chainIdx];
+    if (!st) return;
+    var v = st.versions[i];
+    if (!v) return;
+    $$('#chainViz .vnode').forEach(function (n, k) {
+      n.classList.toggle('picked', k === i);
+    });
+    var box = $('#chainDetail');
+    if (!box) return;
+    var head = '<span class="hl">【' + esc(v.tag) + '】</span>\n';
+    head += '  ' + esc(v.val).replace(/\n/g, '\n  ') + '\n';
+    head += '  ' + esc(v.meta).replace(/\n/g, '\n  ') + '\n\n';
+    var verdict;
+    if (st.pick != null) {
+      verdict = (i < st.pick)
+        ? '<span class="no">✗ 判定为不可见 → 继续沿 DB_ROLL_PTR 回溯</span>'
+        : (i === st.pick
+          ? '<span class="ok">✔ 判定为可见 → 本次 SELECT 返回这个版本</span>'
+          : '<span class="no">— 已找到可见版本，无需再回溯到这里</span>');
+    } else {
+      verdict = (i === 0)
+        ? '<span class="hl">链头：磁盘上实际存储的当前值</span>'
+        : '<span>历史版本：保存在 undo log 中，等待 purge 清理</span>';
+    }
+    box.innerHTML = head + verdict;
+  }
+
+  var chainNext = $('#chainNext');
+  if (chainNext) {
+    chainNext.addEventListener('click', function () {
+      if (chainIdx < CHAIN_STEPS.length - 1) { chainIdx++; renderChain(); }
+    });
+    var cr = $('#chainReset');
+    if (cr) cr.addEventListener('click', function () { chainIdx = 0; renderChain(); });
+    renderChain();
+  }
+
+  /* ============================================================
+     SECTION: rv-demo ReadView 判定器（模块二）
+     ============================================================ */
+  var rvState = { trx: 80, val: '5000', step: 0, done: false, timer: null };
+
+  function buildJudge() {
+    var j = $('#rvJudge');
+    if (!j) return;
+    j.innerHTML = [
+      '① trx_id == creator_trx_id ?',
+      '② trx_id &lt; min_trx_id ?',
+      '③ trx_id &ge; max_trx_id ?',
+      '④ trx_id 是否在 m_ids 列表中 ?'
+    ].map(function (t, i) {
+      return '<div class="jstep" data-js="' + i + '"><span class="jn">' + (i + 1) + '</span><span class="jt">' + t + '</span></div>';
+    }).join('');
+  }
+
+  function rvReset(trx, val) {
+    if (rvState.timer) { clearInterval(rvState.timer); rvState.timer = null; }
+    var ab = $('#rvAuto'); if (ab) ab.textContent = '▶ 自动演示';
+    rvState.trx = trx; rvState.val = val; rvState.step = 0; rvState.done = false;
+    buildJudge();
+    var v = $('#rvVerdict');
+    if (v) { v.className = 'verdict'; v.innerHTML = ''; }
+    setHTML($('#rvNote'), '准备判定 <b>trx_id = ' + trx + '</b>（salary = ' + esc(val) + '）这个版本对事务 ' + RV_VIEW.creator + ' 是否可见。点「下一步判定」开始。');
+    var sb = $('#rvStep'); if (sb) { sb.disabled = false; sb.textContent = '下一步判定 ▸'; }
+  }
+
+  function rvStep() {
+    var V = RV_VIEW, t = rvState.trx;
+    var res = null, txt = '';
+    if (rvState.step === 0) {
+      res = (t === V.creator);
+      txt = 'trx_id(' + t + ') == creator(' + V.creator + ') ? → <b>' + (res ? '是' : '否') + '</b>' +
+        (res ? '　这个版本是<b>我自己改的</b>，直接可见。' : '　不是我自己改的，继续往下判。');
+    } else if (rvState.step === 1) {
+      res = (t < V.min);
+      txt = 'trx_id(' + t + ') &lt; min_trx_id(' + V.min + ') ? → <b>' + (res ? '是' : '否') + '</b>' +
+        (res ? '　说明它在我创建视图<b>之前就已提交</b>，可见。' : '　它不早于 min，还不能直接判可见。');
+    } else if (rvState.step === 2) {
+      res = (t >= V.max);
+      txt = 'trx_id(' + t + ') &ge; max_trx_id(' + V.max + ') ? → <b>' + (res ? '是' : '否') + '</b>' +
+        (res ? '　它是<b>我创建视图之后</b>才开启的事务，太新了，不可见。' : '　落在 [min, max) 区间内，需要看第 4 步。');
+    } else {
+      var inList = V.m_ids.indexOf(t) >= 0;
+      res = !inList;
+      txt = 'trx_id(' + t + ') 在 m_ids [' + V.m_ids.join(', ') + '] 中 ? → <b>' + (inList ? '在' : '不在') + '</b>' +
+        (inList ? '　说明生成视图时它<b>还没提交</b> → 不可见。' : '　说明它<b>已经提交</b>了 → 可见。');
+    }
+
+    /* 判定：本步是否直接得出结论，以及结论是可见还是不可见 */
+    var step = rvState.step;
+    var decidesVisible = (step === 0 && res) || (step === 1 && res) || (step === 3 && res);
+    var decidesHidden = (step === 2 && res) || (step === 3 && !res);
+    var finished = decidesVisible || decidesHidden;
+
+    var nodes = $$('#rvJudge .jstep');
+    nodes.forEach(function (n, i) {
+      n.classList.remove('on', 'pass', 'fail');
+      if (i < step) {
+        /* 已走过且未得出结论的步骤：中性标记，不是否决 */
+        var pr = n.getAttribute('data-res');
+        n.classList.add(pr === 'pass' ? 'pass' : (pr === 'fail' ? 'fail' : 'checked'));
+      }
+    });
+    var cur = nodes[step];
+    if (cur) {
+      cur.querySelector('.jt').innerHTML = txt;
+      var cls = finished ? (decidesVisible ? 'pass' : 'fail') : 'checked';
+      cur.classList.add(cls);
+      cur.setAttribute('data-res', cls);
+    }
+
+    if (finished) {
+      var isVisible = decidesVisible;
+      var v = $('#rvVerdict');
+      if (v) {
+        v.className = 'verdict show ' + (isVisible ? 'v-visible' : 'v-hidden');
+        v.innerHTML = (isVisible ? '✓ 可见 —— 本次 SELECT 返回 salary = <b style="margin-left:4px">' + esc(rvState.val) + '</b>'
+          : '✗ 不可见 —— 需沿 DB_ROLL_PTR 回溯到上一个版本，重新走这四步') +
+          '<span style="margin-left:auto;font-weight:400;font-size:13px;opacity:.85">第 ' + (step + 1) + ' 步得出结论</span>';
+      }
+      setHTML($('#rvNote'), (isVisible
+        ? '<b>结论：可见。</b>版本 trx_id=' + rvState.trx + ' 通过第 ' + (step + 1) + ' 步判定，事务 ' + RV_VIEW.creator + ' 能读到 salary = ' + esc(rvState.val) + '。'
+        : '<b>结论：不可见。</b>版本 trx_id=' + rvState.trx + ' 在第 ' + (step + 1) + ' 步被否决。真实读取时 InnoDB 会自动顺着版本链取上一版重新判定，直到找到可见版本为止。'));
+      var sb = $('#rvStep'); if (sb) sb.disabled = true;
+      if (rvState.timer) { clearInterval(rvState.timer); rvState.timer = null; }
+      var ab = $('#rvAuto'); if (ab) ab.textContent = '▶ 自动演示';
+      rvState.done = true;
+      return;
+    }
+    rvState.step++;
+  }
+
+  var rvPick = $('#rvPick');
+  if (rvPick) {
+    $$('.seg', rvPick).forEach(function (s) {
+      s.addEventListener('click', function () {
+        $$('.seg', rvPick).forEach(function (o) { o.setAttribute('aria-pressed', 'false'); });
+        s.setAttribute('aria-pressed', 'true');
+        rvReset(Number(s.getAttribute('data-trx')), s.getAttribute('data-val'));
+      });
+    });
+    var rs = $('#rvStep');
+    if (rs) rs.addEventListener('click', rvStep);
+    var ra = $('#rvAuto');
+    if (ra) {
+      ra.addEventListener('click', function () {
+        if (rvState.timer) {
+          clearInterval(rvState.timer); rvState.timer = null; ra.textContent = '▶ 自动演示'; return;
+        }
+        if (rvState.done) rvReset(rvState.trx, rvState.val);
+        ra.textContent = '⏸ 暂停';
+        rvState.timer = setInterval(function () {
+          if (rvState.done) { clearInterval(rvState.timer); rvState.timer = null; ra.textContent = '▶ 自动演示'; return; }
+          rvStep();
+        }, 1400);
+      });
+    }
+    var rr = $('#rvReset');
+    if (rr) rr.addEventListener('click', function () { rvReset(rvState.trx, rvState.val); });
+    buildJudge();
+    rvReset(80, '5000');
+  }
+
+  /* ============================================================
+     SECTION: gap-demo 加锁范围可视化（模块三）
+     ============================================================ */
+  var gapIdx = 0;
+
+  function renderGap(i) {
+    gapIdx = i;
+    var c = GAP_CASES[i];
+    if (!c) return;
+    setHTML($('#gapSql'), c.sql);
+
+    var axis = $('#gapAxis');
+    if (axis) {
+      /* 保留 .axline，重建其余节点 */
+      $$('.axrec, .gapzone', axis).forEach(function (n) { n.remove(); });
+      var N = GAP_POINTS.length;
+      var EDGE = 8; /* 与 .axline 的 left/right 像素内缩保持一致 */
+      /* 用 calc 精确对齐轴线，避免百分比与像素混算导致错位 */
+      function posOf(k) {
+        return 'calc(' + EDGE + 'px + (100% - ' + (EDGE * 2) + 'px) * ' + (k / (N - 1)) + ')';
+      }
+      function spanOf(a, b) {
+        return 'calc((100% - ' + (EDGE * 2) + 'px) * ' + ((b - a) / (N - 1)) + ')';
+      }
+
+      /* 记录点 */
+      GAP_POINTS.forEach(function (p, k) {
+        var d = document.createElement('div');
+        var isInf = (k === 0 || k === N - 1);
+        d.className = 'axrec' + (c.recs.indexOf(k) >= 0 ? ' target' : (isInf ? '' : ' pk'));
+        d.style.left = posOf(k);
+        if (isInf) { d.style.background = '#f1f5f9'; d.style.borderStyle = 'dashed'; d.style.color = '#94a3b8'; }
+        d.innerHTML = '<span class="rlab">' + (isInf ? (k === 0 ? '最小值伪记录' : 'supremum') : '主键记录') + '</span>' + esc(p);
+        axis.appendChild(d);
+      });
+
+      /* 锁区间 */
+      c.zones.forEach(function (z) {
+        var el = document.createElement('div');
+        el.className = 'gapzone ' + z.type;
+        el.style.left = posOf(z.from);
+        el.style.width = spanOf(z.from, z.to);
+        if (z.label) el.innerHTML = '<span class="zl">' + esc(z.label) + '</span>';
+        axis.appendChild(el);
+        /* 触发过渡 */
+        requestAnimationFrame(function () { el.classList.add('on'); });
+      });
+    }
+
+    var lw = $('#gapLocks');
+    if (lw) {
+      lw.innerHTML = c.locks.map(function (k) {
+        var icon = k.c === 'x' ? '🔒' : (k.c === 'gap' ? '⛔' : '🔑');
+        return '<div class="lockbox ' + esc(k.c) + '"><span>' + icon + '</span> ' + k.t + '</div>';
+      }).join('');
+    }
+    setHTML($('#gapNote'), c.note);
+
+    $$('#gapSeg .seg').forEach(function (s, k) {
+      s.setAttribute('aria-pressed', String(k === i));
+    });
+  }
+
+  var gapSeg = $('#gapSeg');
+  if (gapSeg) {
+    gapSeg.innerHTML = GAP_CASES.map(function (c, i) {
+      return '<button class="seg" data-gap="' + i + '" aria-pressed="' + (i === 0) + '">' + esc(c.label) + '</button>';
+    }).join('');
+    $$('.seg', gapSeg).forEach(function (s) {
+      s.addEventListener('click', function () { renderGap(Number(s.getAttribute('data-gap'))); });
+    });
+    renderGap(0);
+    window.addEventListener('resize', function () { renderGap(gapIdx); });
+  }
+
+  /* ============================================================
+     SECTION: phantom-demo 幻读路径演示（模块四）
+     ============================================================ */
+  var PH_CASES = [
+    {
+      sql: '<span class="cm">-- RR 级别，事务 A 全程只用普通 SELECT（快照读）</span>\n<span class="cm">-- 表中初始有 id = 1, 5, 10 三条记录</span>',
+      a: [
+        { sql: 'BEGIN;', st: 'done' },
+        { sql: 'SELECT * FROM employee\n  WHERE id>5 AND id<15;', st: 'done', rs: '→ id=10（1 行）' },
+        { sql: '-- B 插入后，A 再查一次', st: '' },
+        { sql: 'SELECT * FROM employee\n  WHERE id>5 AND id<15;', st: 'done', rs: '→ 仍然 id=10（1 行）' },
+        { sql: 'COMMIT;', st: 'done' }
+      ],
+      b: [
+        { sql: 'BEGIN;', st: '' },
+        { sql: 'INSERT INTO employee\n  VALUES(12,\'新人\',7000);', st: '' },
+        { sql: 'COMMIT;', st: 'done', rs: '✔ 成功（A 没加锁，不阻塞）' },
+        { sql: '', st: '' },
+        { sql: '', st: '' }
+      ],
+      steps: [
+        '事务 A 开启并做<b>第一次快照读</b>，生成 ReadView。此时 B 还不存在，B 之后的 trx_id 必然 ≥ A 的 max_trx_id。',
+        'A 读到 id=10 一行。<b>注意 A 没有加任何锁</b>，因为它只是普通 SELECT。',
+        '事务 B 开启、插入 id=12 并提交。<b>由于 A 没有加间隙锁，B 完全不会被阻塞</b>，插入顺利成功。',
+        'A 再查一次，<b>复用同一个 ReadView</b>。id=12 这行的 trx_id ≥ A 的 max_trx_id → 判定第三步命中，<b>不可见</b>。所以 A 仍然只看到 id=10。<span class="yes">幻读被 MVCC 挡住了。</span>',
+        'A 提交。<b>整个过程中 A 从未感知到 id=12 的存在</b> —— 这就是 RR 下快照读天然免疫幻读的原理。'
+      ],
+      notes: [
+        '<b>路径一：快照读的幻读由 MVCC 解决。</b>关键机制是 <b>RR 下 ReadView 只生成一次、全程复用</b>。任何在视图创建之后才开启的事务，其修改对 A 永久不可见，无论它提不提交。A 的世界被冻结在第一次读的那一刻。'
+      ]
+    },
+    {
+      sql: '<span class="cm">-- RR 级别，事务 A 使用 SELECT ... FOR UPDATE（当前读）</span>\n<span class="cm">-- 表中初始有 id = 1, 5, 10, 15 四条记录</span>',
+      a: [
+        { sql: 'BEGIN;', st: 'done' },
+        { sql: 'SELECT * FROM employee\n  WHERE id>5 AND id<15\n  FOR UPDATE;', st: 'done', rs: '→ id=10 + 加临键锁' },
+        { sql: '-- 等待 B 的结果…', st: '' },
+        { sql: 'SELECT * FROM employee\n  WHERE id>5 AND id<15\n  FOR UPDATE;', st: 'done', rs: '→ 仍然只有 id=10' },
+        { sql: 'COMMIT;', st: 'done', rs: '✔ 释放锁' }
+      ],
+      b: [
+        { sql: 'BEGIN;', st: '' },
+        { sql: 'INSERT INTO employee\n  VALUES(12,\'新人\',7000);', st: 'blocked', rs: '⏳ 阻塞！' },
+        { sql: '-- 一直等待 A 释放间隙锁', st: 'blocked' },
+        { sql: '-- A 提交后，INSERT 才执行', st: 'done', rs: '✔ 成功' },
+        { sql: 'COMMIT;', st: 'done' }
+      ],
+      steps: [
+        '事务 A 开启。',
+        'A 用 <b>FOR UPDATE</b> 做范围查询，这是<b>当前读</b>，MVCC 不介入。InnoDB 加<b>临键锁</b>：锁住 id=10 这条记录，同时锁住它两侧的间隙 <code>(5,10]</code> 和 <code>(10,15)</code>。',
+        '事务 B 尝试插入 id=12，落在被锁的间隙 <code>(10,15)</code> 内。INSERT 需要<b>插入意向锁</b>，与 A 的间隙锁冲突 → <b>B 被阻塞</b>。',
+        'B 持续等待。若超过 <code>innodb_lock_wait_timeout</code>（默认 50 秒）会报 <code>ERROR 1205</code>。',
+        'A 提交、释放锁，B 的 INSERT 立刻执行成功。A 在整个事务期间<b>从未看到过 id=12</b>。<span class="yes">幻读被间隙锁挡住了。</span>'
+      ],
+      notes: [
+        '<b>路径二：当前读的幻读由间隙锁解决。</b>MVCC 在这里完全不起作用（当前读不走版本链），全靠临键锁锁住「记录之间的空隙」，让 INSERT 物理上无法完成。<br><br><b>代价也很明确：</b>B 的插入被阻塞，锁范围比实际需要的大，并发下降、死锁概率上升。这正是很多高并发业务改用 RC（基本不加间隙锁）的原因 —— 但前提是要能容忍幻读，且 binlog 必须是 ROW 格式。'
+      ]
+    },
+    {
+      sql: '<span class="cm">-- RR 级别，事务 A 先快照读、后当前读（混用）</span>\n<span class="cm">-- 这是 RR 下幻读仍然会发生的唯一破口</span>',
+      a: [
+        { sql: 'BEGIN;', st: 'done' },
+        { sql: 'SELECT * FROM employee\n  WHERE id=12;', st: 'done', rs: '→ 空（没有这行）' },
+        { sql: '-- B 插入并提交后…', st: '' },
+        { sql: 'SELECT * FROM employee\n  WHERE id=12;', st: 'done', rs: '→ 仍然空（MVCC 挡住）' },
+        { sql: 'UPDATE employee SET salary=1\n  WHERE id=12;', st: 'done', rs: '✔ 竟然改成功了！' },
+        { sql: 'SELECT * FROM employee\n  WHERE id=12;', st: 'done', rs: '→ 出现了！幻读' },
+        { sql: 'COMMIT;', st: 'done' }
+      ],
+      b: [
+        { sql: 'BEGIN;', st: '' },
+        { sql: 'INSERT INTO employee\n  VALUES(12,\'新人\',7000);', st: '' },
+        { sql: 'COMMIT;', st: 'done', rs: '✔ 成功（A 未加锁）' },
+        { sql: '', st: '' },
+        { sql: '', st: '' },
+        { sql: '', st: '' },
+        { sql: '', st: '' }
+      ],
+      steps: [
+        '事务 A 开启。',
+        'A 做<b>快照读</b>查 id=12，没有这行，同时生成 ReadView（记下此刻的 max_trx_id）。',
+        '事务 B 开启并 <b>INSERT id=12</b>。因为 A 只是快照读、没有加任何锁，<b>B 完全不被阻塞</b>。',
+        'B 提交。id=12 现在是已提交的真实数据。',
+        'A 再做快照读 → 仍然看不到。<b>MVCC 判定 B 的 trx_id ≥ A 的 max_trx_id → 不可见。</b>到这一步为止一切正常。',
+        '<b>破口出现：</b>A 执行 <code>UPDATE ... WHERE id=12</code>，这是<b>当前读</b>，绕过 MVCC 直接读最新数据 → <b>找到了 B 插入的那一行，并成功修改！</b>',
+        '<span class="no">A 再快照读，id=12 这行出现了。</span>因为这行的 <code>DB_TRX_ID</code> 已被 UPDATE 改成 A 自己的 ID，命中可见性判定<b>第一步</b>（trx_id == creator_trx_id）→ 可见。<b>幻读发生。</b>'
+      ],
+      notes: [
+        '<b>这就是「RR 并没有 100% 解决幻读」的准确含义。</b><br><br>MVCC 只能保证<b>快照读之间</b>看不到幻影行；一旦事务里掺入当前读（UPDATE / DELETE / FOR UPDATE），当前读会绕过版本链读到最新数据并修改它，<b>被修改过的行的 DB_TRX_ID 变成自己的 ID，于是后续的快照读也能看见它了</b>。<br><br><b>结论与实战建议：</b><br>· 如果业务逻辑依赖「这个范围内不会有新数据出现」，<b>必须在事务一开始就用 <code>SELECT ... FOR UPDATE</code> 加锁读</b>，靠间隙锁把范围封住；<br>· 不要指望先普通 SELECT 判断「不存在」再 INSERT 就能保证唯一性 —— 这中间存在竞态，正确做法是靠<b>数据库唯一索引</b>兜底；<br>· 需要绝对严格的串行语义时，才考虑 SERIALIZABLE。'
+      ]
+    }
+  ];
+
+  var phIdx = 0, phStep = 0, phTimer = null;
+
+  function renderPhantom() {
+    var c = PH_CASES[phIdx];
+    if (!c) return;
+    setHTML($('#phSql'), c.sql);
+
+    function lane(sel, arr) {
+      var el = $(sel);
+      if (!el) return;
+      el.innerHTML = arr.map(function (o, i) {
+        if (!o.sql) return '<div class="op" style="visibility:hidden;height:38px"></div>';
+        var cls = 'op';
+        if (i < phStep) cls += ' ' + (o.st === 'blocked' ? 'blocked' : 'done');
+        else if (i === phStep - 1) cls += ' active';
+        var icon = i < phStep ? (o.st === 'blocked' ? '⏳' : '✓') : '·';
+        return '<div class="' + cls + '"><span class="ic">' + icon + '</span>' +
+          '<span class="sql" style="display:block;margin:0;padding:0;background:transparent;border:0">' +
+          '<pre style="font-size:12.2px;line-height:1.55;color:inherit;white-space:pre-wrap">' + esc(o.sql) + '</pre></span>' +
+          (o.rs ? '<span class="rs">' + esc(o.rs) + '</span>' : '') + '</div>';
+      }).join('');
+    }
+    lane('#phLaneA', c.a);
+    lane('#phLaneB', c.b);
+
+    setText($('#phCount'), phStep + ' / ' + c.steps.length);
+    setHTML($('#phNote'), phStep === 0 ? '点「下一步」开始推演。' : c.steps[phStep - 1]);
+    var nb = $('#phNext');
+    if (nb) {
+      nb.disabled = phStep >= c.steps.length;
+      nb.textContent = phStep >= c.steps.length ? '✓ 推演完成' : '下一步 ▸';
+    }
+    if (phStep >= c.steps.length && c.notes && c.notes[0]) {
+      setHTML($('#phNote'), c.steps[c.steps.length - 1] + '<br><br>' + c.notes[0]);
+    }
+  }
+
+  function phReset() {
+    if (phTimer) { clearInterval(phTimer); phTimer = null; }
+    var ab = $('#phAuto'); if (ab) ab.textContent = '▶ 自动播放';
+    phStep = 0; renderPhantom();
+  }
+
+  var phSeg = $('#phSeg');
+  if (phSeg) {
+    $$('.seg', phSeg).forEach(function (s) {
+      s.addEventListener('click', function () {
+        $$('.seg', phSeg).forEach(function (o) { o.setAttribute('aria-pressed', 'false'); });
+        s.setAttribute('aria-pressed', 'true');
+        phIdx = Number(s.getAttribute('data-ph'));
+        phReset();
+      });
+    });
+    var pn = $('#phNext');
+    if (pn) pn.addEventListener('click', function () {
+      var c = PH_CASES[phIdx];
+      if (c && phStep < c.steps.length) { phStep++; renderPhantom(); }
+    });
+    var pa = $('#phAuto');
+    if (pa) pa.addEventListener('click', function () {
+      if (phTimer) { clearInterval(phTimer); phTimer = null; pa.textContent = '▶ 自动播放'; return; }
+      var c = PH_CASES[phIdx];
+      if (c && phStep >= c.steps.length) phReset();
+      pa.textContent = '⏸ 暂停';
+      phTimer = setInterval(function () {
+        var cc = PH_CASES[phIdx];
+        if (!cc || phStep >= cc.steps.length) {
+          clearInterval(phTimer); phTimer = null; pa.textContent = '▶ 自动播放'; return;
+        }
+        phStep++; renderPhantom();
+      }, 1800);
+    });
+    var pr = $('#phReset');
+    if (pr) pr.addEventListener('click', phReset);
+    renderPhantom();
+  }
+
+  /* ============================================================
+     SECTION: theater 并发时间线剧场（模块五）
+     ============================================================ */
+  var scIdx = 0, scStep = 0, scTimer = null;
+
+  function renderScCards() {
+    var w = $('#scList');
+    if (!w) return;
+    w.innerHTML = SC_CARDS.map(function (c, i) {
+      return '<button type="button" class="acc-btn" data-sc="' + i + '" ' +
+        'style="border:1px solid var(--line);border-radius:var(--r-md);margin:0;text-align:left;' +
+        'background:' + (i === scIdx ? 'var(--brand-soft)' : '#fff') + ';' +
+        (i === scIdx ? 'border-color:var(--brand);color:var(--brand);' : '') + '">' +
+        '<span style="font-size:20px">' + c.icon + '</span>' +
+        '<span style="flex:1">' +
+        '<span style="display:block;font-size:11.5px;font-weight:700;color:var(--accent);letter-spacing:.06em;margin-bottom:2px">' + esc(c.no) + '</span>' +
+        '<span style="display:block;font-size:14.8px;font-weight:700;line-height:1.45;margin-bottom:5px">' + esc(c.title) + '</span>' +
+        '<span class="badge b-gray" style="margin-right:5px">' + esc(c.short) + '</span>' +
+        '<span class="badge b-gray">' + c.steps + ' 步</span>' +
+        '</span><span class="arw" style="margin-left:8px">▸</span></button>';
+    }).join('');
+    $$('[data-sc]', w).forEach(function (b) {
+      b.addEventListener('click', function () {
+        scIdx = Number(b.getAttribute('data-sc'));
+        scReset(); renderScCards();
+        var t = $('#theater');
+        if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+  }
+
+  function lockLine(el, lk, name) {
+    if (!el) return;
+    if (!lk) { el.className = 'lockbox none'; el.innerHTML = '<span>🔓</span> ' + name + ' 持锁：无'; return; }
+    var icon = lk.c === 'x' ? '🔒' : (lk.c === 'wait' ? '⏳' : (lk.c === 'gap' ? '⛔' : '🔓'));
+    el.className = 'lockbox ' + lk.c;
+    el.innerHTML = '<span>' + icon + '</span> ' + name + '：' + lk.t;
+  }
+
+  function renderTheater() {
+    var sc = SCENES[scIdx];
+    if (!sc) return;
+    setText($('#scTitle'), sc.title);
+    setHTML($('#scIntro'), sc.intro);
+    setText($('#scIso'), sc.iso);
+    setText($('#scTable'), sc.table || '表 employee（id 为主键）');
+    setText($('#scCount'), '步骤 ' + scStep + ' / ' + sc.steps.length);
+    setText($('#thTidA'), sc.tidA);
+    setText($('#thTidB'), sc.tidB);
+
+    /* 回放状态：从头累积到 scStep */
+    var st = {
+      salary: 5000, trx: 80, ptr: 'null', del: 'false',
+      lockA: null, lockB: null, chain: null, rv: null, explain: null
+    };
+    for (var i = 0; i < scStep; i++) {
+      var s = sc.steps[i];
+      if (s.salary != null) st.salary = s.salary;
+      if (s.trx != null) st.trx = s.trx;
+      if (s.ptr != null) st.ptr = s.ptr;
+      if ('lockA' in s) st.lockA = s.lockA;
+      if ('lockB' in s) st.lockB = s.lockB;
+      if (s.chain) st.chain = s.chain;
+      if (s.rv) st.rv = s.rv;
+      if (s.explain) st.explain = s.explain;
+    }
+
+    setText($('#thSalary'), String(st.salary));
+    setText($('#thTrx'), String(st.trx));
+    setText($('#thPtr'), st.ptr);
+    setText($('#thDel'), st.del);
+    ['#thSalary', '#thTrx', '#thPtr'].forEach(function (sel) {
+      var el = $(sel);
+      if (!el) return;
+      el.classList.remove('hl'); void el.offsetWidth; el.classList.add('hl');
+    });
+
+    lockLine($('#thLockA'), st.lockA, '事务 A 持锁');
+    lockLine($('#thLockB'), st.lockB, '事务 B 持锁');
+
+    /* 版本链 */
+    var cw = $('#thChain');
+    if (cw) {
+      var ch = st.chain || [{ tag: '当前版本', val: 'salary = ' + st.salary, meta: 'DB_TRX_ID = ' + st.trx + '\nDB_ROLL_PTR = ' + st.ptr, cls: 'is-newest' }];
+      cw.innerHTML = ch.map(function (v, k) {
+        return (k > 0 ? '<div class="varrow">⟵</div>' : '') +
+          '<div class="vnode ' + esc(v.cls || '') + '" style="cursor:default;flex:1 1 150px">' +
+          '<span class="vtag">' + esc(v.tag) + '</span>' +
+          '<span class="vval">' + esc(v.val) + '</span>' +
+          '<span class="vmeta">' + esc(v.meta).replace(/\n/g, '<br>') + '</span></div>';
+      }).join('');
+    }
+
+    /* 泳道 */
+    function laneOps(sel, which) {
+      var el = $(sel);
+      if (!el) return;
+      var html = '';
+      for (var k = 0; k < scStep; k++) {
+        var s = sc.steps[k];
+        if (s.lane !== which) continue;
+        var cls = 'op ' + (s.blocked ? 'blocked' : (k === scStep - 1 ? 'active' : 'done'));
+        var icon = s.blocked ? '⏳' : (k === scStep - 1 ? '▶' : '✓');
+        html += '<div class="' + cls + '"><span class="ic">' + icon + '</span>' +
+          '<span class="sql" style="display:block;margin:0;padding:0;background:transparent;border:0;flex:1">' +
+          '<pre style="font-size:12.2px;line-height:1.55;color:inherit;white-space:pre-wrap">' + esc(s.sql) + '</pre></span>' +
+          (s.rs ? '<span class="rs">' + esc(s.rs) + '</span>' : '') + '</div>';
+      }
+      el.innerHTML = html || '<div style="font-size:13px;color:var(--ink-mute);padding:6px 2px">（尚未执行任何操作）</div>';
+    }
+    laneOps('#thLaneA', 'a');
+    laneOps('#thLaneB', 'b');
+
+    /* 说明与解析 */
+    var last = scStep > 0 ? sc.steps[scStep - 1] : null;
+    setHTML($('#thNote'), last ? last.note : '点击「下一步」开始推演。这个场景共 ' + sc.steps.length + ' 步。');
+
+    var ex = $('#thExplain');
+    if (ex) {
+      if (last && last.explain) {
+        ex.innerHTML = '<div class="acc" style="margin:0"><button class="acc-btn" aria-expanded="true" id="thExBtn">' +
+          '<span class="badge b-purple">深度解析</span> 这一步背后的原理展开' +
+          '<span class="arw">▼</span></button>' +
+          '<div class="acc-body open" id="thExBody">' + last.explain + '</div></div>';
+        var eb = $('#thExBtn');
+        if (eb) eb.addEventListener('click', function () {
+          var open = eb.getAttribute('aria-expanded') === 'true';
+          eb.setAttribute('aria-expanded', open ? 'false' : 'true');
+          var bd = $('#thExBody'); if (bd) bd.classList.toggle('open', !open);
+        });
+      } else if (st.explain) {
+        ex.innerHTML = '<div class="acc" style="margin:0"><button class="acc-btn" aria-expanded="false" id="thExBtn">' +
+          '<span class="badge b-purple">深度解析</span> 展开本场景的原理细节' +
+          '<span class="arw">▼</span></button>' +
+          '<div class="acc-body" id="thExBody">' + st.explain + '</div></div>';
+        var eb2 = $('#thExBtn');
+        if (eb2) eb2.addEventListener('click', function () {
+          var open = eb2.getAttribute('aria-expanded') === 'true';
+          eb2.setAttribute('aria-expanded', open ? 'false' : 'true');
+          var bd = $('#thExBody'); if (bd) bd.classList.toggle('open', !open);
+        });
+      } else {
+        ex.innerHTML = '';
+      }
+    }
+
+    /* ReadView 悬浮信息 */
+    var rvb = $('#thRv');
+    if (rvb) {
+      if (st.rv) {
+        rvb.className = 'rvcard';
+        rvb.style.display = 'block';
+        rvb.innerHTML = '<div class="rvh">当前 ReadView</div>' +
+          '<div class="rvfield"><span class="k">creator_trx_id</span><span class="v">' + st.rv.creator + '</span></div>' +
+          '<div class="rvfield"><span class="k">m_ids</span><span class="v">[' + st.rv.m_ids.join(', ') + ']</span></div>' +
+          '<div class="rvfield"><span class="k">min_trx_id</span><span class="v">' + st.rv.min + '</span></div>' +
+          '<div class="rvfield"><span class="k">max_trx_id</span><span class="v">' + st.rv.max + '</span></div>';
+      } else { rvb.style.display = 'none'; }
+    }
+
+    /* 按钮状态 */
+    var pv = $('#thPrev'), nx = $('#thNext');
+    if (pv) pv.disabled = scStep <= 0;
+    if (nx) {
+      nx.disabled = scStep >= sc.steps.length;
+      nx.textContent = scStep >= sc.steps.length ? '✓ 推演完成' : '下一步 ▸';
+    }
+  }
+
+  function scReset() {
+    if (scTimer) { clearInterval(scTimer); scTimer = null; }
+    var pb = $('#thPlay'); if (pb) pb.textContent = '▶ 自动播放';
+    scStep = 0; renderTheater();
+  }
+
+  if ($('#scList')) {
+    renderScCards();
+
+    var tprev = $('#thPrev');
+    if (tprev) tprev.addEventListener('click', function () {
+      if (scStep > 0) { scStep--; renderTheater(); }
+    });
+    var tnext = $('#thNext');
+    if (tnext) tnext.addEventListener('click', function () {
+      var sc = SCENES[scIdx];
+      if (sc && scStep < sc.steps.length) { scStep++; renderTheater(); }
+    });
+    var tplay = $('#thPlay');
+    if (tplay) tplay.addEventListener('click', function () {
+      if (scTimer) { clearInterval(scTimer); scTimer = null; tplay.textContent = '▶ 自动播放'; return; }
+      var sc = SCENES[scIdx];
+      if (sc && scStep >= sc.steps.length) scReset();
+      tplay.textContent = '⏸ 暂停';
+      scTimer = setInterval(function () {
+        var s2 = SCENES[scIdx];
+        if (!s2 || scStep >= s2.steps.length) {
+          clearInterval(scTimer); scTimer = null; tplay.textContent = '▶ 自动播放'; return;
+        }
+        scStep++; renderTheater();
+      }, 2200);
+    });
+    var trst = $('#thReset');
+    if (trst) trst.addEventListener('click', scReset);
+
+    /* 键盘快捷键 */
+    document.addEventListener('keydown', function (e) {
+      var p = $('#p5');
+      if (!p || !p.classList.contains('is-active')) return;
+      if (/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) return;
+      if (e.key === 'ArrowRight' || e.key === ' ') {
+        var sc = SCENES[scIdx];
+        if (sc && scStep < sc.steps.length) { e.preventDefault(); scStep++; renderTheater(); }
+      } else if (e.key === 'ArrowLeft') {
+        if (scStep > 0) { e.preventDefault(); scStep--; renderTheater(); }
+      }
+    });
+
+    renderTheater();
+  }
+
+  /* ============================================================
+     SECTION: init 初始状态
+     ============================================================ */
+  activateTab('p1', false);
+})();
+
+</script>
+</body>
+</html>

@@ -38,6 +38,22 @@ class ListNode:
 
 
 class Solution:
+
+    def mergeNodes(self, head: ListNode | None) -> ListNode | None:
+        curr = head.next  # 跳过首个0
+        dummy = ListNode()  # 哨兵节点
+        tail = dummy
+        while curr:
+            s = 0
+            while curr.val != 0:
+                s += curr.val
+                curr = curr.next
+            tail.next = ListNode(s)
+            tail = tail.next
+            curr = curr.next
+        return dummy.next
+
+
     def mergeNodes(self, head: ListNode | None) -> ListNode | None:
         # ans_list = []
         pre_head = ListNode()

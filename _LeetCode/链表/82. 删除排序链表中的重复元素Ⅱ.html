@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>82. 删除排序链表中的重复元素Ⅱ · 详解版</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#08080f; --surface:#111827; --surface-2:#1a2234; --border:#1e293b;
+  --accent:#d4a843; --accent-glow:rgba(212,168,67,.18);
+  --ok:#34d399; --bad:#f87171;
+  --cur:#d4a843; --del:#f87171; --keep:#34d399;
+  --text:#e2e8f0; --text-muted:#64748b; --text-bright:#f8fafc;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+body{background:var(--bg); color:var(--text); font-family:'Noto Serif SC',serif; font-size:1rem; line-height:1.75; padding:2rem 1rem 4rem;}
+.container{max-width:1200px; margin:0 auto;}
+.tag{display:inline-block; font-family:'JetBrains Mono',monospace; font-size:.72rem; letter-spacing:.15em; color:var(--accent); border:1px solid var(--accent); padding:.25em .8em; border-radius:2px; margin-bottom:1rem; text-transform:uppercase;}
+h1{font-size:2.2rem; color:var(--text-bright); margin-bottom:.5rem; line-height:1.3;}
+.problem-desc{color:var(--text-muted); margin-bottom:1.5rem; max-width:900px;}
+.problem-desc code{font-family:'JetBrains Mono',monospace; font-size:.85em; background:var(--surface-2); padding:.1em .4em; border-radius:3px; color:var(--accent);}
+.formula-card{background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:0 8px 8px 0; padding:1rem 1.3rem; margin-bottom:1.5rem; font-family:'JetBrains Mono',monospace;}
+.formula-card .formula{font-size:1.05rem; color:var(--accent); margin-bottom:.3rem;}
+.formula-card .explain{font-size:.85rem; color:var(--text-muted); font-family:'Noto Serif SC',serif;}
+.input-section{background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:1.2rem 1.4rem; margin-bottom:1rem; display:flex; gap:.8rem; align-items:center; flex-wrap:wrap;}
+.input-section label{font-family:'JetBrains Mono',monospace; font-size:.82rem; color:var(--text-muted);}
+.input-section input{background:var(--surface-2); border:1px solid var(--border); color:var(--text-bright); font-family:'JetBrains Mono',monospace; font-size:.95rem; padding:.5em .8em; border-radius:4px; flex:1; min-width:280px;}
+.input-section input:focus{outline:none; border-color:var(--accent);}
+.btn{font-family:'JetBrains Mono',monospace; font-size:.82rem; background:var(--surface-2); color:var(--text); border:1px solid var(--border); padding:.55em 1.2em; border-radius:4px; cursor:pointer; transition:all .15s;}
+.btn:hover{border-color:var(--accent); color:var(--accent);}
+.btn.primary{background:var(--accent); color:#000; border-color:var(--accent); font-weight:600;}
+.btn.primary:hover{background:var(--accent-glow); color:var(--accent);}
+.btn.sm{font-size:.72rem; padding:.4em .8em;}
+.example-btns{display:flex; align-items:center; gap:.6rem; margin-bottom:1.5rem; flex-wrap:wrap;}
+.example-label{font-family:'JetBrains Mono',monospace; font-size:.72rem; color:var(--text-muted); letter-spacing:.05em; white-space:nowrap;}
+.example-btn{font-size:.72rem; padding:.4em .8em; border-color:var(--surface-2); background:var(--surface-2); color:var(--text-muted);}
+.example-btn:hover{border-color:var(--accent); color:var(--accent); background:var(--accent-glow);}
+.legend{display:flex; gap:1.2rem; justify-content:center; margin-bottom:.8rem; flex-wrap:wrap; font-family:'JetBrains Mono',monospace; font-size:.76rem;}
+.legend-item{display:flex; align-items:center; gap:.4rem; color:var(--text-muted);}
+.legend-dot{width:12px; height:12px; border-radius:50%; border:2px solid;}
+.viz-card{background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:1rem; margin-bottom:1.2rem; overflow-x:auto;}
+svg{display:block; margin:0 auto; max-width:100%; height:auto;}
+.step-card{background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:1.3rem 1.5rem; margin-bottom:1rem;}
+.step-desc{font-size:1.05rem; margin-bottom:1rem; color:var(--text);}
+.step-desc code{font-family:'JetBrains Mono',monospace; font-size:.88em; background:var(--surface-2); padding:.1em .4em; border-radius:3px; color:var(--accent);}
+.step-desc .hl-ok{color:var(--ok); font-weight:600;}
+.step-desc .hl-del{color:var(--bad); font-weight:600;}
+.step-desc strong{color:var(--text-bright);}
+.ctr-row{display:flex; gap:1rem; flex-wrap:wrap;}
+.ctr-card{flex:1; min-width:130px; background:var(--surface-2); border:1px solid var(--border); border-radius:6px; padding:.8rem 1rem;}
+.ctr-label{font-family:'JetBrains Mono',monospace; font-size:.72rem; color:var(--text-muted); letter-spacing:.05em;}
+.ctr-val{font-family:'JetBrains Mono',monospace; font-size:1.4rem; font-weight:700; color:var(--text-bright); margin-top:.2rem;}
+.ctr-val.pop{animation:pop .3s;}
+.ctr-val.accent{color:var(--accent);} .ctr-val.del{color:var(--bad);}
+.answer-banner{margin-top:1rem; padding:.9rem 1.2rem; border-radius:6px; background:var(--accent-glow); border:1px solid var(--accent); font-family:'JetBrains Mono',monospace; font-size:1rem; color:var(--accent); display:none;}
+.answer-banner.show{display:block; animation:fadeUp .4s;}
+.controls{display:flex; gap:.6rem; justify-content:center; margin:1.2rem 0 .8rem; flex-wrap:wrap;}
+.progress{display:flex; gap:.35rem; justify-content:center; flex-wrap:wrap; margin-bottom:.8rem;}
+.dot{width:9px; height:9px; border-radius:50%; background:var(--surface-2); cursor:pointer; transition:all .2s; border:none; padding:0;}
+.dot.visited{background:rgba(212,168,67,.4);}
+.dot.current{background:var(--accent); transform:scale(1.5); box-shadow:0 0 8px var(--accent-glow);}
+.kbd-hint{text-align:center; font-family:'JetBrains Mono',monospace; font-size:.72rem; color:var(--text-muted); margin-bottom:1.5rem;}
+.kbd-hint kbd{background:var(--surface-2); border:1px solid var(--border); padding:.1em .4em; border-radius:3px; margin:0 .15em;}
+.log-card{background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:1.2rem 1.4rem; margin-bottom:1.2rem; max-height:280px; overflow-y:auto;}
+.log-card h3{font-family:'JetBrains Mono',monospace; font-size:.9rem; color:var(--accent); letter-spacing:.08em; margin-bottom:.8rem;}
+.log-entry{font-family:'JetBrains Mono',monospace; font-size:.78rem; padding:.35rem 0; border-bottom:1px dashed var(--border); color:var(--text-muted);}
+.log-entry:last-child{border-bottom:none;}
+.log-step{color:var(--accent); margin-right:.5em;}
+.log-stats{color:var(--text);}
+.algo-card{background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:1.5rem 1.8rem;}
+.algo-card h2{font-size:1.35rem; color:var(--text-bright); margin:1.4rem 0 .7rem;}
+.algo-card h2:first-child{margin-top:0;}
+.algo-card h3{font-family:'Noto Serif SC',serif; font-size:1.1rem; color:var(--accent); margin:1.2rem 0 .5rem;}
+.algo-card p{margin-bottom:.8rem; color:var(--text);}
+.algo-card ul, .algo-card ol{margin-left:1.5rem; margin-bottom:.8rem;}
+.algo-card li{margin-bottom:.35rem;}
+.algo-card strong{color:var(--text-bright);}
+.algo-card code{font-family:'JetBrains Mono',monospace; font-size:.88em; background:var(--surface-2); padding:.1em .4em; border-radius:3px; color:var(--accent);}
+.key-insight{background:rgba(212,168,67,.07); border-left:3px solid var(--accent); padding:.9rem 1.2rem; border-radius:0 6px 6px 0; margin:1rem 0;}
+.key-insight strong{color:var(--accent);}
+.example-table{width:100%; border-collapse:collapse; margin:.8rem 0; font-family:'JetBrains Mono',monospace; font-size:.82rem;}
+.example-table th, .example-table td{border:1px solid var(--border); padding:.5em .8em; text-align:center;}
+.example-table th{background:var(--surface-2); color:var(--accent);}
+.code-block{background:#0d1117; border:1px solid var(--border); border-radius:6px; padding:1.1rem 1.3rem; overflow-x:auto; margin:.8rem 0; font-family:'JetBrains Mono',monospace; font-size:.82rem; line-height:1.7; white-space:pre;}
+.code-block .ck{color:#ff7b72;} .code-block .cf{color:#d2a8ff;}
+.code-block .cs{color:#7ee787;} .code-block .cc{color:#8b949e; font-style:italic;}
+.code-block .cn{color:#79c0ff;} .code-block .ct{color:#ffa657;}
+.complexity{font-family:'JetBrains Mono',monospace; font-size:.85rem; background:var(--surface-2); padding:.9rem 1.1rem; border-radius:6px; color:var(--text); border-left:3px solid var(--accent); margin-top:1rem;}
+.node-text{font-family:'JetBrains Mono',monospace; font-weight:700; font-size:15px; fill:var(--text-bright); text-anchor:middle; dominant-baseline:central;}
+.node-text.del{fill:var(--bad); text-decoration:line-through;}
+.ptr-label{font-family:'JetBrains Mono',monospace; font-weight:700; font-size:12px; text-anchor:middle;}
+@keyframes fadeUp{from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);}}
+@keyframes pop{0%{transform:scale(1);} 50%{transform:scale(1.25);} 100%{transform:scale(1);}}
+@media(max-width:640px){ h1{font-size:1.5rem;} .ctr-card{min-width:120px;} }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="tag">LeetCode · 82 · 链表 · 中等</div>
+  <h1>删除排序链表中的重复元素 II</h1>
+  <p class="problem-desc">
+    给定已排序链表头节点 <code>head</code>，删除所有重复数字的节点（<strong>只要出现重复就全部删掉，一个都不留</strong>），只留下不同的数字。
+    返回已排序的链表。经典做法：<strong>哨兵节点 + 双指针</strong>。
+  </p>
+
+  <div class="formula-card">
+    <div class="formula">检查 cur.next.val 是否等于 cur.next.next.val；若相等，while 循环把所有值相等的节点全删掉；否则 cur 前进一步</div>
+    <div class="explain">注意：83 题是"去重保留一个"，本题是"重复的全部删除"，所以要用哨兵节点处理头节点可能被删的情况。</div>
+  </div>
+
+  <div class="input-section">
+    <label>head =</label>
+    <input id="inpArr" type="text" value="1,2,3,3,4,4,5" placeholder="例如：1,2,3,3,4,4,5">
+    <button class="btn primary" onclick="regenerate()">生成演示</button>
+  </div>
+
+  <div class="example-btns">
+    <span class="example-label">示例用例：</span>
+    <button class="btn sm example-btn" onclick="loadExample(1)">[1,2,3,3,4,4,5] → [1,2,5]</button>
+    <button class="btn sm example-btn" onclick="loadExample(2)">[1,1,1,2,3] → [2,3]</button>
+    <button class="btn sm example-btn" onclick="loadExample(3)">[0,0,0,0,0] → []</button>
+    <button class="btn sm example-btn" onclick="loadExample(4)">[1,2,3,4,5] → [1,2,3,4,5]</button>
+  </div>
+
+  <div class="legend">
+    <span class="legend-item"><span class="legend-dot" style="border-color:var(--cur);background:var(--accent-glow)"></span> cur（金色）</span>
+    <span class="legend-item"><span class="legend-dot" style="border-color:var(--del);background:rgba(248,113,113,.15)"></span> 被删除节点（红色删除线）</span>
+    <span class="legend-item"><span class="legend-dot" style="border-color:var(--keep);background:rgba(52,211,153,.15)"></span> 保留节点</span>
+  </div>
+
+  <div class="viz-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;padding:0 .5rem">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--text-muted)">🖱️ 滚轮缩放 · 拖拽平移</span>
+      <span style="display:flex;gap:.5rem;align-items:center">
+        <span id="zoomBadge" style="font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--accent)">100%</span>
+        <button class="btn sm" onclick="resetView()">↻ 重置视图</button>
+      </span>
+    </div>
+    <svg id="svgViz" viewBox="0 0 700 260" style="cursor:grab;user-select:none"></svg>
+  </div>
+
+  <div class="step-card">
+    <div class="step-desc" id="stepDesc">点击「下一步」开始演示。</div>
+    <div class="ctr-row">
+      <div class="ctr-card"><div class="ctr-label">cur 位置</div><div class="ctr-val accent" id="ctrCur">dummy</div></div>
+      <div class="ctr-card"><div class="ctr-label">cur.next.val</div><div class="ctr-val" id="ctrNext">—</div></div>
+      <div class="ctr-card"><div class="ctr-label">已删除节点数</div><div class="ctr-val del" id="ctrDel">0</div></div>
+      <div class="ctr-card"><div class="ctr-label">保留节点数</div><div class="ctr-val" id="ctrKeep">0</div></div>
+    </div>
+    <div class="answer-banner" id="answerBanner"></div>
+  </div>
+
+  <div class="controls">
+    <button class="btn" onclick="prevStep()">← 上一步</button>
+    <button class="btn primary" id="playBtn" onclick="togglePlay()">▶ 自动播放</button>
+    <button class="btn" onclick="nextStep()">下一步 →</button>
+    <button class="btn" onclick="resetDemo()">重置</button>
+  </div>
+  <div class="progress" id="progress"></div>
+  <div class="kbd-hint">
+    <kbd>←</kbd> 上一步 <kbd>→</kbd> 下一步 <kbd>Space</kbd> 播放/暂停 <kbd>F8</kbd> 自动播放
+  </div>
+
+  <div class="log-card">
+    <h3>操作日志</h3>
+    <div id="logBox"></div>
+  </div>
+
+  <div class="algo-card">
+    <h2>一、思路：为什么需要哨兵节点？</h2>
+    <div class="key-insight">
+      <strong>本题和 83 题最大的区别</strong>：83 题是"重复的保留一个"，头节点永远不会被删；本题是"重复的全部删掉"，头节点可能就是重复的（比如 <code>[1,1,1,2,3]</code> 要变成 <code>[2,3]</code>）。
+      所以必须在头节点前面加一个虚拟哨兵 <code>dummy</code>，让 cur 从 dummy 出发，统一处理所有情况。
+    </div>
+    <p><strong>核心逻辑</strong>：cur 永远指向"已经确定保留的最后一个节点"。它的下一个节点是 cur.next，再下一个是 cur.next.next。</p>
+    <ol>
+      <li>如果 <code>cur.next.val == cur.next.next.val</code>：说明从 cur.next 开始有一段连续重复值，进入内层 while 循环，把所有值相等的节点全删（cur.next = cur.next.next）。</li>
+      <li>否则：cur.next 是孤值，保留它，cur = cur.next 前进一步。</li>
+      <li>直到 cur.next 或 cur.next.next 为空，结束。</li>
+    </ol>
+
+    <h2>二、手动推导 [1,2,3,3,4,4,5]</h2>
+    <table class="example-table">
+      <thead><tr><th>步骤</th><th>cur 在</th><th>cur.next</th><th>cur.next.next</th><th>判断</th><th>操作</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>dummy</td><td>1</td><td>2</td><td>1≠2</td><td>cur 前进到 1</td></tr>
+        <tr><td>2</td><td>1</td><td>2</td><td>3</td><td>2≠3</td><td>cur 前进到 2</td></tr>
+        <tr><td>3</td><td>2</td><td>3</td><td>3</td><td>3=3</td><td>内层 while 删 3,3</td></tr>
+        <tr><td>4</td><td>2</td><td>4</td><td>4</td><td>4=4</td><td>内层 while 删 4,4</td></tr>
+        <tr><td>5</td><td>2</td><td>5</td><td>null</td><td>退出</td><td>结果 [1,2,5]</td></tr>
+      </tbody>
+    </table>
+
+    <h2>三、带详细注释的 Python 代码</h2>
+    <div class="code-block"><span class="ck">class</span> <span class="cf">Solution</span>:
+    <span class="ck">def</span> <span class="ct">deleteDuplicates</span>(self, head):
+        <span class="cc"># 哨兵节点：dummy.next 指向原链表头，处理头节点被删的情况</span>
+        cur = dummy = ListNode(next=head)
+
+        <span class="cc"># 只要后面还有两个节点就继续检查</span>
+        <span class="ck">while</span> cur.next <span class="ck">and</span> cur.next.next:
+            val = cur.next.val
+            <span class="cc"># 后两个节点值相同 → 发现重复</span>
+            <span class="ck">if</span> cur.next.next.val == val:
+                <span class="cc"># 把所有值等于 val 的节点全部删掉</span>
+                <span class="ck">while</span> cur.next <span class="ck">and</span> cur.next.val == val:
+                    cur.next = cur.next.next   <span class="cc"># 跳过当前节点</span>
+            <span class="ck">else</span>:
+                <span class="cc"># 不重复，cur 前进一步，保留这个节点</span>
+                cur = cur.next
+
+        <span class="ck">return</span> dummy.next</div>
+
+    <h2>四、常见追问</h2>
+    <ul>
+      <li><strong>为什么内层 while 结束后 cur 不用前进？</strong>因为内层 while 删掉的是"一段连续重复值"，删完后 cur.next 指向的是下一个不同值的节点，cur 本身还停在"上一个保留节点"，需要重新检查新的 cur.next 和 cur.next.next 是否重复。</li>
+      <li><strong>为什么不用快慢指针？</strong>因为链表已排序，重复值一定连续，所以只需要检查 cur.next 和 cur.next.next 两个节点即可。</li>
+      <li><strong>83 题和 82 题区别？</strong>83 题"去重保留一个"，cur = cur.next 就行；82 题"重复全删"，需要内层 while 删一段。</li>
+    </ul>
+
+    <h2>五、复杂度</h2>
+    <div class="complexity">
+      <strong>时间 O(n)</strong>：每个节点最多被访问两次（外层 while 一次，内层 while 删除时一次）。<br>
+      <strong>空间 O(1)</strong>：只改指针，不新建节点。
+    </div>
+  </div>
+</div>
+
+<script>
+const EXAMPLES = [
+  { arr: [1,2,3,3,4,4,5] },
+  { arr: [1,1,1,2,3] },
+  { arr: [0,0,0,0,0] },
+  { arr: [1,2,3,4,5] },
+];
+let arr=[], steps=[], curStep=-1, timer=null;
+
+function loadExample(n){
+  const ex=EXAMPLES[n-1];
+  document.getElementById('inpArr').value=ex.arr.join(',');
+  regenerate();
+}
+function parseArr(){
+  const s=document.getElementById('inpArr').value.trim();
+  return s.split(/[,，\s]+/).filter(x=>x!=='').map(Number).filter(x=>!isNaN(x));
+}
+
+// 模拟算法：维护一个 keep 数组和 deleted 集合
+function genSteps(a){
+  const st=[];
+  // keep 数组：索引在原数组中的位置，表示当前保留的节点序列
+  // deleted 集合：已被删除的原索引
+  const deleted = new Set();
+  // curIdx: 当前 cur 指向的原索引，-1 表示 dummy
+  let curIdx = -1;
+
+  st.push({
+    type:'init',
+    desc:`初始：cur 指向 dummy（哨兵），原链表 = <code>[${a.join(',')}]</code>。`,
+    curIdx: -1, deleted: new Set(), keep: [], answer: null
+  });
+
+  while(true){
+    // 找 cur.next 的索引：从 curIdx 往后找第一个没删的
+    let next1 = curIdx + 1;
+    while(next1 < a.length && deleted.has(next1)) next1++;
+    if(next1 >= a.length) break;
+    // 找 cur.next.next
+    let next2 = next1 + 1;
+    while(next2 < a.length && deleted.has(next2)) next2++;
+
+    if(next2 >= a.length) break;
+
+    if(a[next1] === a[next2]){
+      // 删除所有等于 a[next1] 的节点
+      const val = a[next1];
+      const toDel = [];
+      let i = next1;
+      while(i < a.length && a[i] === val){
+        if(!deleted.has(i)){
+          deleted.add(i);
+          toDel.push(i);
+        }
+        i++;
+      }
+      // 记录删除步骤
+      toDel.forEach((idx, k) => {
+        st.push({
+          type:'del',
+          desc:`发现重复值 <code>${val}</code>（cur.next.val == cur.next.next.val == ${val}）。<span class="hl-del">删除节点 ${k+1}/${toDel.length}（值=${val}）</span>：cur.next = cur.next.next。`,
+          curIdx: curIdx,
+          deleted: new Set(deleted),
+          keep: buildKeep(a, deleted),
+          answer: null
+        });
+      });
+    } else {
+      // 不重复，cur 前进
+      st.push({
+        type:'move',
+        desc:`<code>${a[next1]}</code> ≠ <code>${a[next2]}</code>，cur.next 是孤值，保留。cur 前进到 <code>${a[next1]}</code>。`,
+        curIdx: next1,
+        deleted: new Set(deleted),
+        keep: buildKeep(a, deleted),
+        answer: null
+      });
+      curIdx = next1;
+    }
+  }
+
+  // 最终结果
+  const finalKeep = buildKeep(a, deleted);
+  st.push({
+    type:'done',
+    desc:`遍历结束。<span class="hl-ok">最终保留的节点 = [${finalKeep.join(',') || '空'}]</span>。`,
+    curIdx: curIdx,
+    deleted: new Set(deleted),
+    keep: finalKeep,
+    answer: finalKeep
+  });
+
+  return st;
+}
+
+function buildKeep(a, deleted){
+  const r = [];
+  for(let i=0;i<a.length;i++) if(!deleted.has(i)) r.push(a[i]);
+  return r;
+}
+
+// viewport
+let vp={k:1,tx:0,ty:0};
+function applyVP(){
+  const g=document.getElementById('viewport');
+  if(g) g.setAttribute('transform',`translate(${vp.tx},${vp.ty}) scale(${vp.k})`);
+  document.getElementById('zoomBadge').textContent=Math.round(vp.k*100)+'%';
+}
+function resetView(){
+  vp={k:1,tx:0,ty:0};
+  applyVP();
+}
+
+const SVG_NS='http://www.w3.org/2000/svg';
+function el(tag,attrs){
+  const e=document.createElementNS(SVG_NS,tag);
+  for(const k in attrs) e.setAttribute(k,attrs[k]);
+  return e;
+}
+
+function renderSVG(s){
+  const svg=document.getElementById('svgViz');
+  svg.innerHTML='';
+  const n=arr.length;
+  if(n===0) return;
+  const R=26, gap=72, y=110, startX=90;
+  const xs=arr.map((_,i)=>startX+i*gap);
+  const contentW=startX*2+(n-1)*gap;
+  const vbW=Math.max(700,contentW+40);
+  svg.setAttribute('viewBox',`0 0 ${vbW} 260`);
+  svg.setAttribute('width',vbW);
+
+  svg.appendChild(el('defs',{}));
+  const g=el('g',{id:'viewport'});
+  svg.appendChild(g);
+
+  // dummy 节点（cur 起点）
+  const dummyX = startX - gap;
+  g.appendChild(el('circle',{cx:dummyX, cy:y, r:R, fill:'#1a2234', stroke:'#d4a843','stroke-width':2,'stroke-dasharray':'4 3'}));
+  const dt=el('text',{x:dummyX,y:y,class:'node-text'});
+  dt.textContent='-1'; g.appendChild(dt);
+  const dl=el('text',{x:dummyX,y:y-R-12,class:'ptr-label',fill:'#d4a843'});
+  dl.textContent='dummy'; g.appendChild(dl);
+
+  // 边（只画未删除的节点之间的边）
+  for(let i=0;i<n-1;i++){
+    if(s.deleted.has(i)) continue;
+    let j=i+1;
+    while(j<n && s.deleted.has(j)) j++;
+    if(j<n){
+      g.appendChild(el('line',{x1:xs[i]+R,y1:y,x2:xs[j]-R,y2:y,stroke:'#64748b','stroke-width':1.5}));
+    }
+  }
+
+  // 节点
+  arr.forEach((v,i)=>{
+    const isDel = s.deleted.has(i);
+    const isCur = s.curIdx === i;
+    const c=el('circle',{
+      cx:xs[i], cy:y, r:R,
+      fill: isDel ? 'rgba(248,113,113,.1)' : (isCur?'rgba(212,168,67,.25)':'#1a2234'),
+      stroke: isDel ? '#f87171' : (isCur?'#d4a843':'#353850'),
+      'stroke-width': (isDel||isCur)?2.5:2,
+      opacity: isDel?0.5:1
+    });
+    g.appendChild(c);
+    const t=el('text',{x:xs[i],y:y,class:'node-text'+(isDel?' del':'')});
+    t.textContent=v;
+    g.appendChild(t);
+  });
+
+  // cur 指针
+  let curX;
+  if(s.curIdx===-1) curX=dummyX;
+  else curX=xs[s.curIdx];
+  g.appendChild(el('path',{d:`M ${curX-8} ${y-R-8} L ${curX+8} ${y-R-8} L ${curX} ${y-R-18} z`, fill:'#d4a843'}));
+  const cl=el('text',{x:curX,y:y-R-30,class:'ptr-label',fill:'#d4a843'});
+  cl.textContent='cur'; g.appendChild(cl);
+
+  applyVP();
+}
+
+function setCtr(id,val){
+  const e=document.getElementById(id);
+  if(e.textContent!==String(val)){ e.textContent=val; e.classList.remove('pop'); void e.offsetWidth; e.classList.add('pop'); }
+}
+
+function update(idx){
+  curStep=idx;
+  const s=steps[idx];
+  document.getElementById('stepDesc').innerHTML=s.desc;
+  renderSVG(s);
+
+  const curLabel = s.curIdx===-1 ? 'dummy' : arr[s.curIdx];
+  setCtr('ctrCur', curLabel);
+
+  // 找 cur.next
+  let nextVal = '—';
+  if(s.curIdx < arr.length-1){
+    let n = s.curIdx+1;
+    while(n < arr.length && s.deleted.has(n)) n++;
+    if(n<arr.length) nextVal = arr[n];
+  }
+  setCtr('ctrNext', nextVal);
+  setCtr('ctrDel', s.deleted.size);
+  setCtr('ctrKeep', s.keep.length);
+
+  const banner=document.getElementById('answerBanner');
+  if(s.answer){
+    banner.textContent=`✅ 结果 = [${s.answer.join(',') || '空链表'}]`;
+    banner.classList.add('show');
+  } else banner.classList.remove('show');
+
+  const dots=document.getElementById('progress');
+  dots.innerHTML='';
+  steps.forEach((_,i)=>{
+    const d=document.createElement('button');
+    d.className='dot';
+    if(i<idx) d.classList.add('visited');
+    if(i===idx) d.classList.add('current');
+    d.onclick=()=>goTo(i);
+    dots.appendChild(d);
+  });
+
+  const logBox=document.getElementById('logBox');
+  const entry=document.createElement('div');
+  entry.className='log-entry';
+  const sd=s.desc.replace(/<[^>]+>/g,'').slice(0,120);
+  entry.innerHTML=`<span class="log-step">[步骤 ${idx+1}]</span><span class="log-stats">${sd}</span>`;
+  logBox.appendChild(entry);
+  logBox.scrollTop=logBox.scrollHeight;
+}
+
+function nextStep(){ if(curStep<steps.length-1) update(curStep+1); else stopPlay(); }
+function prevStep(){ if(curStep>0) update(curStep-1); }
+function goTo(i){ if(i>=0&&i<steps.length) update(i); }
+function togglePlay(){ timer?stopPlay():startPlay(); }
+function startPlay(){
+  document.getElementById('playBtn').textContent='⏸ 暂停';
+  timer=setInterval(()=>{ if(curStep>=steps.length-1){stopPlay();return;} nextStep(); },1100);
+}
+function stopPlay(){ clearInterval(timer); timer=null; document.getElementById('playBtn').textContent='▶ 自动播放'; }
+function resetDemo(){ stopPlay(); document.getElementById('logBox').innerHTML=''; if(steps.length>0) update(0); }
+function regenerate(){
+  stopPlay(); arr=parseArr();
+  if(arr.length===0){ alert('请输入节点值，例如：1,2,3,3,4,4,5'); return; }
+  steps=genSteps(arr);
+  document.getElementById('logBox').innerHTML='';
+  resetView();
+  update(0);
+}
+
+document.addEventListener('keydown',e=>{
+  if(document.activeElement.tagName==='INPUT') return;
+  if(e.key==='ArrowLeft') prevStep();
+  else if(e.key==='ArrowRight') nextStep();
+  else if(e.key===' '){ e.preventDefault(); togglePlay(); }
+  else if(e.key==='F8'){ e.preventDefault(); togglePlay(); }
+});
+
+// SVG 交互
+(function(){
+  const svg=document.getElementById('svgViz');
+  svg.addEventListener('wheel',e=>{
+    e.preventDefault();
+    const rect=svg.getBoundingClientRect();
+    const mx=(e.clientX-rect.left)/rect.width*parseFloat(svg.viewBox.baseVal.width);
+    const my=(e.clientY-rect.top)/rect.height*parseFloat(svg.viewBox.baseVal.height);
+    const factor=e.deltaY<0?1.15:1/1.15;
+    const newK=Math.min(3,Math.max(.3,vp.k*factor));
+    vp.tx=mx-(mx-vp.tx)*(newK/vp.k);
+    vp.ty=my-(my-vp.ty)*(newK/vp.k);
+    vp.k=newK; applyVP();
+  },{passive:false});
+  let drag=null;
+  svg.addEventListener('pointerdown',e=>{ drag={x:e.clientX,y:e.clientY}; svg.style.cursor='grabbing'; svg.setPointerCapture(e.pointerId); });
+  svg.addEventListener('pointermove',e=>{
+    if(!drag) return;
+    const rect=svg.getBoundingClientRect();
+    const vw=parseFloat(svg.viewBox.baseVal.width);
+    const vh=parseFloat(svg.viewBox.baseVal.height);
+    vp.tx+=(e.clientX-drag.x)/rect.width*vw;
+    vp.ty+=(e.clientY-drag.y)/rect.height*vh;
+    drag.x=e.clientX; drag.y=e.clientY;
+    applyVP();
+  });
+  svg.addEventListener('pointerup',()=>{ drag=null; svg.style.cursor='grab'; });
+  svg.addEventListener('pointercancel',()=>{ drag=null; svg.style.cursor='grab'; });
+})();
+
+regenerate();
+</script>
+</body>
+</html>

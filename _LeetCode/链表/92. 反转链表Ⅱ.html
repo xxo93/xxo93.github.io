@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>92. 反转链表 II · 详解版</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#08080f; --surface:#111827; --surface-2:#1a2234; --border:#1e293b;
+  --accent:#d4a843; --accent-glow:rgba(212,168,67,.18);
+  --ok:#34d399; --bad:#f87171;
+  --p0:#d4a843; --pre:#60a5fa; --cur:#34d399; --nxt:#f87171;
+  --text:#e2e8f0; --text-muted:#64748b; --text-bright:#f8fafc;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+body{background:var(--bg); color:var(--text); font-family:'Noto Serif SC',serif; font-size:1rem; line-height:1.75; padding:2rem 1rem 4rem;}
+.container{max-width:1200px; margin:0 auto;}
+.tag{display:inline-block; font-family:'JetBrains Mono',monospace; font-size:.72rem; letter-spacing:.15em; color:var(--accent); border:1px solid var(--accent); padding:.25em .8em; border-radius:2px; margin-bottom:1rem; text-transform:uppercase;}
+h1{font-size:2.2rem; color:var(--text-bright); margin-bottom:.5rem; line-height:1.3;}
+.problem-desc{color:var(--text-muted); margin-bottom:1.5rem; max-width:900px;}
+.problem-desc code{font-family:'JetBrains Mono',monospace; font-size:.85em; background:var(--surface-2); padding:.1em .4em; border-radius:3px; color:var(--accent);}
+.formula-card{background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:0 8px 8px 0; padding:1rem 1.3rem; margin-bottom:1.5rem; font-family:'JetBrains Mono',monospace;}
+.formula-card .formula{font-size:1.02rem; color:var(--accent); margin-bottom:.3rem;}
+.formula-card .explain{font-size:.85rem; color:var(--text-muted); font-family:'Noto Serif SC',serif;}
+.input-section{background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:1.2rem 1.4rem; margin-bottom:1rem; display:flex; gap:.8rem; align-items:center; flex-wrap:wrap;}
+.input-section label{font-family:'JetBrains Mono',monospace; font-size:.82rem; color:var(--text-muted);}
+.input-section input{background:var(--surface-2); border:1px solid var(--border); color:var(--text-bright); font-family:'JetBrains Mono',monospace; font-size:.95rem; padding:.5em .8em; border-radius:4px;}
+.input-section input:focus{outline:none; border-color:var(--accent);}
+#inpArr{flex:2; min-width:220px;}
+#inpL{flex:0 0 70px;} #inpR{flex:0 0 70px;}
+.btn{font-family:'JetBrains Mono',monospace; font-size:.82rem; background:var(--surface-2); color:var(--text); border:1px solid var(--border); padding:.55em 1.2em; border-radius:4px; cursor:pointer; transition:all .15s;}
+.btn:hover{border-color:var(--accent); color:var(--accent);}
+.btn.primary{background:var(--accent); color:#000; border-color:var(--accent); font-weight:600;}
+.btn.primary:hover{background:var(--accent-glow); color:var(--accent);}
+.btn.sm{font-size:.72rem; padding:.4em .8em;}
+.example-btns{display:flex; align-items:center; gap:.6rem; margin-bottom:1.5rem; flex-wrap:wrap;}
+.example-label{font-family:'JetBrains Mono',monospace; font-size:.72rem; color:var(--text-muted); letter-spacing:.05em; white-space:nowrap;}
+.example-btn{font-size:.72rem; padding:.4em .8em; border-color:var(--surface-2); background:var(--surface-2); color:var(--text-muted);}
+.example-btn:hover{border-color:var(--accent); color:var(--accent); background:var(--accent-glow);}
+.legend{display:flex; gap:1.2rem; justify-content:center; margin-bottom:.8rem; flex-wrap:wrap; font-family:'JetBrains Mono',monospace; font-size:.76rem;}
+.legend-item{display:flex; align-items:center; gap:.4rem; color:var(--text-muted);}
+.legend-dot{width:12px; height:12px; border-radius:50%; border:2px solid;}
+.viz-card{background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:1rem; margin-bottom:1.2rem; overflow-x:auto;}
+svg{display:block; margin:0 auto; max-width:100%; height:auto;}
+.step-card{background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:1.3rem 1.5rem; margin-bottom:1rem;}
+.step-desc{font-size:1.05rem; margin-bottom:1rem; color:var(--text);}
+.step-desc code{font-family:'JetBrains Mono',monospace; font-size:.88em; background:var(--surface-2); padding:.1em .4em; border-radius:3px;}
+.step-desc .hl-ok{color:var(--ok); font-weight:600;}
+.step-desc strong{color:var(--text-bright);}
+.ctr-row{display:flex; gap:1rem; flex-wrap:wrap;}
+.ctr-card{flex:1; min-width:110px; background:var(--surface-2); border:1px solid var(--border); border-radius:6px; padding:.8rem 1rem;}
+.ctr-label{font-family:'JetBrains Mono',monospace; font-size:.72rem; color:var(--text-muted); letter-spacing:.05em;}
+.ctr-val{font-family:'JetBrains Mono',monospace; font-size:1.3rem; font-weight:700; color:var(--text-bright); margin-top:.2rem;}
+.ctr-val.pop{animation:pop .3s;}
+.ctr-val.p0{color:var(--p0);} .ctr-val.pre{color:var(--pre);}
+.ctr-val.cur{color:var(--cur);} .ctr-val.nxt{color:var(--nxt);}
+.answer-banner{margin-top:1rem; padding:.9rem 1.2rem; border-radius:6px; background:var(--accent-glow); border:1px solid var(--accent); font-family:'JetBrains Mono',monospace; font-size:1rem; color:var(--accent); display:none;}
+.answer-banner.show{display:block; animation:fadeUp .4s;}
+.controls{display:flex; gap:.6rem; justify-content:center; margin:1.2rem 0 .8rem; flex-wrap:wrap;}
+.progress{display:flex; gap:.35rem; justify-content:center; flex-wrap:wrap; margin-bottom:.8rem; max-height:60px; overflow-y:auto;}
+.dot{width:9px; height:9px; border-radius:50%; background:var(--surface-2); cursor:pointer; transition:all .2s; border:none; padding:0;}
+.dot.visited{background:rgba(212,168,67,.4);}
+.dot.current{background:var(--accent); transform:scale(1.5); box-shadow:0 0 8px var(--accent-glow);}
+.kbd-hint{text-align:center; font-family:'JetBrains Mono',monospace; font-size:.72rem; color:var(--text-muted); margin-bottom:1.5rem;}
+.kbd-hint kbd{background:var(--surface-2); border:1px solid var(--border); padding:.1em .4em; border-radius:3px; margin:0 .15em;}
+.log-card{background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:1.2rem 1.4rem; margin-bottom:1.2rem; max-height:280px; overflow-y:auto;}
+.log-card h3{font-family:'JetBrains Mono',monospace; font-size:.9rem; color:var(--accent); letter-spacing:.08em; margin-bottom:.8rem;}
+.log-entry{font-family:'JetBrains Mono',monospace; font-size:.78rem; padding:.35rem 0; border-bottom:1px dashed var(--border); color:var(--text-muted);}
+.log-entry:last-child{border-bottom:none;}
+.log-step{color:var(--accent); margin-right:.5em;}
+.log-stats{color:var(--text);}
+.algo-card{background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:1.5rem 1.8rem;}
+.algo-card h2{font-size:1.35rem; color:var(--text-bright); margin:1.4rem 0 .7rem;}
+.algo-card h2:first-child{margin-top:0;}
+.algo-card h3{font-family:'Noto Serif SC',serif; font-size:1.1rem; color:var(--accent); margin:1.2rem 0 .5rem;}
+.algo-card p{margin-bottom:.8rem; color:var(--text);}
+.algo-card ul, .algo-card ol{margin-left:1.5rem; margin-bottom:.8rem;}
+.algo-card li{margin-bottom:.35rem;}
+.algo-card strong{color:var(--text-bright);}
+.algo-card code{font-family:'JetBrains Mono',monospace; font-size:.88em; background:var(--surface-2); padding:.1em .4em; border-radius:3px; color:var(--accent);}
+.key-insight{background:rgba(212,168,67,.07); border-left:3px solid var(--accent); padding:.9rem 1.2rem; border-radius:0 6px 6px 0; margin:1rem 0;}
+.key-insight strong{color:var(--accent);}
+.example-table{width:100%; border-collapse:collapse; margin:.8rem 0; font-family:'JetBrains Mono',monospace; font-size:.82rem;}
+.example-table th, .example-table td{border:1px solid var(--border); padding:.5em .8em; text-align:center;}
+.example-table th{background:var(--surface-2); color:var(--accent);}
+.code-block{background:#0d1117; border:1px solid var(--border); border-radius:6px; padding:1.1rem 1.3rem; overflow-x:auto; margin:.8rem 0; font-family:'JetBrains Mono',monospace; font-size:.82rem; line-height:1.7; white-space:pre;}
+.code-block .ck{color:#ff7b72;} .code-block .cf{color:#d2a8ff;}
+.code-block .cs{color:#7ee787;} .code-block .cc{color:#8b949e; font-style:italic;}
+.code-block .cn{color:#79c0ff;} .code-block .ct{color:#ffa657;}
+.complexity{font-family:'JetBrains Mono',monospace; font-size:.85rem; background:var(--surface-2); padding:.9rem 1.1rem; border-radius:6px; color:var(--text); border-left:3px solid var(--accent); margin-top:1rem;}
+.node-text{font-family:'JetBrains Mono',monospace; font-weight:700; font-size:14px; fill:var(--text-bright); text-anchor:middle; dominant-baseline:central;}
+.ptr-label{font-family:'JetBrains Mono',monospace; font-weight:700; font-size:11px; text-anchor:middle;}
+@keyframes fadeUp{from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);}}
+@keyframes pop{0%{transform:scale(1);} 50%{transform:scale(1.25);} 100%{transform:scale(1);}}
+@media(max-width:640px){ h1{font-size:1.5rem;} .ctr-card{min-width:100px;} }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="tag">LeetCode · 92 · 链表 · 中等</div>
+  <h1>反转链表 II</h1>
+  <p class="problem-desc">
+    给定链表头节点 <code>head</code> 和整数 <code>left</code>、<code>right</code>（left ≤ right），反转从位置 left 到 right 的节点，返回反转后的链表。
+    用<strong>哨兵节点 + 三指针反转中间段 + 接回</strong>。
+  </p>
+
+  <div class="formula-card">
+    <div class="formula">p0 走到 left 前一个 → 三指针反转 n=right-left+1 个节点 → p0.next.next=cur, p0.next=pre</div>
+    <div class="explain">为什么用哨兵？因为 left=1 时头节点可能被换，p0 从 dummy 出发不用特殊处理。</div>
+  </div>
+
+  <div class="input-section">
+    <label>head =</label>
+    <input id="inpArr" type="text" value="1,2,3,4,5">
+    <label style="margin-left:.3rem">left =</label>
+    <input id="inpL" type="text" value="2">
+    <label style="margin-left:.3rem">right =</label>
+    <input id="inpR" type="text" value="4">
+    <button class="btn primary" onclick="regenerate()">生成演示</button>
+  </div>
+
+  <div class="example-btns">
+    <span class="example-label">示例用例：</span>
+    <button class="btn sm example-btn" onclick="loadExample(1)">[1,2,3,4,5] L=2 R=4 → [1,4,3,2,5]</button>
+    <button class="btn sm example-btn" onclick="loadExample(2)">[1,2,3,4,5] L=1 R=5 → [5,4,3,2,1]</button>
+    <button class="btn sm example-btn" onclick="loadExample(3)">[1,2,3,4,5] L=1 R=3 → [3,2,1,4,5]</button>
+    <button class="btn sm example-btn" onclick="loadExample(4)">[5] L=1 R=1 → [5]</button>
+  </div>
+
+  <div class="legend">
+    <span class="legend-item"><span class="legend-dot" style="border-color:var(--p0);background:var(--accent-glow)"></span> p0（left 前一个）</span>
+    <span class="legend-item"><span class="legend-dot" style="border-color:var(--pre);background:rgba(96,165,255,.15)"></span> pre（已反转段头）</span>
+    <span class="legend-item"><span class="legend-dot" style="border-color:var(--cur);background:rgba(52,211,153,.15)"></span> cur（当前节点）</span>
+    <span class="legend-item"><span class="legend-dot" style="border-color:var(--nxt);background:rgba(248,113,113,.15)"></span> nxt（备份下一个）</span>
+  </div>
+
+  <div class="viz-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;padding:0 .5rem">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--text-muted)">🖱️ 滚轮缩放 · 拖拽平移</span>
+      <span style="display:flex;gap:.5rem;align-items:center">
+        <span id="zoomBadge" style="font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--accent)">100%</span>
+        <button class="btn sm" onclick="resetView()">↻ 重置视图</button>
+      </span>
+    </div>
+    <svg id="svgViz" viewBox="0 0 700 300" style="cursor:grab;user-select:none"></svg>
+  </div>
+
+  <div class="step-card">
+    <div class="step-desc" id="stepDesc">点击「下一步」开始演示。</div>
+    <div class="ctr-row">
+      <div class="ctr-card"><div class="ctr-label">p0</div><div class="ctr-val p0" id="ctrP0">dummy</div></div>
+      <div class="ctr-card"><div class="ctr-label">pre</div><div class="ctr-val pre" id="ctrPre">null</div></div>
+      <div class="ctr-card"><div class="ctr-label">cur</div><div class="ctr-val cur" id="ctrCur">2</div></div>
+      <div class="ctr-card"><div class="ctr-label">nxt</div><div class="ctr-val nxt" id="ctrNxt">—</div></div>
+    </div>
+    <div class="answer-banner" id="answerBanner"></div>
+  </div>
+
+  <div class="controls">
+    <button class="btn" onclick="prevStep()">← 上一步</button>
+    <button class="btn primary" id="playBtn" onclick="togglePlay()">▶ 自动播放</button>
+    <button class="btn" onclick="nextStep()">下一步 →</button>
+    <button class="btn" onclick="resetDemo()">重置</button>
+  </div>
+  <div class="progress" id="progress"></div>
+  <div class="kbd-hint">
+    <kbd>←</kbd> 上一步 <kbd>→</kbd> 下一步 <kbd>Space</kbd> 播放/暂停 <kbd>F8</kbd> 自动播放
+  </div>
+
+  <div class="log-card">
+    <h3>操作日志</h3>
+    <div id="logBox"></div>
+  </div>
+
+  <div class="algo-card">
+    <h2>一、思路：三段式</h2>
+    <div class="key-insight">
+      <strong>为什么要三段？</strong>反转中间段时，我们需要知道"段的头在哪、段的尾在哪、段后面接谁"。
+      所以：① 先用 p0 找到 left 前一个节点；② 在中间段做三指针反转；③ 把反转后的段接回 p0 和后面的链表。
+    </div>
+    <ol>
+      <li><strong>找 p0</strong>：从 dummy 出发，走 left-1 步，停在 left 的前一个节点。</li>
+      <li><strong>反转中间段</strong>：pre=null, cur=p0.next，用标准三指针反转 n=right-left+1 个节点。</li>
+      <li><strong>接回</strong>：p0.next.next = cur（段尾接上后面的链表），p0.next = pre（p0 接上反转后的新头）。</li>
+    </ol>
+
+    <h2>二、手动推导 [1,2,3,4,5], left=2, right=4</h2>
+    <table class="example-table">
+      <thead><tr><th>阶段</th><th>p0</th><th>pre</th><th>cur</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td>找 p0</td><td>1</td><td>—</td><td>—</td><td>走 1 步停在 1（left=2 的前一个）</td></tr>
+        <tr><td>反转前</td><td>1</td><td>null</td><td>2</td><td>cur=p0.next=2</td></tr>
+        <tr><td>反转1</td><td>1</td><td>2</td><td>3</td><td>2.next→null</td></tr>
+        <tr><td>反转2</td><td>1</td><td>3</td><td>4</td><td>3.next→2</td></tr>
+        <tr><td>反转3</td><td>1</td><td>4</td><td>5</td><td>4.next→3</td></tr>
+        <tr><td>接回</td><td>1</td><td>4</td><td>5</td><td>2.next=5, 1.next=4 → [1,4,3,2,5]</td></tr>
+      </tbody>
+    </table>
+
+    <h2>三、带详细注释的 Python 代码</h2>
+    <div class="code-block"><span class="ck">class</span> <span class="cf">Solution</span>:
+    <span class="ck">def</span> <span class="ct">reverseBetween</span>(self, head, left, right):
+        <span class="cc"># 哨兵节点：处理 left=1 时头节点被换的情况</span>
+        dummy = ListNode(next=head)
+
+        <span class="cc"># ① 找 p0：left 的前一个节点</span>
+        p0 = dummy
+        <span class="ck">for</span> _ <span class="ck">in</span> range(left - <span class="cn">1</span>):
+            p0 = p0.next
+
+        <span class="cc"># ② 反转中间段（标准三指针，n=right-left+1 个）</span>
+        pre = <span class="cn">None</span>
+        cur = p0.next          <span class="cc"># cur 从 left 开始</span>
+        <span class="ck">for</span> _ <span class="ck">in</span> range(right - left + <span class="cn">1</span>):
+            nxt = cur.next
+            cur.next = pre     <span class="cc"># 反转指向</span>
+            pre = cur          <span class="cc"># pre 前移</span>
+            cur = nxt          <span class="cc"># cur 前移</span>
+
+        <span class="cc"># ③ 接回：段尾（原 left 节点）接上 cur，p0 接上新头 pre</span>
+        p0.next.next = cur     <span class="cc"># 原来的 left 节点现在是段尾，接后面的链表</span>
+        p0.next = pre          <span class="cc"># p0 接上反转后的新头</span>
+
+        <span class="ck">return</span> dummy.next</div>
+
+    <h2>四、常见追问</h2>
+    <ul>
+      <li><strong>为什么 p0.next.next = cur？</strong>因为反转完后，p0.next 还是原来的 left 节点（现在它是段尾了），它的 next 指向 null（因为 pre 初始为 null）。所以要把它接上 cur（cur 已经是 right 后面的节点）。</li>
+      <li><strong>为什么用 dummy 而不是直接处理 head？</strong>如果 left=1，反转后的新头不是原 head，直接用 head 会丢失头节点引用。dummy 让 p0 从 dummy 出发，p0.next 始终指向新头。</li>
+      <li><strong>为什么最后一步顺序不能反？</strong>必须先 p0.next.next = cur，再 p0.next = pre。因为如果先 p0.next = pre，p0.next 就变成 pre 了，原来的 left 节点引用就丢了，p0.next.next 就接错了。</li>
+    </ul>
+
+    <h2>五、复杂度</h2>
+    <div class="complexity">
+      <strong>时间 O(n)</strong>：最多遍历一次。<br>
+      <strong>空间 O(1)</strong>：只用常数个指针。
+    </div>
+  </div>
+</div>
+
+<script>
+const EXAMPLES = [
+  { arr: [1,2,3,4,5], left: 2, right: 4 },
+  { arr: [1,2,3,4,5], left: 1, right: 5 },
+  { arr: [1,2,3,4,5], left: 1, right: 3 },
+  { arr: [5], left: 1, right: 1 },
+];
+let arr=[], left=2, right=4, steps=[], curStep=-1, timer=null;
+
+function loadExample(n){
+  const ex=EXAMPLES[n-1];
+  document.getElementById('inpArr').value=ex.arr.join(',');
+  document.getElementById('inpL').value=ex.left;
+  document.getElementById('inpR').value=ex.right;
+  regenerate();
+}
+function parseArr(){
+  const s=document.getElementById('inpArr').value.trim();
+  return s.split(/[,，\s]+/).filter(x=>x!=='').map(Number).filter(x=>!isNaN(x));
+}
+
+function genSteps(a, L, R){
+  const st=[];
+  const n=a.length;
+  // 反转段的索引范围（0-based）：[L-1, R-1]
+  const revStart = L-1, revEnd = R-1;
+
+  st.push({
+    type:'init',
+    desc:`初始：dummy → 原链表 <code>[${a.join(',')}]</code>。要反转位置 <strong>${L}</strong> 到 <strong>${R}</strong>（共 ${R-L+1} 个节点）。`,
+    p0:-1, pre:-1, cur:-1, nxt:-1, revStart:revStart, revEnd:revEnd, answer:null
+  });
+
+  // 阶段1：找 p0
+  let p0 = -1;
+  for(let i=0; i<L-1; i++){
+    const from = p0===-1 ? 'dummy' : a[p0];
+    p0 = i;
+    st.push({
+      type:'findP0',
+      desc:`找 p0：从 dummy 出发走 ${i+1} 步，p0 停在 <code>${a[p0]}</code>（位置 ${L} 的前一个节点）。`,
+      p0:p0, pre:-1, cur:-1, nxt:-1, revStart:revStart, revEnd:revEnd, answer:null
+    });
+  }
+
+  // 阶段2：三指针反转
+  let pre = -2; // -2 表示 null
+  let cur = p0+1;
+  st.push({
+    type:'revStart',
+    desc:`开始反转：pre = <code>null</code>，cur = <code>${a[cur]}</code>（p0.next，即位置 ${L} 的节点）。共 ${R-L+1} 轮。`,
+    p0:p0, pre:pre, cur:cur, nxt:-1, revStart:revStart, revEnd:revEnd, answer:null
+  });
+
+  for(let round=0; round<R-L+1; round++){
+    const curVal = a[cur];
+    const nxtVal = cur+1<n ? a[cur+1] : 'null';
+
+    // ① nxt = cur.next
+    st.push({
+      type:'save',
+      desc:`反转第 ${round+1} 轮 · 步骤①：<code>nxt = cur.next</code>。把 <code>cur.next</code>（${nxtVal}）备份到 nxt。`,
+      p0:p0, pre:pre, cur:cur, nxt:cur+1<n?cur+1:-1, revStart:revStart, revEnd:revEnd, answer:null
+    });
+
+    // ② cur.next = pre
+    st.push({
+      type:'reverse',
+      desc:`反转第 ${round+1} 轮 · 步骤②：<code>cur.next = pre</code>。把 <code>${curVal}</code> 的 next 从指向右边（${nxtVal}）改为指向左边（pre=${pre===-2?'null':a[pre]}）。`,
+      p0:p0, pre:pre, cur:cur, nxt:cur+1<n?cur+1:-1, revStart:revStart, revEnd:revEnd, reverseDone:true, answer:null
+    });
+
+    // ③ pre = cur
+    st.push({
+      type:'preMove',
+      desc:`反转第 ${round+1} 轮 · 步骤③：<code>pre = cur</code>。pre 前移到 <code>${curVal}</code>。`,
+      p0:p0, pre:cur, cur:cur, nxt:cur+1<n?cur+1:-1, revStart:revStart, revEnd:revEnd, reverseDone:true, answer:null
+    });
+
+    // ④ cur = nxt
+    st.push({
+      type:'curMove',
+      desc:`反转第 ${round+1} 轮 · 步骤④：<code>cur = nxt</code>。cur 前移到 ${nxtVal}。`,
+      p0:p0, pre:cur, cur:cur+1<n?cur+1:-1, nxt:-1, revStart:revStart, revEnd:revEnd, reverseDone:false, answer:null
+    });
+
+    pre = cur;
+    cur = cur+1<n ? cur+1 : -1;
+  }
+
+  // 阶段3：接回
+  st.push({
+    type:'connect1',
+    desc:`接回步骤①：<code>p0.next.next = cur</code>。原来的 left 节点（现在是段尾，值=${a[revStart]}）接上 cur=${cur===-1?'null':a[cur]}。`,
+    p0:p0, pre:pre, cur:cur, nxt:-1, revStart:revStart, revEnd:revEnd, reverseDone:true, connectDone:true, answer:null
+  });
+
+  st.push({
+    type:'connect2',
+    desc:`接回步骤②：<code>p0.next = pre</code>。p0 接上反转后的新头 pre=${pre===-2?'null':a[pre]}。`,
+    p0:p0, pre:pre, cur:cur, nxt:-1, revStart:revStart, revEnd:revEnd, reverseDone:true, connectDone:true, answer:null
+  });
+
+  // 最终结果
+  const result = [];
+  for(let i=0;i<p0;i++) result.push(a[i]);
+  for(let i=revEnd;i>=revStart;i--) result.push(a[i]);
+  for(let i=revEnd+1;i<n;i++) result.push(a[i]);
+
+  st.push({
+    type:'done',
+    desc:`<span class="hl-ok">反转完成。最终结果 = [${result.join(',')}]</span>。`,
+    p0:p0, pre:pre, cur:cur, nxt:-1, revStart:revStart, revEnd:revEnd, answer:result
+  });
+
+  return st;
+}
+
+// viewport
+let vp={k:1,tx:0,ty:0};
+function applyVP(){
+  const g=document.getElementById('viewport');
+  if(g) g.setAttribute('transform',`translate(${vp.tx},${vp.ty}) scale(${vp.k})`);
+  document.getElementById('zoomBadge').textContent=Math.round(vp.k*100)+'%';
+}
+function resetView(){
+  vp={k:1,tx:0,ty:0};
+  applyVP();
+}
+
+const SVG_NS='http://www.w3.org/2000/svg';
+function el(tag,attrs){
+  const e=document.createElementNS(SVG_NS,tag);
+  for(const k in attrs) e.setAttribute(k,attrs[k]);
+  return e;
+}
+
+function renderSVG(s){
+  const svg=document.getElementById('svgViz');
+  svg.innerHTML='';
+  const n=arr.length;
+  const R=24, gap=68, y=130, startX=90;
+  const xs=arr.map((_,i)=>startX+i*gap);
+  const contentW=startX*2+(n-1)*gap;
+  const vbW=Math.max(700,contentW+40);
+  svg.setAttribute('viewBox',`0 0 ${vbW} 300`);
+  svg.setAttribute('width',vbW);
+
+  const defs=el('defs',{});
+  defs.innerHTML=`
+    <marker id="arrR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker>
+    <marker id="arrL" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#d4a843"/></marker>
+  `;
+  svg.appendChild(defs);
+
+  const g=el('g',{id:'viewport'});
+  svg.appendChild(g);
+
+  // 反转段背景高亮
+  const bgX1 = xs[s.revStart] - R - 10;
+  const bgX2 = xs[s.revEnd] + R + 10;
+  g.appendChild(el('rect',{x:bgX1, y:y-50, width:bgX2-bgX1, height:100, rx:8, fill:'rgba(212,168,67,.06)', stroke:'rgba(212,168,67,.3)', 'stroke-dasharray':'4 3'}));
+  const bgLbl=el('text',{x:(bgX1+bgX2)/2, y:y-58, fill:'#d4a843','font-family':'JetBrains Mono,monospace','font-size':11,'text-anchor':'middle','font-weight':700});
+  bgLbl.textContent=`反转段 [${s.revStart+1}..${s.revEnd+1}]`;
+  g.appendChild(bgLbl);
+
+  // 连线
+  // 已反转段（pre 及之前在 revStart 之后的节点）：朝左
+  if(s.reverseDone){
+    // 已反转的节点：从 revStart 到 pre
+    for(let i=s.revStart+1; i<=s.pre && i<n; i++){
+      g.appendChild(el('line',{x1:xs[i]-R,y1:y,x2:xs[i-1]+R,y2:y,stroke:'#d4a843','stroke-width':2,'marker-end':'url(#arrL)'}));
+    }
+    // cur 刚反转的节点也指向左边
+    if(s.cur >= 0 && s.cur < n && s.pre >= 0 && s.pre !== -2){
+      // 这个连线已经在上面画过了（如果 cur 在 revStart..pre 范围内）
+    }
+  }
+  // 未处理段：朝右
+  for(let i=0; i<n-1; i++){
+    // 已反转段的连线不画（它们已经改方向了）
+    if(i >= s.revStart && i <= s.pre) continue;
+    // cur 刚反转的节点也不画右边连线
+    if(s.reverseDone && i === s.cur) continue;
+    // p0.next.next 接回时，段尾到 cur 的连线
+    if(s.connectDone && i === s.revStart) continue; // 段尾的 next 已经指向 cur
+    g.appendChild(el('line',{x1:xs[i]+R,y1:y,x2:xs[i+1]-R,y2:y,stroke:'#64748b','stroke-width':1.5,'marker-end':'url(#arrR)'}));
+  }
+
+  // 接回后的连线：段尾（revStart）→ cur
+  if(s.connectDone && s.cur >= 0 && s.cur < n){
+    g.appendChild(el('line',{x1:xs[s.revStart]+R,y1:y,x2:xs[s.cur]-R,y2:y,stroke:'#34d399','stroke-width':2,'marker-end':'url(#arrR)'}));
+  }
+
+  // 节点
+  arr.forEach((v,i)=>{
+    const isP0 = s.p0===i;
+    const isPre = s.pre===i;
+    const isCur = s.cur===i;
+    const isNxt = s.nxt===i;
+    const c=el('circle',{
+      cx:xs[i], cy:y, r:R,
+      fill: isP0?'rgba(212,168,67,.3)':(isPre?'rgba(96,165,255,.25)':(isCur?'rgba(52,211,153,.25)':(isNxt?'rgba(248,113,113,.25)':'#1a2234'))),
+      stroke: isP0?'#d4a843':(isPre?'#60a5fa':(isCur?'#34d399':(isNxt?'#f87171':'#353850'))),
+      'stroke-width': (isP0||isPre||isCur||isNxt)?2.5:2
+    });
+    g.appendChild(c);
+    const t=el('text',{x:xs[i],y:y,class:'node-text'});
+    t.textContent=v;
+    g.appendChild(t);
+  });
+
+  // p0 指针（下方）
+  if(s.p0 >= 0){
+    const x=xs[s.p0];
+    g.appendChild(el('path',{d:`M ${x-7} ${y+R+6} L ${x+7} ${y+R+6} L ${x} ${y+R+16} z`, fill:'#d4a843'}));
+    const t=el('text',{x:x,y:y+R+30,class:'ptr-label',fill:'#d4a843'});
+    t.textContent='p0'; g.appendChild(t);
+  }
+
+  // pre 指针（上方）
+  if(s.pre >= 0){
+    const x=xs[s.pre];
+    g.appendChild(el('path',{d:`M ${x-7} ${y-R-6} L ${x+7} ${y-R-6} L ${x} ${y-R-16} z`, fill:'#60a5fa'}));
+    const t=el('text',{x:x,y:y-R-26,class:'ptr-label',fill:'#60a5fa'});
+    t.textContent='pre'; g.appendChild(t);
+  }
+
+  // cur 指针（上方更高处）
+  if(s.cur >= 0){
+    const x=xs[s.cur];
+    g.appendChild(el('path',{d:`M ${x-6} ${y-R-36} L ${x+6} ${y-R-36} L ${x} ${y-R-44} z`, fill:'#34d399'}));
+    const t=el('text',{x:x,y:y-R-54,class:'ptr-label',fill:'#34d399'});
+    t.textContent='cur'; g.appendChild(t);
+  }
+
+  // nxt 指针（最上方）
+  if(s.nxt >= 0){
+    const x=xs[s.nxt];
+    g.appendChild(el('path',{d:`M ${x-6} ${y-R-66} L ${x+6} ${y-R-66} L ${x} ${y-R-74} z`, fill:'#f87171'}));
+    const t=el('text',{x:x,y:y-R-84,class:'ptr-label',fill:'#f87171'});
+    t.textContent='nxt'; g.appendChild(t);
+  }
+
+  applyVP();
+}
+
+function setCtr(id,val){
+  const e=document.getElementById(id);
+  if(e.textContent!==String(val)){ e.textContent=val; e.classList.remove('pop'); void e.offsetWidth; e.classList.add('pop'); }
+}
+
+function update(idx){
+  curStep=idx;
+  const s=steps[idx];
+  document.getElementById('stepDesc').innerHTML=s.desc;
+  renderSVG(s);
+
+  setCtr('ctrP0', s.p0<0?'dummy':arr[s.p0]);
+  setCtr('ctrPre', s.pre===-2?'null':(s.pre<0?'—':arr[s.pre]));
+  setCtr('ctrCur', s.cur<0?'null':arr[s.cur]);
+  setCtr('ctrNxt', s.nxt<0?'—':arr[s.nxt]);
+
+  const banner=document.getElementById('answerBanner');
+  if(s.answer){
+    banner.textContent=`✅ 最终结果 = [${s.answer.join(',')}]`;
+    banner.classList.add('show');
+  } else banner.classList.remove('show');
+
+  const dots=document.getElementById('progress');
+  dots.innerHTML='';
+  steps.forEach((_,i)=>{
+    const d=document.createElement('button');
+    d.className='dot';
+    if(i<idx) d.classList.add('visited');
+    if(i===idx) d.classList.add('current');
+    d.onclick=()=>goTo(i);
+    dots.appendChild(d);
+  });
+
+  const logBox=document.getElementById('logBox');
+  const entry=document.createElement('div');
+  entry.className='log-entry';
+  const sd=s.desc.replace(/<[^>]+>/g,'').slice(0,120);
+  entry.innerHTML=`<span class="log-step">[步骤 ${idx+1}]</span><span class="log-stats">${sd}</span>`;
+  logBox.appendChild(entry);
+  logBox.scrollTop=logBox.scrollHeight;
+}
+
+function nextStep(){ if(curStep<steps.length-1) update(curStep+1); else stopPlay(); }
+function prevStep(){ if(curStep>0) update(curStep-1); }
+function goTo(i){ if(i>=0&&i<steps.length) update(i); }
+function togglePlay(){ timer?stopPlay():startPlay(); }
+function startPlay(){
+  document.getElementById('playBtn').textContent='⏸ 暂停';
+  timer=setInterval(()=>{ if(curStep>=steps.length-1){stopPlay();return;} nextStep(); },1200);
+}
+function stopPlay(){ clearInterval(timer); timer=null; document.getElementById('playBtn').textContent='▶ 自动播放'; }
+function resetDemo(){ stopPlay(); document.getElementById('logBox').innerHTML=''; if(steps.length>0) update(0); }
+function regenerate(){
+  stopPlay();
+  arr=parseArr();
+  left=parseInt(document.getElementById('inpL').value)||1;
+  right=parseInt(document.getElementById('inpR').value)||arr.length;
+  if(arr.length===0){ alert('请输入链表节点值'); return; }
+  steps=genSteps(arr, left, right);
+  document.getElementById('logBox').innerHTML='';
+  resetView();
+  update(0);
+}
+
+document.addEventListener('keydown',e=>{
+  if(document.activeElement.tagName==='INPUT') return;
+  if(e.key==='ArrowLeft') prevStep();
+  else if(e.key==='ArrowRight') nextStep();
+  else if(e.key===' '){ e.preventDefault(); togglePlay(); }
+  else if(e.key==='F8'){ e.preventDefault(); togglePlay(); }
+});
+
+// SVG 交互
+(function(){
+  const svg=document.getElementById('svgViz');
+  svg.addEventListener('wheel',e=>{
+    e.preventDefault();
+    const rect=svg.getBoundingClientRect();
+    const mx=(e.clientX-rect.left)/rect.width*parseFloat(svg.viewBox.baseVal.width);
+    const my=(e.clientY-rect.top)/rect.height*parseFloat(svg.viewBox.baseVal.height);
+    const factor=e.deltaY<0?1.15:1/1.15;
+    const newK=Math.min(3,Math.max(.3,vp.k*factor));
+    vp.tx=mx-(mx-vp.tx)*(newK/vp.k);
+    vp.ty=my-(my-vp.ty)*(newK/vp.k);
+    vp.k=newK; applyVP();
+  },{passive:false});
+  let drag=null;
+  svg.addEventListener('pointerdown',e=>{ drag={x:e.clientX,y:e.clientY}; svg.style.cursor='grabbing'; svg.setPointerCapture(e.pointerId); });
+  svg.addEventListener('pointermove',e=>{
+    if(!drag) return;
+    const rect=svg.getBoundingClientRect();
+    const vw=parseFloat(svg.viewBox.baseVal.width);
+    const vh=parseFloat(svg.viewBox.baseVal.height);
+    vp.tx+=(e.clientX-drag.x)/rect.width*vw;
+    vp.ty+=(e.clientY-drag.y)/rect.height*vh;
+    drag.x=e.clientX; drag.y=e.clientY;
+    applyVP();
+  });
+  svg.addEventListener('pointerup',()=>{ drag=null; svg.style.cursor='grab'; });
+  svg.addEventListener('pointercancel',()=>{ drag=null; svg.style.cursor='grab'; });
+})();
+
+regenerate();
+</script>
+</body>
+</html>
