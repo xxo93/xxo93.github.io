@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 800 300" width="100%" role="img" aria-label="三日志关系结构图：Server 层 binlog 与 InnoDB 层 undo log/redo log 分层；两阶段提交顺序为 prepare（redo 落盘）→ binlog 落盘 → redo commit 落盘">
+        <defs>
+          <marker id="arrow7-3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#1e5fa8"/>
+          </marker>
+        </defs>
+
+        
+        <rect x="50" y="30" width="700" height="90" rx="12" fill="#eff6ff" stroke="#1e5fa8" stroke-width="1.5"/>
+        <text x="400" y="55" text-anchor="middle" font-size="14" font-weight="bold" font-family="inherit" fill="#1e5fa8">MySQL Server 层</text>
+        <rect x="250" y="65" width="300" height="40" rx="8" fill="#ffffff" stroke="#1e5fa8" stroke-width="1.5"/>
+        <text x="400" y="90" text-anchor="middle" font-size="13" font-family="inherit" fill="#1f2937">binlog（逻辑日志，主从复制/备份）</text>
+
+        
+        <rect x="50" y="150" width="700" height="120" rx="12" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5"/>
+        <text x="400" y="175" text-anchor="middle" font-size="14" font-weight="bold" font-family="inherit" fill="#4b5563">InnoDB 存储引擎层</text>
+        <rect x="100" y="190" width="250" height="60" rx="8" fill="#d1fae5" stroke="#16a34a" stroke-width="1.5"/>
+        <text x="225" y="215" text-anchor="middle" font-size="13" font-weight="bold" font-family="inherit" fill="#065f46">undo log</text>
+        <text x="225" y="235" text-anchor="middle" font-size="11.5" font-family="inherit" fill="#6b7280">旧值 / 回滚 / MVCC</text>
+        <rect x="450" y="190" width="250" height="60" rx="8" fill="#fee2e2" stroke="#dc2626" stroke-width="1.5"/>
+        <text x="575" y="215" text-anchor="middle" font-size="13" font-weight="bold" font-family="inherit" fill="#991b1b">redo log</text>
+        <text x="575" y="235" text-anchor="middle" font-size="11.5" font-family="inherit" fill="#6b7280">新值物理变更 / 宕机重放</text>
+
+        
+        <path d="M 575 190 L 575 125" fill="none" stroke="#dc2626" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#arrow7-3)"/>
+        <text x="600" y="160" font-size="11" font-family="inherit" fill="#dc2626">prepare → binlog → commit</text>
+      </svg>

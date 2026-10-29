@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 800 380" width="100%" role="img" aria-label="InnoDB 内存与磁盘结构地图：内存侧有 Buffer Pool（含脏页标注）和 Log Buffer；磁盘侧有 .ibd 数据文件、redo log 文件、undo log 表空间；三条箭头标注修改先落 Buffer Pool、日志顺序写磁盘、脏页异步刷回数据文件">
+        <defs>
+          <marker id="arrow7-1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#1e5fa8"/>
+          </marker>
+          <marker id="arrow7-1g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#16a34a"/>
+          </marker>
+          <marker id="arrow7-1r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#dc2626"/>
+          </marker>
+        </defs>
+
+        
+        <rect x="20" y="20" width="760" height="160" rx="12" fill="#eff6ff" stroke="#1e5fa8" stroke-width="1.5" stroke-dasharray="6,4"/>
+        <text x="400" y="42" text-anchor="middle" font-size="14" font-weight="bold" font-family="inherit" fill="#1e5fa8">内存（InnoDB Buffer Pool）</text>
+
+        
+        <rect x="50" y="60" width="380" height="100" rx="10" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5"/>
+        <text x="240" y="82" text-anchor="middle" font-size="13" font-weight="bold" font-family="inherit" fill="#1f2937">Buffer Pool（缓存数据页/索引页）</text>
+        <rect x="70" y="95" width="80" height="45" rx="4" fill="#d1fae5" stroke="#16a34a" stroke-width="1"/>
+        <text x="110" y="115" text-anchor="middle" font-size="11" font-family="inherit" fill="#065f46">数据页</text>
+        <text x="110" y="130" text-anchor="middle" font-size="10" font-family="inherit" fill="#6b7280">（干净）</text>
+        <rect x="160" y="95" width="80" height="45" rx="4" fill="#fee2e2" stroke="#dc2626" stroke-width="1"/>
+        <text x="200" y="115" text-anchor="middle" font-size="11" font-family="inherit" fill="#991b1b">数据页</text>
+        <text x="200" y="130" text-anchor="middle" font-size="10" font-family="inherit" fill="#991b1b">（脏页）</text>
+        <rect x="250" y="95" width="80" height="45" rx="4" fill="#d1fae5" stroke="#16a34a" stroke-width="1"/>
+        <text x="290" y="115" text-anchor="middle" font-size="11" font-family="inherit" fill="#065f46">索引页</text>
+        <rect x="340" y="95" width="70" height="45" rx="4" fill="#dbeafe" stroke="#1e5fa8" stroke-width="1"/>
+        <text x="375" y="115" text-anchor="middle" font-size="11" font-family="inherit" fill="#1e5fa8">Change Buffer</text>
+        <text x="375" y="130" text-anchor="middle" font-size="10" font-family="inherit" fill="#6b7280">（二级索引）</text>
+
+        
+        <rect x="470" y="60" width="280" height="100" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
+        <text x="610" y="82" text-anchor="middle" font-size="13" font-weight="bold" font-family="inherit" fill="#92400e">Log Buffer（redo 日志缓冲）</text>
+        <text x="610" y="108" text-anchor="middle" font-size="11.5" font-family="inherit" fill="#1f2937">修改先记到这里，等 commit 或刷盘</text>
+        <text x="610" y="128" text-anchor="middle" font-size="11.5" font-family="inherit" fill="#1f2937">才写入磁盘 redo log 文件</text>
+
+        
+        <rect x="20" y="210" width="760" height="150" rx="12" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6,4"/>
+        <text x="400" y="232" text-anchor="middle" font-size="14" font-weight="bold" font-family="inherit" fill="#4b5563">磁盘（持久化存储）</text>
+
+        
+        <rect x="50" y="250" width="220" height="90" rx="10" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5"/>
+        <text x="160" y="275" text-anchor="middle" font-size="13" font-weight="bold" font-family="inherit" fill="#1f2937">.ibd 数据文件</text>
+        <text x="160" y="298" text-anchor="middle" font-size="11.5" font-family="inherit" fill="#6b7280">16KB 数据页</text>
+        <text x="160" y="318" text-anchor="middle" font-size="11.5" font-family="inherit" fill="#6b7280">表数据 + 索引</text>
+
+        
+        <rect x="300" y="250" width="220" height="90" rx="10" fill="#fee2e2" stroke="#dc2626" stroke-width="1.5"/>
+        <text x="410" y="275" text-anchor="middle" font-size="13" font-weight="bold" font-family="inherit" fill="#991b1b">redo log 文件</text>
+        <text x="410" y="298" text-anchor="middle" font-size="11.5" font-family="inherit" fill="#6b7280">固定大小、循环写</text>
+        <text x="410" y="318" text-anchor="middle" font-size="11.5" font-family="inherit" fill="#6b7280">记录新值物理变更</text>
+
+        
+        <rect x="550" y="250" width="220" height="90" rx="10" fill="#d1fae5" stroke="#16a34a" stroke-width="1.5"/>
+        <text x="660" y="275" text-anchor="middle" font-size="13" font-weight="bold" font-family="inherit" fill="#065f46">undo log 表空间</text>
+        <text x="660" y="298" text-anchor="middle" font-size="11.5" font-family="inherit" fill="#6b7280">记录旧值反向操作</text>
+        <text x="660" y="318" text-anchor="middle" font-size="11.5" font-family="inherit" fill="#6b7280">回滚 + MVCC 版本链</text>
+
+        
+        <path d="M 240 195 L 240 165" fill="none" stroke="#1e5fa8" stroke-width="2" marker-end="url(#arrow7-1)"/>
+        <text x="260" y="185" font-size="11.5" font-family="inherit" fill="#1e5fa8">① 修改先落 Buffer Pool</text>
+
+        
+        <path d="M 610 160 L 480 248" fill="none" stroke="#dc2626" stroke-width="2" marker-end="url(#arrow7-1r)"/>
+        <text x="560" y="200" font-size="11.5" font-family="inherit" fill="#dc2626">② 日志顺序写磁盘</text>
+
+        
+        <path d="M 200 160 L 160 248" fill="none" stroke="#16a34a" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow7-1g)"/>
+        <text x="80" y="200" font-size="11.5" font-family="inherit" fill="#16a34a">③ 脏页后台异步刷回</text>
+      </svg>

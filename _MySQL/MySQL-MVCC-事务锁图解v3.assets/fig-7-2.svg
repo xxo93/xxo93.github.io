@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 800 360" width="100%" role="img" aria-label="一次 UPDATE 的八步流程节点图：八个节点按蛇形排列，箭头连接，当前步骤高亮蓝色、已完成绿色、未开始灰色">
+        <defs>
+          <marker id="arrow7-2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#94a3b8"/>
+          </marker>
+        </defs>
+
+        
+        <line class="tx-arrow" data-step="2" x1="130" y1="80" x2="265" y2="80" marker-end="url(#arrow7-2)"/>
+        <line class="tx-arrow" data-step="3" x1="365" y1="80" x2="495" y2="80" marker-end="url(#arrow7-2)"/>
+        <line class="tx-arrow" data-step="4" x1="595" y1="80" x2="695" y2="80" marker-end="url(#arrow7-2)"/>
+        <line class="tx-arrow" data-step="5" x1="740" y1="110" x2="740" y2="225" marker-end="url(#arrow7-2)"/>
+        <line class="tx-arrow" data-step="6" x1="695" y1="260" x2="595" y2="260" marker-end="url(#arrow7-2)"/>
+        <line class="tx-arrow" data-step="7" x1="495" y1="260" x2="365" y2="260" marker-end="url(#arrow7-2)"/>
+        <line class="tx-arrow" data-step="8" x1="265" y1="260" x2="135" y2="260" marker-end="url(#arrow7-2)"/>
+
+        
+        <g class="tx-node is-todo" data-step="1">
+          <circle cx="90" cy="80" r="44"/>
+          <text x="90" y="76" text-anchor="middle" font-size="11.5">1</text>
+          <text x="90" y="94" text-anchor="middle" font-size="11.5">查 Buffer Pool</text>
+        </g>
+        
+        <g class="tx-node is-todo" data-step="2">
+          <circle cx="315" cy="80" r="44"/>
+          <text x="315" y="76" text-anchor="middle" font-size="11.5">2</text>
+          <text x="315" y="94" text-anchor="middle" font-size="11.5">写 undo log</text>
+        </g>
+        
+        <g class="tx-node is-todo" data-step="3">
+          <circle cx="530" cy="80" r="44"/>
+          <text x="530" y="76" text-anchor="middle" font-size="11.5">3</text>
+          <text x="530" y="94" text-anchor="middle" font-size="11.5">改脏页</text>
+        </g>
+        
+        <g class="tx-node is-todo" data-step="4">
+          <circle cx="740" cy="80" r="44"/>
+          <text x="740" y="76" text-anchor="middle" font-size="11.5">4</text>
+          <text x="740" y="94" text-anchor="middle" font-size="11.5">写 redo buffer</text>
+        </g>
+        
+        <g class="tx-node is-todo" data-step="5">
+          <circle cx="740" cy="260" r="44"/>
+          <text x="740" y="256" text-anchor="middle" font-size="11.5">5</text>
+          <text x="740" y="274" text-anchor="middle" font-size="11.5">prepare</text>
+        </g>
+        
+        <g class="tx-node is-todo" data-step="6">
+          <circle cx="530" cy="260" r="44"/>
+          <text x="530" y="256" text-anchor="middle" font-size="11.5">6</text>
+          <text x="530" y="274" text-anchor="middle" font-size="11.5">写 binlog</text>
+        </g>
+        
+        <g class="tx-node is-todo" data-step="7">
+          <circle cx="315" cy="260" r="44"/>
+          <text x="315" y="256" text-anchor="middle" font-size="11.5">7</text>
+          <text x="315" y="274" text-anchor="middle" font-size="11.5">redo commit</text>
+        </g>
+        
+        <g class="tx-node is-todo" data-step="8">
+          <circle cx="90" cy="260" r="44"/>
+          <text x="90" y="256" text-anchor="middle" font-size="11.5">8</text>
+          <text x="90" y="274" text-anchor="middle" font-size="11.5">后台刷脏页</text>
+        </g>
+
+        <text x="400" y="340" text-anchor="middle" font-size="12" font-family="inherit" fill="#6b7280">点击"下一步"逐步演示，当前步骤高亮蓝色，已完成变绿色</text>
+      </svg>

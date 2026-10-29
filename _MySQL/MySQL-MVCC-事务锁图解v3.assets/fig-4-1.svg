@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 800 280" width="100%" role="img" aria-label="InnoDB 锁分类树状图：按粒度、按性质、按范围、特殊锁四大分支">
+      
+      <rect x="320" y="8" width="160" height="34" rx="8" class="tree-root"/>
+      <text x="400" y="30" text-anchor="middle" class="svg-text-b">InnoDB 锁体系</text>
+
+      
+      <path d="M400,42 V56 H115 V70" class="tree-line"/>
+      <path d="M400,56 H305 V70" class="tree-line"/>
+      <path d="M400,56 H510 V70" class="tree-line"/>
+      <path d="M400,56 H705 V70" class="tree-line"/>
+
+      
+      <rect x="30" y="70" width="170" height="30" rx="6" class="tree-head"/>
+      <text x="115" y="90" text-anchor="middle" class="svg-text-b">按粒度</text>
+
+      <rect x="220" y="70" width="170" height="30" rx="6" class="tree-head"/>
+      <text x="305" y="90" text-anchor="middle" class="svg-text-b">按性质</text>
+
+      <rect x="410" y="70" width="200" height="30" rx="6" class="tree-head"/>
+      <text x="510" y="90" text-anchor="middle" class="svg-text-b">行锁按范围（算法）</text>
+
+      <rect x="630" y="70" width="150" height="30" rx="6" class="tree-head"/>
+      <text x="705" y="90" text-anchor="middle" class="svg-text-b">特殊锁</text>
+
+      
+      <rect x="30" y="115" width="170" height="34" rx="6" class="tree-leaf"/>
+      <text x="115" y="137" text-anchor="middle" class="svg-text">表锁（整表）</text>
+      <rect x="30" y="160" width="170" height="34" rx="6" class="tree-leaf"/>
+      <text x="115" y="182" text-anchor="middle" class="svg-text">行锁（索引记录）</text>
+      <line x1="115" y1="100" x2="115" y2="115" class="tree-line"/>
+      <line x1="115" y1="149" x2="115" y2="160" class="tree-line"/>
+
+      
+      <rect x="220" y="115" width="170" height="34" rx="6" class="tree-leaf"/>
+      <text x="305" y="137" text-anchor="middle" class="svg-text">S 共享锁（读）</text>
+      <rect x="220" y="160" width="170" height="34" rx="6" class="tree-leaf"/>
+      <text x="305" y="182" text-anchor="middle" class="svg-text">X 排他锁（写）</text>
+      <line x1="305" y1="100" x2="305" y2="115" class="tree-line"/>
+      <line x1="305" y1="149" x2="305" y2="160" class="tree-line"/>
+
+      
+      <rect x="410" y="115" width="200" height="34" rx="6" class="tree-leaf"/>
+      <text x="510" y="137" text-anchor="middle" class="svg-text">Record 记录锁</text>
+      <rect x="410" y="160" width="200" height="34" rx="6" class="tree-leaf"/>
+      <text x="510" y="182" text-anchor="middle" class="svg-text">Gap 间隙锁（仅 RR）</text>
+      <rect x="410" y="205" width="200" height="34" rx="6" class="tree-leaf"/>
+      <text x="510" y="227" text-anchor="middle" class="svg-text">Next-Key 临键锁</text>
+      <line x1="510" y1="100" x2="510" y2="115" class="tree-line"/>
+      <line x1="510" y1="149" x2="510" y2="160" class="tree-line"/>
+      <line x1="510" y1="194" x2="510" y2="205" class="tree-line"/>
+
+      
+      <rect x="630" y="115" width="150" height="34" rx="6" class="tree-leaf"/>
+      <text x="705" y="137" text-anchor="middle" class="svg-text">意向锁 IS / IX</text>
+      <rect x="630" y="160" width="150" height="34" rx="6" class="tree-leaf"/>
+      <text x="705" y="182" text-anchor="middle" class="svg-text">AUTO-INC 锁</text>
+      <line x1="705" y1="100" x2="705" y2="115" class="tree-line"/>
+      <line x1="705" y1="149" x2="705" y2="160" class="tree-line"/>
+    </svg>

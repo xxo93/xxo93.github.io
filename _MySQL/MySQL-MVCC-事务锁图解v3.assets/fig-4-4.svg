@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 800 150" width="100%" role="img" aria-label="Next-Key Lock 示意图：对记录 10 锁左开右闭区间 (5,10]，RR 默认使用，防止幻读">
+      <text x="400" y="22" text-anchor="middle" class="svg-text-b">③ Next-Key Lock（临键锁）：对记录 10 锁 (5, 10]，左开右闭，RR 默认、防幻读</text>
+      <line x1="90" y1="85" x2="710" y2="85" class="axis"/>
+      <circle cx="210" cy="85" r="5" class="dot-open"/>
+      <circle cx="400" cy="85" r="5" class="dot-fill"/>
+      <circle cx="590" cy="85" r="5" class="dot-open"/>
+      <text x="210" y="114" text-anchor="middle" class="svg-text">5</text>
+      <text x="400" y="114" text-anchor="middle" class="svg-text">10</text>
+      <text x="590" y="114" text-anchor="middle" class="svg-text">15</text>
+      
+      <rect x="210" y="60" width="190" height="34" rx="4" class="gap-rect"/>
+      <rect x="388" y="60" width="24" height="34" rx="4" class="rec-rect"/>
+      <text x="305" y="90" text-anchor="middle" class="svg-text-b" fill="#d97706">Gap (5,10)</text>
+      <text x="400" y="135" text-anchor="middle" class="svg-text" fill="#1f2937">= Gap(5,10) + Record(10) 合成 (5,10]</text>
+    </svg>

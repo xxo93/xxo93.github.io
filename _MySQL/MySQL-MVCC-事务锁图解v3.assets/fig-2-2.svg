@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 800 460" width="100%" role="img" aria-label="undo log 版本链完整图：左侧为当前行（聚簇索引最新版本，trx_id=300，age=30），右侧虚线框为 undo log 历史版本仓库，里面有事务 200 的 UPDATE 旧记录（age=25）和事务 100 的 INSERT 旧记录（age=20），箭头为 roll_pointer">
+        <defs>
+          <marker id="arrow2-2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#1e5fa8"/>
+          </marker>
+        </defs>
+        <text x="400" y="24" text-anchor="middle" font-size="14" font-weight="bold" font-family="inherit" fill="#1f2937">张三 age 这一行的完整版本链（事务 100 → 200 → 300 三次修改后）</text>
+
+        
+        <rect x="25" y="80" width="230" height="300" rx="12" fill="#d1fae5" stroke="#0d9488" stroke-width="1.5"/>
+        <text x="140" y="105" text-anchor="middle" font-size="13" font-weight="bold" font-family="inherit" fill="#065f46">当前行（聚簇索引最新版本）</text>
+        <line x1="40" y1="115" x2="240" y2="115" stroke="#0d9488" stroke-width="1"/>
+        <text x="40" y="138" font-size="12" font-family="inherit" fill="#1f2937">id = 1</text>
+        <text x="40" y="158" font-size="12" font-family="inherit" fill="#1f2937">name = 张三</text>
+        <text x="40" y="178" font-size="12" font-weight="bold" font-family="inherit" fill="#1f2937">age = 30</text>
+        <text x="40" y="208" font-size="12" font-family="inherit" fill="#1e5fa8">trx_id = 300</text>
+        <text x="40" y="228" font-size="11" font-family="inherit" fill="#6b7280">事务 300 做了什么：</text>
+        <text x="40" y="245" font-size="11.5" font-family="inherit" fill="#1f2937">UPDATE age 25 → 30</text>
+        <text x="40" y="262" font-size="11.5" font-family="inherit" fill="#6b7280">name 列未修改</text>
+        <text x="40" y="290" font-size="11" font-family="inherit" fill="#16a34a">状态：已提交</text>
+        <text x="40" y="315" font-size="11" font-family="inherit" fill="#1e5fa8">roll_pointer → undo A</text>
+
+        
+        <rect x="300" y="55" width="470" height="380" rx="12" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6,4"/>
+        <text x="535" y="78" text-anchor="middle" font-size="12.5" font-weight="bold" font-family="inherit" fill="#6b7280">undo log 历史版本仓库（update undo 长期保留；insert undo 提交后即丢弃）</text>
+
+        
+        <rect x="325" y="95" width="420" height="140" rx="10" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5"/>
+        <text x="345" y="118" font-size="12.5" font-weight="bold" font-family="inherit" fill="#1f2937">undo A（最新一条旧记录）</text>
+        <rect x="640" y="105" width="90" height="22" rx="4" fill="#fef3c7" stroke="#94a3b8" stroke-width="1"/>
+        <text x="685" y="120" text-anchor="middle" font-size="11" font-family="inherit" fill="#92400e">UPDATE</text>
+        <text x="345" y="142" font-size="12" font-family="inherit" fill="#1e5fa8">trx_id = 200</text>
+        <text x="345" y="162" font-size="11.5" font-family="inherit" fill="#1f2937">保存的旧值：(id=1, name=张三, age=25)</text>
+        <text x="345" y="182" font-size="11.5" font-family="inherit" fill="#6b7280">事务 200 做了：UPDATE age 20 → 25</text>
+        <text x="345" y="200" font-size="11.5" font-family="inherit" fill="#6b7280">name 列未修改</text>
+        <text x="345" y="220" font-size="11" font-family="inherit" fill="#16a34a">状态：已提交</text>
+        <text x="555" y="220" font-size="11" font-family="inherit" fill="#1e5fa8">roll_pointer → undo B</text>
+
+        
+        <rect x="325" y="270" width="420" height="140" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="5,3"/>
+        <text x="345" y="293" font-size="12.5" font-weight="bold" font-family="inherit" fill="#64748b">undo B（更旧一条）</text>
+        <rect x="640" y="280" width="90" height="22" rx="4" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1"/>
+        <text x="685" y="295" text-anchor="middle" font-size="11" font-family="inherit" fill="#64748b">INSERT</text>
+        <text x="345" y="317" font-size="12" font-family="inherit" fill="#1e5fa8">trx_id = 100</text>
+        <text x="345" y="337" font-size="11.5" font-family="inherit" fill="#1f2937">保存的旧值：(id=1, name=张三, age=20)</text>
+        <text x="345" y="357" font-size="11.5" font-family="inherit" fill="#6b7280">事务 100 做了：INSERT 初始行</text>
+        <text x="345" y="377" font-size="11" font-family="inherit" fill="#16a34a">状态：已提交</text>
+        <text x="555" y="377" font-size="11" font-family="inherit" fill="#94a3b8">roll_pointer → 空（链尾）</text>
+        <text x="345" y="395" font-size="11" font-family="inherit" fill="#64748b">提交后即丢弃，不参与 MVCC 版本链（图中仅示意链尾）</text>
+
+        
+        <line x1="255" y1="170" x2="320" y2="170" stroke="#1e5fa8" stroke-width="1.8" marker-end="url(#arrow2-2)"/>
+        <text x="287" y="160" text-anchor="middle" font-size="11" font-family="inherit" fill="#1e5fa8">roll_pointer</text>
+
+        
+        <line x1="535" y1="235" x2="535" y2="265" stroke="#1e5fa8" stroke-width="1.8" marker-end="url(#arrow2-2)"/>
+        <text x="565" y="253" font-size="11" font-family="inherit" fill="#1e5fa8">roll_pointer</text>
+
+        <text x="400" y="450" text-anchor="middle" font-size="12" font-family="inherit" fill="#4b5563">版本链上每个版本的 trx_id 是"创建该版本的事务"；当前行 trx_id=300 表示最新版本是事务 300 改的</text>
+      </svg>

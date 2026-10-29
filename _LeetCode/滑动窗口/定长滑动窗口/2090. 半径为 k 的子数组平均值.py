@@ -61,10 +61,10 @@ class Solution:
         res = [-1] * n
         # 初始值
         s = sum(nums[:2 * k + 1])
-        res[l + k] = s // (2 * k + 1)
-        for i in range(k + 1, n - k):  # r <= n - k
-            s = s - nums[i - k - 1] + nums[i + k]
-            res[i] = s // (2 * k + 1)
+        res[l + k] = s // (2 * k + 1)  # 求第一个中间值的 // 值 （向下取整）
+        for right in range(k + 1, n - k):  # r <= n - k
+            s = s - nums[right - k - 1] + nums[right + k]  #
+            res[right] = s // (2 * k + 1)
 
         print(res)
         return res

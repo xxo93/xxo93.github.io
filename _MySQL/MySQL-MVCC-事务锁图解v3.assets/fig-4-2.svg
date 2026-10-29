@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 800 150" width="100%" role="img" aria-label="Record Lock 示意图：只锁住索引记录 10 这一条">
+      <text x="400" y="22" text-anchor="middle" class="svg-text-b">① Record Lock（记录锁）：只锁 10 这一条索引记录</text>
+      <line x1="90" y1="85" x2="710" y2="85" class="axis"/>
+      <circle cx="210" cy="85" r="5" class="dot-open"/>
+      <circle cx="400" cy="85" r="5" class="dot-fill"/>
+      <circle cx="590" cy="85" r="5" class="dot-open"/>
+      <text x="210" y="114" text-anchor="middle" class="svg-text">5</text>
+      <text x="400" y="114" text-anchor="middle" class="svg-text">10</text>
+      <text x="590" y="114" text-anchor="middle" class="svg-text">15</text>
+      
+      <rect x="388" y="60" width="24" height="34" rx="4" class="rec-rect"/>
+      <text x="400" y="135" text-anchor="middle" class="svg-text-b" fill="#dc2626">= 10 这一条</text>
+    </svg>

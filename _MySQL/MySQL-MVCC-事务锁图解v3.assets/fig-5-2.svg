@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 800 230" role="img" aria-label="幻读双保险分工图：快照读由MVCC解决，当前读由Next-Key Lock防止" width="100%">
+        <defs>
+          <marker id="arrow5-2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#64748b"/>
+          </marker>
+        </defs>
+        <rect x="240" y="15" width="320" height="44" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
+        <text x="400" y="42" text-anchor="middle" font-family="inherit" font-size="13.5" fill="#78350f">幻读：同一事务按条件查两次，期间别人插入新行</text>
+
+        <line x1="360" y1="59" x2="220" y2="105" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow5-2)"/>
+        <line x1="440" y1="59" x2="580" y2="105" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow5-2)"/>
+
+        <rect x="40" y="108" width="300" height="100" rx="10" fill="#d1fae5" stroke="#16a34a" stroke-width="1.5"/>
+        <text x="190" y="132" text-anchor="middle" font-family="inherit" font-size="13.5" font-weight="bold" fill="#065f46">快照读 → MVCC</text>
+        <text x="190" y="156" text-anchor="middle" font-family="inherit" font-size="12.5" fill="#065f46">RR 复用同一 ReadView</text>
+        <text x="190" y="176" text-anchor="middle" font-family="inherit" font-size="12.5" fill="#065f46">看不到别的事务新插入的行</text>
+        <text x="190" y="198" text-anchor="middle" font-family="inherit" font-size="12.5" font-weight="bold" fill="#065f46">→ 快照读幻读：已解决</text>
+
+        <rect x="460" y="108" width="300" height="100" rx="10" fill="#dbeafe" stroke="#1e5fa8" stroke-width="1.5"/>
+        <text x="610" y="132" text-anchor="middle" font-family="inherit" font-size="13.5" font-weight="bold" fill="#1e3a8a">当前读 → Next-Key Lock</text>
+        <text x="610" y="156" text-anchor="middle" font-family="inherit" font-size="12.5" fill="#1e3a8a">记录锁 + 间隙锁锁住查询区间</text>
+        <text x="610" y="176" text-anchor="middle" font-family="inherit" font-size="12.5" fill="#1e3a8a">别人根本插不进符合条件的记录</text>
+        <text x="610" y="198" text-anchor="middle" font-family="inherit" font-size="12.5" font-weight="bold" fill="#1e3a8a">→ 当前读幻读：已防止</text>
+      </svg>

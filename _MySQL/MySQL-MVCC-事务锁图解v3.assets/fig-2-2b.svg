@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 800 280" width="100%" role="img" aria-label="一条 undo log 记录的内部结构：包含 trx_id、操作类型、记录定位主键、旧值、roll_pointer 五个格子；当前行的 roll_pointer 指向这条 undo，undo 记录自己的 roll_pointer 指向更早一条">
+        <defs>
+          <marker id="arrow2-2b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#1e5fa8"/>
+          </marker>
+        </defs>
+        <text x="400" y="24" text-anchor="middle" font-size="14" font-weight="bold" font-family="inherit" fill="#1f2937">一条 undo log 记录的内部结构（以 age=25 这一旧版本为例，该版本由事务 200 产生）</text>
+
+        
+        <rect x="30" y="80" width="150" height="100" rx="10" fill="#d1fae5" stroke="#0d9488" stroke-width="1.5"/>
+        <text x="105" y="103" text-anchor="middle" font-size="12.5" font-weight="bold" font-family="inherit" fill="#065f46">当前行（最新）</text>
+        <text x="105" y="125" text-anchor="middle" font-size="12" font-family="inherit" fill="#1f2937">id=1 age=30</text>
+        <text x="105" y="145" text-anchor="middle" font-size="11.5" font-family="inherit" fill="#1e5fa8">trx_id=300</text>
+        <text x="105" y="165" text-anchor="middle" font-size="11" font-family="inherit" fill="#6b7280">roll_pointer</text>
+
+        
+        <line x1="180" y1="130" x2="250" y2="130" stroke="#1e5fa8" stroke-width="1.5" marker-end="url(#arrow2-2b)"/>
+        <text x="215" y="120" text-anchor="middle" font-size="11" font-family="inherit" fill="#1e5fa8">roll_pointer</text>
+
+        
+        <rect x="255" y="55" width="320" height="170" rx="10" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5"/>
+        <text x="415" y="76" text-anchor="middle" font-size="12.5" font-weight="bold" font-family="inherit" fill="#1f2937">undo log 记录</text>
+
+        
+        <rect x="270" y="85" width="130" height="32" rx="4" fill="#dbeafe" stroke="#94a3b8" stroke-width="1"/>
+        <text x="335" y="100" text-anchor="middle" font-size="11" font-family="inherit" fill="#1e5fa8">trx_id</text>
+        <text x="335" y="114" text-anchor="middle" font-size="11.5" font-family="inherit" fill="#1f2937">200</text>
+
+        
+        <rect x="410" y="85" width="150" height="32" rx="4" fill="#fef3c7" stroke="#94a3b8" stroke-width="1"/>
+        <text x="485" y="100" text-anchor="middle" font-size="11" font-family="inherit" fill="#92400e">操作类型</text>
+        <text x="485" y="114" text-anchor="middle" font-size="11.5" font-family="inherit" fill="#92400e">UPDATE</text>
+
+        
+        <rect x="270" y="125" width="130" height="32" rx="4" fill="#ffffff" stroke="#94a3b8" stroke-width="1"/>
+        <text x="335" y="140" text-anchor="middle" font-size="11" font-family="inherit" fill="#6b7280">记录定位</text>
+        <text x="335" y="154" text-anchor="middle" font-size="11.5" font-family="inherit" fill="#1f2937">主键 id=1</text>
+
+        
+        <rect x="410" y="125" width="150" height="32" rx="4" fill="#ffffff" stroke="#94a3b8" stroke-width="1"/>
+        <text x="485" y="140" text-anchor="middle" font-size="11" font-family="inherit" fill="#6b7280">旧值（修改前）</text>
+        <text x="485" y="154" text-anchor="middle" font-size="11.5" font-family="inherit" fill="#1f2937">id=1, name=张三, age=25</text>
+
+        
+        <rect x="270" y="165" width="290" height="32" rx="4" fill="#dbeafe" stroke="#94a3b8" stroke-width="1"/>
+        <text x="415" y="180" text-anchor="middle" font-size="11" font-family="inherit" fill="#1e5fa8">本条 undo 的 roll_pointer（指向更早一条旧记录）</text>
+        <text x="415" y="194" text-anchor="middle" font-size="11.5" font-family="inherit" fill="#1e5fa8">→ 指向事务 100 的旧版本</text>
+
+        
+        <line x1="575" y1="180" x2="660" y2="180" stroke="#1e5fa8" stroke-width="1.5" marker-end="url(#arrow2-2b)"/>
+        <text x="617" y="170" text-anchor="middle" font-size="11" font-family="inherit" fill="#1e5fa8">roll_pointer</text>
+
+        
+        <rect x="665" y="155" width="110" height="50" rx="8" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,3"/>
+        <text x="720" y="177" text-anchor="middle" font-size="11" font-family="inherit" fill="#6b7280">更早一条 undo</text>
+        <text x="720" y="194" text-anchor="middle" font-size="11" font-family="inherit" fill="#6b7280">trx_id=100</text>
+
+        <text x="400" y="255" text-anchor="middle" font-size="12" font-family="inherit" fill="#4b5563">两层指针：当前行的 roll_pointer 先指到最新一条 undo；undo 记录自己的 roll_pointer 再指到更早一条——版本链就是这样串起来的</text>
+      </svg>

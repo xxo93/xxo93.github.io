@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 800 150" width="100%" role="img" aria-label="Gap Lock 示意图：锁住 5 与 10 之间的开区间 (5,10)，端点不锁，只在 RR 生效">
+      <text x="400" y="22" text-anchor="middle" class="svg-text-b">② Gap Lock（间隙锁）：锁开区间 (5, 10)，不锁端点，只在 RR 级别生效</text>
+      <line x1="90" y1="85" x2="710" y2="85" class="axis"/>
+      <circle cx="210" cy="85" r="5" class="dot-open"/>
+      <circle cx="400" cy="85" r="5" class="dot-open"/>
+      <circle cx="590" cy="85" r="5" class="dot-open"/>
+      <text x="210" y="114" text-anchor="middle" class="svg-text">5</text>
+      <text x="400" y="114" text-anchor="middle" class="svg-text">10</text>
+      <text x="590" y="114" text-anchor="middle" class="svg-text">15</text>
+      
+      <rect x="210" y="60" width="190" height="34" rx="4" class="gap-rect"/>
+      <text x="305" y="90" text-anchor="middle" class="svg-text-b" fill="#d97706">(5, 10) 开区间</text>
+      <text x="305" y="135" text-anchor="middle" class="svg-text" fill="#78350f">禁止别人在这个空隙里 INSERT 新记录</text>
+    </svg>

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 800 300" role="img" aria-label="一条 SQL 进来后走快照读与当前读两条路线的流向图" width="100%">
+        <defs>
+          <marker id="arrow5-1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#64748b"/>
+          </marker>
+        </defs>
+        <text x="400" y="24" text-anchor="middle" font-family="inherit" font-size="16" font-weight="bold" fill="#1f2937">一条 SQL 进来：先判断走哪条路线</text>
+
+        
+        <rect x="30" y="45" width="340" height="240" rx="12" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5"/>
+        <rect x="50" y="60" width="300" height="38" rx="8" fill="#dbeafe" stroke="#94a3b8" stroke-width="1.5"/>
+        <text x="200" y="84" text-anchor="middle" font-family="inherit" font-size="13.5" fill="#1f2937">普通 SELECT（快照读）</text>
+        <line x1="200" y1="98" x2="200" y2="118" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow5-1)"/>
+        <rect x="50" y="122" width="300" height="36" rx="8" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5"/>
+        <text x="200" y="145" text-anchor="middle" font-family="inherit" font-size="13" fill="#1f2937">生成 ReadView（一致性视图）</text>
+        <line x1="200" y1="158" x2="200" y2="178" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow5-1)"/>
+        <rect x="50" y="182" width="300" height="36" rx="8" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5"/>
+        <text x="200" y="205" text-anchor="middle" font-family="inherit" font-size="13" fill="#1f2937">沿 undo 版本链找可见版本</text>
+        <line x1="200" y1="218" x2="200" y2="238" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow5-1)"/>
+        <rect x="50" y="242" width="300" height="34" rx="8" fill="#d1fae5" stroke="#16a34a" stroke-width="1.5"/>
+        <text x="200" y="264" text-anchor="middle" font-family="inherit" font-size="13" fill="#065f46">不加行锁，读写互不阻塞</text>
+
+        
+        <rect x="430" y="45" width="340" height="240" rx="12" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5"/>
+        <rect x="450" y="60" width="300" height="38" rx="8" fill="#dbeafe" stroke="#94a3b8" stroke-width="1.5"/>
+        <text x="600" y="84" text-anchor="middle" font-family="inherit" font-size="13.5" fill="#1f2937">当前读（FOR UPDATE / 写操作）</text>
+        <line x1="600" y1="98" x2="600" y2="118" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow5-1)"/>
+        <rect x="450" y="122" width="300" height="36" rx="8" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5"/>
+        <text x="600" y="145" text-anchor="middle" font-family="inherit" font-size="13" fill="#1f2937">读最新已提交版本</text>
+        <line x1="600" y1="158" x2="600" y2="178" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow5-1)"/>
+        <rect x="450" y="182" width="300" height="36" rx="8" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5"/>
+        <text x="600" y="205" text-anchor="middle" font-family="inherit" font-size="13" fill="#1f2937">加锁：Record / Gap / Next-Key</text>
+        <line x1="600" y1="218" x2="600" y2="238" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow5-1)"/>
+        <rect x="450" y="242" width="300" height="34" rx="8" fill="#fee2e2" stroke="#dc2626" stroke-width="1.5"/>
+        <text x="600" y="264" text-anchor="middle" font-family="inherit" font-size="13" fill="#7f1d1d">写互斥，别人改同一行会阻塞等待</text>
+      </svg>

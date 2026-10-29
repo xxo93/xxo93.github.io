@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 800 240" width="100%" role="img" aria-label="转账事务示意图：张三账户扣 100，李四账户加 100，两步被一个事务包起来；成功则全部生效，失败则全部回滚">
+        <defs>
+          <marker id="arrow1-1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#1e5fa8"/>
+          </marker>
+        </defs>
+        
+        <rect x="30" y="80" width="170" height="80" rx="10" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5"/>
+        <text x="115" y="110" text-anchor="middle" font-size="14" font-family="inherit" fill="#1f2937">张三账户</text>
+        <text x="115" y="135" text-anchor="middle" font-size="13" font-family="inherit" fill="#6b7280">1000 元</text>
+        
+        <rect x="310" y="50" width="180" height="140" rx="12" fill="#dbeafe" stroke="#1e5fa8" stroke-width="1.5"/>
+        <text x="400" y="78" text-anchor="middle" font-size="14.5" font-weight="bold" font-family="inherit" fill="#1e5fa8">一个事务</text>
+        <text x="400" y="105" text-anchor="middle" font-size="12.5" font-family="inherit" fill="#1f2937">BEGIN;（开始）</text>
+        <text x="400" y="128" text-anchor="middle" font-size="12.5" font-family="inherit" fill="#1f2937">扣 100 → 加 100</text>
+        <text x="400" y="151" text-anchor="middle" font-size="12.5" font-family="inherit" fill="#1f2937">COMMIT;（全部生效）</text>
+        <text x="400" y="174" text-anchor="middle" font-size="12" font-family="inherit" fill="#dc2626">失败则 ROLLBACK（全部撤销）</text>
+        
+        <rect x="600" y="80" width="170" height="80" rx="10" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5"/>
+        <text x="685" y="110" text-anchor="middle" font-size="14" font-family="inherit" fill="#1f2937">李四账户</text>
+        <text x="685" y="135" text-anchor="middle" font-size="13" font-family="inherit" fill="#6b7280">500 元</text>
+        
+        <line x1="200" y1="120" x2="305" y2="120" stroke="#1e5fa8" stroke-width="1.5" marker-end="url(#arrow1-1)"/>
+        <text x="252" y="110" text-anchor="middle" font-size="12" font-family="inherit" fill="#16a34a">−100</text>
+        <line x1="490" y1="120" x2="595" y2="120" stroke="#1e5fa8" stroke-width="1.5" marker-end="url(#arrow1-1)"/>
+        <text x="542" y="110" text-anchor="middle" font-size="12" font-family="inherit" fill="#16a34a">+100</text>
+        
+        <text x="400" y="215" text-anchor="middle" font-size="13" font-family="inherit" fill="#4b5563">两步必须同时成功或同时失败——中间态对其他事务永远不可见</text>
+      </svg>

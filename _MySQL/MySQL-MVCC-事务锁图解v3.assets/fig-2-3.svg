@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 800 280" width="100%" role="img" aria-label="ReadView 四个字段：m_ids、min_trx_id、max_trx_id、creator_trx_id，以及它们在事务 ID 时间轴上的位置">
+        <defs>
+          <marker id="arrow2-3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#1e5fa8"/>
+          </marker>
+        </defs>
+
+        
+        <rect x="30" y="50" width="320" height="200" rx="12" fill="#eff6ff" stroke="#1e5fa8" stroke-width="1.5"/>
+        <text x="190" y="78" text-anchor="middle" font-size="14" font-weight="bold" font-family="inherit" fill="#1e5fa8">ReadView（事务 350 生成）</text>
+        <text x="50" y="110" font-size="13" font-family="Consolas,monospace" fill="#1f2937">m_ids = {100, 200, 300}</text>
+        <text x="50" y="138" font-size="13" font-family="Consolas,monospace" fill="#1f2937">min_trx_id = 100</text>
+        <text x="50" y="166" font-size="13" font-family="Consolas,monospace" fill="#1f2937">max_trx_id = 400</text>
+        <text x="50" y="194" font-size="13" font-family="Consolas,monospace" fill="#1f2937">creator_trx_id = 350</text>
+        <text x="50" y="225" font-size="11.5" font-family="inherit" fill="#6b7280">生成瞬间：100/200/300 还没提交</text>
+
+        
+        <line x1="400" y1="150" x2="730" y2="150" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrow2-3)"/>
+        <text x="585" y="125" text-anchor="middle" font-size="12.5" font-family="inherit" fill="#4b5563">事务 ID 从小到大（越往后越晚启动）</text>
+
+        
+        <circle cx="430" cy="150" r="6" fill="#dbeafe" stroke="#1e5fa8" stroke-width="1.5"/>
+        <text x="430" y="175" text-anchor="middle" font-size="12" font-family="inherit" fill="#1e5fa8">100</text>
+        <text x="430" y="192" text-anchor="middle" font-size="10.5" font-family="inherit" fill="#6b7280">活跃</text>
+
+        <circle cx="500" cy="150" r="6" fill="#dbeafe" stroke="#1e5fa8" stroke-width="1.5"/>
+        <text x="500" y="175" text-anchor="middle" font-size="12" font-family="inherit" fill="#1e5fa8">200</text>
+        <text x="500" y="192" text-anchor="middle" font-size="10.5" font-family="inherit" fill="#6b7280">活跃</text>
+
+        <circle cx="570" cy="150" r="6" fill="#dbeafe" stroke="#1e5fa8" stroke-width="1.5"/>
+        <text x="570" y="175" text-anchor="middle" font-size="12" font-family="inherit" fill="#1e5fa8">300</text>
+        <text x="570" y="192" text-anchor="middle" font-size="10.5" font-family="inherit" fill="#6b7280">活跃</text>
+
+        <circle cx="630" cy="150" r="6" fill="#d1fae5" stroke="#0d9488" stroke-width="1.5"/>
+        <text x="630" y="175" text-anchor="middle" font-size="12" font-family="inherit" fill="#0d9488">350</text>
+        <text x="630" y="192" text-anchor="middle" font-size="10.5" font-family="inherit" fill="#0d9488">我自己</text>
+
+        <circle cx="690" cy="150" r="6" fill="#fee2e2" stroke="#dc2626" stroke-width="1.5"/>
+        <text x="690" y="175" text-anchor="middle" font-size="12" font-family="inherit" fill="#dc2626">400</text>
+        <text x="690" y="192" text-anchor="middle" font-size="10.5" font-family="inherit" fill="#dc2626">下一个将分配</text>
+      </svg>

@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 800 400" width="100%" role="img" aria-label="快照读 SELECT 沿版本链回退找可见版本：当前行 age=30 trx_id=300 不可见时，沿 roll_pointer 回退到 undo 旧版本 age=25 trx_id=200；下方图例标注 UPDATE 链头插节点、INSERT 不挂历史节点、DELETE 先打删除标记、DROP 无链可溯">
+        <defs>
+          <marker id="arrow2-2c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#1e5fa8"/>
+          </marker>
+          <marker id="arrow2-2c-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#dc2626"/>
+          </marker>
+        </defs>
+        <text x="400" y="24" text-anchor="middle" font-size="14" font-weight="bold" font-family="inherit" fill="#1f2937">快照读 SELECT 沿版本链回退（其他操作对版本链的影响见图例）</text>
+
+        
+        <rect x="30" y="80" width="170" height="110" rx="10" fill="#d1fae5" stroke="#0d9488" stroke-width="1.5"/>
+        <text x="115" y="105" text-anchor="middle" font-size="12.5" font-weight="bold" font-family="inherit" fill="#065f46">当前行（最新）</text>
+        <text x="115" y="130" text-anchor="middle" font-size="13" font-family="inherit" fill="#1f2937">age = 30</text>
+        <text x="115" y="150" text-anchor="middle" font-size="11.5" font-family="inherit" fill="#1e5fa8">trx_id = 300</text>
+        <text x="115" y="172" text-anchor="middle" font-size="11" font-family="inherit" fill="#dc2626">快照读不可见</text>
+
+        
+        <rect x="315" y="80" width="170" height="110" rx="10" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5"/>
+        <text x="400" y="105" text-anchor="middle" font-size="12.5" font-weight="bold" font-family="inherit" fill="#1f2937">undo 旧版本</text>
+        <text x="400" y="130" text-anchor="middle" font-size="13" font-family="inherit" fill="#1f2937">age = 25</text>
+        <text x="400" y="150" text-anchor="middle" font-size="11.5" font-family="inherit" fill="#1e5fa8">trx_id = 200</text>
+        <text x="400" y="172" text-anchor="middle" font-size="11" font-family="inherit" fill="#16a34a">快照读可见 ✓</text>
+
+        
+        <rect x="600" y="80" width="170" height="110" rx="10" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5,3"/>
+        <text x="685" y="105" text-anchor="middle" font-size="12.5" font-weight="bold" font-family="inherit" fill="#64748b">undo 旧版本</text>
+        <text x="685" y="130" text-anchor="middle" font-size="13" font-family="inherit" fill="#1f2937">age = 20</text>
+        <text x="685" y="150" text-anchor="middle" font-size="11.5" font-family="inherit" fill="#1e5fa8">trx_id = 100</text>
+        <text x="685" y="172" text-anchor="middle" font-size="11" font-family="inherit" fill="#6b7280">链尾</text>
+
+        
+        <line x1="200" y1="135" x2="310" y2="135" stroke="#1e5fa8" stroke-width="1.5" marker-end="url(#arrow2-2c)"/>
+        <text x="255" y="125" text-anchor="middle" font-size="11" font-family="inherit" fill="#1e5fa8">roll_pointer</text>
+        <line x1="485" y1="135" x2="595" y2="135" stroke="#1e5fa8" stroke-width="1.5" marker-end="url(#arrow2-2c)"/>
+        <text x="540" y="125" text-anchor="middle" font-size="11" font-family="inherit" fill="#1e5fa8">roll_pointer</text>
+
+        
+        <path d="M 115 80 Q 255 40 400 80" fill="none" stroke="#dc2626" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow2-2c-red)"/>
+        <text x="255" y="55" text-anchor="middle" font-size="11.5" font-family="inherit" fill="#dc2626">快照读回退：当前行不可见 → 跳到 age=25</text>
+
+        
+        <line x1="30" y1="230" x2="770" y2="230" stroke="#e5e7eb" stroke-width="1"/>
+        <text x="400" y="255" text-anchor="middle" font-size="12.5" font-weight="bold" font-family="inherit" fill="#4b5563">其他操作对版本链的影响（图例）</text>
+
+        
+        <rect x="30" y="275" width="170" height="90" rx="8" fill="#eff6ff" stroke="#94a3b8" stroke-width="1"/>
+        <text x="115" y="298" text-anchor="middle" font-size="12" font-weight="bold" font-family="inherit" fill="#1e5fa8">UPDATE</text>
+        <text x="115" y="318" text-anchor="middle" font-size="11" font-family="inherit" fill="#1f2937">链头插入新节点</text>
+        <text x="115" y="336" text-anchor="middle" font-size="11" font-family="inherit" fill="#6b7280">写 update undo</text>
+        <text x="115" y="354" text-anchor="middle" font-size="11" font-family="inherit" fill="#6b7280">trx_id 改本事务</text>
+
+        <rect x="220" y="275" width="170" height="90" rx="8" fill="#f8fafc" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4,3"/>
+        <text x="305" y="298" text-anchor="middle" font-size="12" font-weight="bold" font-family="inherit" fill="#64748b">INSERT</text>
+        <text x="305" y="318" text-anchor="middle" font-size="11" font-family="inherit" fill="#1f2937">不挂历史节点</text>
+        <text x="305" y="336" text-anchor="middle" font-size="11" font-family="inherit" fill="#6b7280">写 insert undo（仅主键）</text>
+        <text x="305" y="354" text-anchor="middle" font-size="11" font-family="inherit" fill="#6b7280">提交后即丢弃</text>
+
+        <rect x="410" y="275" width="170" height="90" rx="8" fill="#fef3c7" stroke="#94a3b8" stroke-width="1"/>
+        <text x="495" y="298" text-anchor="middle" font-size="12" font-weight="bold" font-family="inherit" fill="#92400e">DELETE</text>
+        <text x="495" y="318" text-anchor="middle" font-size="11" font-family="inherit" fill="#1f2937">先打删除标记</text>
+        <text x="495" y="336" text-anchor="middle" font-size="11" font-family="inherit" fill="#6b7280">写 update undo（完整旧行）</text>
+        <text x="495" y="354" text-anchor="middle" font-size="11" font-family="inherit" fill="#6b7280">purge 线程物理清除</text>
+
+        <rect x="600" y="275" width="170" height="90" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="5,3"/>
+        <text x="685" y="298" text-anchor="middle" font-size="12" font-weight="bold" font-family="inherit" fill="#94a3b8">DROP TABLE</text>
+        <text x="685" y="318" text-anchor="middle" font-size="11" font-family="inherit" fill="#1f2937">无行级 undo</text>
+        <text x="685" y="336" text-anchor="middle" font-size="11" font-family="inherit" fill="#6b7280">不进版本链</text>
+        <text x="685" y="354" text-anchor="middle" font-size="11" font-family="inherit" fill="#6b7280">无旧版本可溯</text>
+      </svg>
